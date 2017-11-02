@@ -18,16 +18,19 @@ module RubyLanguageServer
         result: response
       }
       response_body = JSON.unparse(full_response)
-      # io.puts "Content-Length: #{response_body.length + 0}"
       RubyLanguageServer.logger.debug "response_body: #{response_body}"
-      io.puts response_body
+      io.write "Content-Length: #{response_body.length + 0}\r\n"
+      io.write "\r\n"
+      io.write response_body
+      io.write "\r\n"
+      io.flush
     end
 
     def process_request(io = STDIN)
       request_body = get_request(io)
       # RubyLanguageServer.logger.debug "request_body: #{request_body}"
       request_json = JSON.parse request_body
-      RubyLanguageServer.logger.debug "request_json: #{request_json}"
+      RubyLanguageServer.logger.debug "request_body: #{request_body}"
       id = request_json['id']
       method_name = request_json['method']
       params = request_json['params']
