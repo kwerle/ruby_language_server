@@ -13,4 +13,4 @@ RUN bundle install
 
 COPY . ./
 
-CMD ["bash"]
+CMD ["ruby", "bin/ruby_language_server"]

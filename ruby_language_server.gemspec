@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "rcodetools"
-  spec.add_dependency "jimson"
+  spec.add_dependency "ripper-tags"
 
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "rake"
