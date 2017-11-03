@@ -4,10 +4,11 @@ module RubyLanguageServer
   class IO
 
     def initialize(server)
+      RubyLanguageServer.logger.level = Logger::INFO
       @server = server
       while true do
         (id, response) = process_request(STDIN)
-        return_response(id, response, STDOUT)
+        return_response(id, response, STDOUT) unless id.nil?
       end
     end
 
@@ -18,24 +19,29 @@ module RubyLanguageServer
         result: response
       }
       response_body = JSON.unparse(full_response)
-      RubyLanguageServer.logger.debug "response_body: #{response_body}"
+      RubyLanguageServer.logger.info "response_body: #{response_body}"
       io.write "Content-Length: #{response_body.length + 0}\r\n"
       io.write "\r\n"
       io.write response_body
-      io.write "\r\n"
       io.flush
     end
 
     def process_request(io = STDIN)
       request_body = get_request(io)
-      # RubyLanguageServer.logger.debug "request_body: #{request_body}"
+      RubyLanguageServer.logger.debug "request_body: #{request_body}"
       request_json = JSON.parse request_body
       RubyLanguageServer.logger.debug "request_body: #{request_body}"
       id = request_json['id']
       method_name = request_json['method']
       params = request_json['params']
-      response = @server.send("on_#{method_name}", params)
-      return id, response
+      method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
+      if @server.respond_to? method_name
+        response = @server.send(method_name, params)
+        return id, response
+      else
+        RubyLanguageServer.logger.debug "SERVER DOES NOT RESPOND TO #{method_name}"
+        return nil
+      end
     end
 
     def get_request(io = STDIN)
