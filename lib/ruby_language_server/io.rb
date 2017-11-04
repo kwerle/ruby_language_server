@@ -39,7 +39,7 @@ module RubyLanguageServer
         response = @server.send(method_name, params)
         return id, response
       else
-        RubyLanguageServer.logger.debug "SERVER DOES NOT RESPOND TO #{method_name}"
+        RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
         return nil
       end
     end

@@ -51,7 +51,7 @@ module RubyLanguageServer
 
     SymbolKind = {
       file: 1,
-      module: 2,
+      :'module' => 2,
       namespace: 3,
       package: 4,
       :'class' => 5,
@@ -73,40 +73,51 @@ module RubyLanguageServer
     def on_textDocument_documentSymbol(params)
       RubyLanguageServer.logger.debug('??????????????????????????????????????????????')
       RubyLanguageServer.logger.debug(params)
-      textDocument = params['textDocument']
-      uri = textDocument['uri']
-      RubyLanguageServer.logger.info(@file_tags[uri])
+      uri = uri_from_params(params)
+      RubyLanguageServer.logger.debug(@file_tags[uri])
 
       # {"kind":"module","line":4,"language":"Ruby","path":"(eval)","pattern":"module RubyLanguageServer","full_name":"RubyLanguageServer","name":"RubyLanguageServer"}
-      @file_tags[uri].map{ |reference|
+      tags_for_uri(uri).map{ |reference|
         {
           name: reference[:name] || 'undefined?',
           kind: SymbolKind[reference[:kind].to_sym] || 7,
-          # containerName: reference[:full_name],
-          location: {
-            uri: uri,
-            range: {
-              start: {
-                line: reference[:line] - 1,
-                character: 1
-              },
-              end: {
-                line: reference[:line] - 1,
-                character: 1
-              }
-            }
-          }
+          location: location_hash(uri, reference[:line])
         }
       }
     end
 
     def on_textDocument_definition(params)
-      RubyLanguageServer.logger.debug('??????????????????????????????????????????????')
-      RubyLanguageServer.logger.debug(params)
+      RubyLanguageServer.logger.error('??????????????????????????????????????????????')
+      RubyLanguageServer.logger.error(params)
+      uri = uri_from_params(params)
       position = params['position']
-      line = position['line']
-      character = position['character']
-      {}
+      line_number = (position['line']).to_i
+      RubyLanguageServer.logger.error("line number: #{line_number}")
+      character = position['character'].to_i
+      lines = text_for_uri(uri).split("\n")
+      line = lines[line_number]
+      line_end = line[character..-1]
+      RubyLanguageServer.logger.error("line_end: #{line_end}")
+      match = line_end.partition(/^(@{0,2}\w+)/)[1]
+      RubyLanguageServer.logger.error("match: #{match}")
+      line_start = line[0..(character + match.length - 1)]
+      RubyLanguageServer.logger.error("line_start: #{line_start}")
+      end_match = line_start.partition(/(@{0,2}\w+)$/)[1]
+      RubyLanguageServer.logger.error("end_match: #{end_match}")
+      possible_definitions_for(end_match)
+    end
+
+    def possible_definitions_for(name)
+      return {} if name == ''
+      return_array = @file_tags.keys.inject([]) do |return_array, uri|
+        tags = tags_for_uri(uri)
+        match_tags = tags.select{|tag| tag[:name] == name}
+        match_tags.each do |tag|
+          return_array << location_hash(uri, tag[:line])
+        end
+        return_array
+      end
+      return_array
     end
 
     def on_textDocument_didOpen(params)
@@ -116,28 +127,62 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug(params.keys)
       RubyLanguageServer.logger.debug("uri: #{uri}")
       RubyLanguageServer.logger.debug("text: #{text}")
-      tags = RipperTags::Parser.extract(text)
-      update_file_tags(uri, tags)
-      RubyLanguageServer.logger.debug(tags)
+      update_document_content(uri, text)
       {}
     end
 
     def on_textDocument_didChange(params)
-      textDocument = params['textDocument']
-      uri = textDocument['uri']
+      uri = uri_from_params(params)
       contentChanges = params['contentChanges']
       text = contentChanges.first['text']
       RubyLanguageServer.logger.debug(params.keys)
       RubyLanguageServer.logger.debug("uri: #{uri}")
       RubyLanguageServer.logger.debug("contentChanges: #{contentChanges}")
-      tags = RipperTags::Parser.extract(text)
-      update_file_tags(uri, tags)
-      RubyLanguageServer.logger.debug(tags)
+      update_document_content(uri, text)
       {}
     end
 
-    def update_file_tags(uri, tags)
-      @file_tags[uri] = tags
+    private
+
+    def text_for_uri(uri)
+      hash = @file_tags[uri] || return
+      hash[:text]
+    end
+
+    def tags_for_uri(uri)
+      hash = @file_tags[uri] || return
+      hash[:tags]
+    end
+
+    def update_document_content(uri, text)
+      tags = RipperTags::Parser.extract(text)
+      @file_tags[uri] = {
+        tags: tags,
+        text: text
+      }
+    end
+
+    def uri_from_params(params)
+      textDocument = params['textDocument']
+      uri = textDocument['uri']
+    end
+
+    def location_hash(uri, start_line, start_character = 1, end_line = nil, end_character = nil)
+      _end_line = end_line || start_line
+      _end_character = end_character || start_character
+      {
+        uri: uri,
+        range: {
+          start: {
+            line: start_line - 1,
+            character: start_character
+          },
+          end: {
+            line: _end_line - 1,
+            character: _end_character
+          }
+        }
+      }
     end
   end
 end
