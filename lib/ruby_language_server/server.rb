@@ -51,7 +51,7 @@ module RubyLanguageServer
 
     SymbolKind = {
       file: 1,
-      :'module' => 2,
+      :'module' => 5, #2,
       namespace: 3,
       package: 4,
       :'class' => 5,
@@ -74,15 +74,18 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug('??????????????????????????????????????????????')
       RubyLanguageServer.logger.debug(params)
       uri = uri_from_params(params)
-      RubyLanguageServer.logger.debug(@file_tags[uri])
+      RubyLanguageServer.logger.error(tags_for_uri(uri))
 
       # {"kind":"module","line":4,"language":"Ruby","path":"(eval)","pattern":"module RubyLanguageServer","full_name":"RubyLanguageServer","name":"RubyLanguageServer"}
       tags_for_uri(uri).map{ |reference|
-        {
+        return_hash = {
           name: reference[:name] || 'undefined?',
           kind: SymbolKind[reference[:kind].to_sym] || 7,
           location: location_hash(uri, reference[:line])
         }
+        container_name = reference[:full_name].split(/(:{2}|\#)/).compact[-3]
+        return_hash[:containerName] = container_name if container_name
+        return_hash
       }
     end
 
