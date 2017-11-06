@@ -1,7 +1,7 @@
 module RubyLanguageServer
   module Location
 
-    def self.location_hash(uri, start_line, start_character = 1, end_line = nil, end_character = nil)
+    def self.hash(uri, start_line, start_character = 1, end_line = nil, end_character = nil)
         _end_line = end_line || start_line
         _end_character = end_character || start_character
         {
