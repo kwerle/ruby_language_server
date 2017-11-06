@@ -19,7 +19,7 @@ module RubyLanguageServer
         result: response
       }
       response_body = JSON.unparse(full_response)
-      RubyLanguageServer.logger.info "response_body: #{response_body}"
+      RubyLanguageServer.logger.debug "response_body: #{response_body}"
       io.write "Content-Length: #{response_body.length + 0}\r\n"
       io.write "\r\n"
       io.write response_body
