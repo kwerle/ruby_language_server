@@ -7,8 +7,14 @@ module RubyLanguageServer
       RubyLanguageServer.logger.level = Logger::INFO
       @server = server
       while true do
-        (id, response) = process_request(STDIN)
-        return_response(id, response, STDOUT) unless id.nil?
+        begin
+          (id, response) = process_request(STDIN)
+          return_response(id, response, STDOUT) unless id.nil?
+        rescue Exception => e
+          RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
+          backtrace = e.backtrace * "\n"
+          RubyLanguageServer.logger.error "Backtrace:\n#{backtrace}"
+        end
       end
     end
 
