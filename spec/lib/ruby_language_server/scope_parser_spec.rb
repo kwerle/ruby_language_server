@@ -1,0 +1,49 @@
+require_relative '../../test_helper'
+require "minitest/autorun"
+
+describe RubyLanguageServer::ScopeParser do
+  before do
+    @code_file_lines=<<EOF
+    module Foo
+      class Bar
+        def baz(bing)
+          @biz = bing
+        end
+      end
+      class Nar
+        def naz(ning)
+          @niz = ning
+        end
+      end
+    end
+EOF
+  end
+
+  describe "ScopeParser" do
+    before do
+      @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
+    end
+
+    it "should have a root scope" do
+      refute_nil(@parser.root_scope)
+    end
+
+    it "should have one module" do
+      children = @parser.root_scope.children
+      assert_equal(1, children.size)
+      m = children.first
+      assert_equal('Foo', m.name)
+      assert_equal('Foo', m.full_name)
+    end
+
+    it "should have two classes" do
+      m = @parser.root_scope.children.first
+      children = m.children
+      assert_equal(2, children.size)
+      c1 = children.first
+      assert_equal('Foo', c1.name)
+      assert_equal('Foo', c1.full_name)
+    end
+  end
+
+end
