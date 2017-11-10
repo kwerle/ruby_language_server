@@ -33,7 +33,7 @@ module RubyLanguageServer
         if respond_to? method_name
           self.send(method_name, args, rest)
         else
-          RubyLanguageServer.logger.error("We don't have a #{method_name}")
+          RubyLanguageServer.logger.error("We don't have a #{method_name} with #{args}")
           process(args)
         end
       when NilClass
@@ -46,6 +46,17 @@ module RubyLanguageServer
 
     def on_program(args, rest)
       process(args)
+    end
+
+    def on_assign(args, rest)
+      # [:var_field, [:@ident, "zang", [4, 10]]]
+      (_, (_, name, (line, column))) = args
+      if name.start_with?('@')
+        add_ivar(name, line, column)
+      else
+        add_variable(name, line, column)
+      end
+      process(rest)
     end
 
     def on_bodystmt(args, rest)
@@ -73,9 +84,18 @@ module RubyLanguageServer
 
     private
 
-    def add_variable(name, line, column)
-      new_variable = ScopeData::Variable.new(@current_scope, name, line, column)
-      @current_scope.variables << new_variable
+    def add_variable(name, line, column, scope = @current_scope)
+      new_variable = ScopeData::Variable.new(scope, name, line, column)
+      scope.variables << new_variable
+    end
+
+    def add_ivar(name, line, column)
+      scope = @current_scope
+      ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
+      while (!ivar_scope_types.include?(scope.type) && !scope.parent.nil?)
+        scope = scope.parent
+      end
+      add_variable(name, line, column, scope)
     end
 
     def add_scope(args, rest, type)

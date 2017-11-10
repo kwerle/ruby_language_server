@@ -6,7 +6,9 @@ describe RubyLanguageServer::ScopeParser do
     @code_file_lines=<<EOF
     module Foo
       class Bar
+        attr :top
         def baz(bing, zing)
+          zang = 1
           @biz = bing
         end
       end
@@ -51,8 +53,17 @@ EOF
     it "should have a function Foo::Bar#baz" do
       m = @parser.root_scope.children.first
       bar = m.children.first
-      baz = bar.children.first
-      assert_equal('baz', baz.name)
+      baz_function = bar.children.first
+      assert_equal('baz', baz_function.name)
+      assert_equal(3, baz_function.variables.size)
+    end
+
+    it "should have a function Foo::Bar#baz" do
+      m = @parser.root_scope.children.first
+      bar = m.children.first
+      baz_function = bar.children.first
+      assert_equal('baz', baz_function.name)
+      assert_equal(3, baz_function.variables.size)
     end
 
   end
