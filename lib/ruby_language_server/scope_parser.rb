@@ -24,19 +24,20 @@ module RubyLanguageServer
 
     def process(sexp)
       return if sexp.nil?
-      case sexp.first
+      root, args, *rest = sexp
+      case root
       when Array
         sexp.each{ |child| process(child) }
       when Symbol
-        root, args, *rest = sexp
         method_name = "on_#{root.to_s}"
         if respond_to? method_name
           self.send(method_name, args, rest)
         else
           RubyLanguageServer.logger.error("We don't have a #{method_name}")
+          process(args)
         end
       when NilClass
-        # Seriously.  Nothing.
+        process(args)
       else
         RubyLanguageServer.logger.error("We don't respond to the likes of #{root} of class #{root.class}")
         # byebug
@@ -47,28 +48,45 @@ module RubyLanguageServer
       process(args)
     end
 
-    def on_module(args, rest)
-      (_, (_, name, (line, column))) = args
-      push_scope(CodeFile::Scope::TYPE_MODULE, name, line, column)
-      process(rest)
-      pop_scope()
-    end
-
-    def on_class(args, rest)
-      (_, (_, name, (line, column))) = args
-      push_scope(CodeFile::Scope::TYPE_CLASS, name, line, column)
-      process(rest)
-      pop_scope()
-    end
-
     def on_bodystmt(args, rest)
       process(args)
     end
 
+    def on_module(args, rest)
+      add_scope(args.last, rest, ScopeData::Scope::TYPE_MODULE)
+    end
+
+    def on_class(args, rest)
+      add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
+    end
+
+    def on_def(args, rest)
+      add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
+    end
+
+    def on_params(args, rest)
+      # [[:@ident, "bing", [3, 16]], [:@ident, "zing", [3, 22]]]
+      args.each do |_, name, (line, column)|
+        add_variable(name, line, column)
+      end
+    end
+
     private
 
+    def add_variable(name, line, column)
+      new_variable = ScopeData::Variable.new(@current_scope, name, line, column)
+      @current_scope.variables << new_variable
+    end
+
+    def add_scope(args, rest, type)
+      (_, name, (line, column)) = args
+      push_scope(type, name, line, column)
+      process(rest)
+      pop_scope()
+    end
+
     def push_scope(type, name, top_line, column)
-      new_scope = CodeFile::Scope.new(@current_scope, type, name, top_line, column)
+      new_scope = ScopeData::Scope.new(@current_scope, type, name, top_line, column)
       @current_scope.children << new_scope
       @current_scope = new_scope
     end
@@ -78,8 +96,8 @@ module RubyLanguageServer
     end
 
     def new_root_scope
-      CodeFile::Scope.new().tap do |scope|
-        scope.type = CodeFile::Scope::TYPE_ROOT
+      ScopeData::Scope.new().tap do |scope|
+        scope.type = ScopeData::Scope::TYPE_ROOT
         scope.name = 'Object'
       end
     end

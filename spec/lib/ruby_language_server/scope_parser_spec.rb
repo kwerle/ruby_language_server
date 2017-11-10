@@ -6,7 +6,7 @@ describe RubyLanguageServer::ScopeParser do
     @code_file_lines=<<EOF
     module Foo
       class Bar
-        def baz(bing)
+        def baz(bing, zing)
           @biz = bing
         end
       end
