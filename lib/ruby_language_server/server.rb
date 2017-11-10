@@ -1,5 +1,6 @@
 require 'json'
 
+# Deal with the various languageserver calls.
 module RubyLanguageServer
   class Server
 
@@ -36,19 +37,19 @@ module RubyLanguageServer
     end
 
     def on_workspace_didChangeWatchedFiles(params)
-      RubyLanguageServer.logger.debug('==============================================')
+      RubyLanguageServer.logger.debug('on_workspace_didChangeWatchedFiles')
       RubyLanguageServer.logger.debug(params)
       {}
     end
 
     def on_textDocument_hover(params)
-      RubyLanguageServer.logger.debug('----------------------------------------------')
+      RubyLanguageServer.logger.debug('on_textDocument_hover')
       RubyLanguageServer.logger.debug(params)
       {}
     end
 
     def on_textDocument_documentSymbol(params)
-      RubyLanguageServer.logger.debug('??????????????????????????????????????????????')
+      RubyLanguageServer.logger.debug('on_textDocument_documentSymbol')
       RubyLanguageServer.logger.debug(params)
       uri = uri_from_params(params)
 
@@ -57,7 +58,7 @@ module RubyLanguageServer
     end
 
     def on_textDocument_definition(params)
-      RubyLanguageServer.logger.debug('??????????????????????????????????????????????')
+      RubyLanguageServer.logger.debug('on_textDocument_definition')
       RubyLanguageServer.logger.debug(params)
       uri = uri_from_params(params)
       position = params['position']
@@ -104,6 +105,14 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("contentChanges: #{contentChanges}")
       @project_manager.update_document_content(uri, text)
       {}
+    end
+
+    def on_textDocument_completion(params)
+      RubyLanguageServer.logger.error(params)
+    end
+
+    def on_shutdown
+      "EXIT"
     end
 
     private

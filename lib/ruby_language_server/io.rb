@@ -43,6 +43,9 @@ module RubyLanguageServer
       method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
         response = @server.send(method_name, params)
+        if response == "EXIT"
+          exit()
+        end
         return id, response
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
