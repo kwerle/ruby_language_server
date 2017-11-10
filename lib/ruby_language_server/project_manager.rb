@@ -1,3 +1,5 @@
+require 'ripper-tags'
+
 module RubyLanguageServer
 
   class ProjectManager
@@ -37,7 +39,8 @@ module RubyLanguageServer
 
     def tags_for_uri(uri)
       hash = @file_tags[uri] || []
-      hash[:tags].map{ |reference|
+      cop_tags = hash[:tags] || []
+      cop_tags.map{ |reference|
         return_hash = {
           name: reference[:name] || 'undefined?',
           kind: SymbolKind[reference[:kind].to_sym] || 7,
@@ -51,6 +54,7 @@ module RubyLanguageServer
 
     def update_document_content(uri, text)
       @file_tags[uri] = {text: text}
+      CodeFile.new(text)
       tags = RipperTags::Parser.extract(text)
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
       unless (tags.nil? || tags == [])

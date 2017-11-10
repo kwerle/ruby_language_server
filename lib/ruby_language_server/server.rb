@@ -1,5 +1,4 @@
 require 'json'
-require 'ripper-tags'
 
 module RubyLanguageServer
   class Server
