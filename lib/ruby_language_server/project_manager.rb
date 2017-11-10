@@ -52,9 +52,120 @@ module RubyLanguageServer
       }
     end
 
+    def root_scope_for(uri)
+      code_file = @file_tags[uri][:code_file]
+      return code_file.root_scope unless code_file.nil?
+    end
+
+    def completion_at(uri, position)
+      line = position.line
+      root_scope = root_scope_for(uri)
+      # root_scope.each{ |scope| RubyLanguageServer.logger.error scope.inspect }
+      matching_scopes = root_scope.select{ |scope| scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line) }
+      return if matching_scopes == []
+      deepest_scope = matching_scopes.sort_by(&:depth).last
+      applicable_scopes = deepest_scope.self_and_ancestors
+      RubyLanguageServer.logger.error("applicable_scopes #{applicable_scopes.map(&:name)}")
+      {
+        isIncomplete: true,
+        items: [
+          {
+          	label: 'string;',
+          	kind: 'number;',
+          	# detail: 'string;',
+          	# documentation: 'string;',
+          	# sortText: 'string;',
+          	# filterText: 'string;',
+          	# insertText: 'string;',
+          	# insertTextFormat: 'InsertTextFormat;',
+          	# textEdit: 'TextEdit;',
+          	# additionalTextEdits: 'TextEdit[];',
+          	# commitCharacters: 'string[];',
+          	# command: 'Command;',
+          	# data: 'any',
+          }
+        ]
+      }
+    end
+
+    # interface CompletionItem {
+    # 	/**
+    # 	 * The label of this completion item. By default
+    # 	 * also the text that is inserted when selecting
+    # 	 * this completion.
+    # 	 */
+    # 	label: string;
+    # 	/**
+    # 	 * The kind of this completion item. Based of the kind
+    # 	 * an icon is chosen by the editor.
+    # 	 */
+    # 	kind?: number;
+    # 	/**
+    # 	 * A human-readable string with additional information
+    # 	 * about this item, like type or symbol information.
+    # 	 */
+    # 	detail?: string;
+    # 	/**
+    # 	 * A human-readable string that represents a doc-comment.
+    # 	 */
+    # 	documentation?: string;
+    # 	/**
+    # 	 * A string that shoud be used when comparing this item
+    # 	 * with other items. When `falsy` the label is used.
+    # 	 */
+    # 	sortText?: string;
+    # 	/**
+    # 	 * A string that should be used when filtering a set of
+    # 	 * completion items. When `falsy` the label is used.
+    # 	 */
+    # 	filterText?: string;
+    # 	/**
+    # 	 * A string that should be inserted a document when selecting
+    # 	 * this completion. When `falsy` the label is used.
+    # 	 */
+    # 	insertText?: string;
+    # 	/**
+    # 	 * The format of the insert text. The format applies to both the `insertText` property
+    # 	 * and the `newText` property of a provided `textEdit`.
+    # 	 */
+    # 	insertTextFormat?: InsertTextFormat;
+    # 	/**
+    # 	 * An edit which is applied to a document when selecting this completion. When an edit is provided the value of
+    # 	 * `insertText` is ignored.
+    # 	 *
+    # 	 * *Note:* The range of the edit must be a single line range and it must contain the position at which completion
+    # 	 * has been requested.
+    # 	 */
+    # 	textEdit?: TextEdit;
+    # 	/**
+    # 	 * An optional array of additional text edits that are applied when
+    # 	 * selecting this completion. Edits must not overlap with the main edit
+    # 	 * nor with themselves.
+    # 	 */
+    # 	additionalTextEdits?: TextEdit[];
+    # 	/**
+    # 	 * An optional set of characters that when pressed while this completion is active will accept it first and
+    # 	 * then type that character. *Note* that all commit characters should have `length=1` and that superfluous
+    # 	 * characters will be ignored.
+    # 	 */
+    # 	commitCharacters?: string[];
+    # 	/**
+    # 	 * An optional command that is executed *after* inserting this completion. *Note* that
+    # 	 * additional modifications to the current document should be described with the
+    # 	 * additionalTextEdits-property.
+    # 	 */
+    # 	command?: Command;
+    # 	/**
+    # 	 * An data entry field that is preserved on a completion item between
+    # 	 * a completion and a completion resolve request.
+    # 	 */
+    # 	data?: any
+    # }
+
+
     def update_document_content(uri, text)
       @file_tags[uri] = {text: text}
-      CodeFile.new(text)
+      @file_tags[uri][:code_file] ||= CodeFile.new(text)
       tags = RipperTags::Parser.extract(text)
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
       unless (tags.nil? || tags == [])

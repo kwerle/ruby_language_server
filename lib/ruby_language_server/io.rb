@@ -44,7 +44,7 @@ module RubyLanguageServer
       if @server.respond_to? method_name
         response = @server.send(method_name, params)
         if response == "EXIT"
-          exit()
+          exit(true)
         end
         return id, response
       else

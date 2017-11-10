@@ -84,6 +84,13 @@ module RubyLanguageServer
       add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
     end
 
+    # Used only to describe subclasses?
+    def on_var_ref(args, rest)
+      # [:@const, "Bar", [13, 20]]
+      (_, name) = args
+      @current_scope.set_superclass_name(name)
+    end
+
     def on_def(args, rest)
       add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
     end

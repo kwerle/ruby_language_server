@@ -18,7 +18,7 @@ describe RubyLanguageServer::ScopeParser do
 
         end
 
-        class Nar
+        class Nar < Bar
           attr :top
 
           def naz(ning)
@@ -53,6 +53,14 @@ EOF
       c2 = children.last
       assert_equal('Nar', c2.name)
       assert_equal('Foo::Nar', c2.full_name)
+    end
+
+    it "should see Nar subclasses Bar" do
+      m = @parser.root_scope.children.first
+      children = m.children
+      c2 = children.last
+      assert_equal('Nar', c2.name)
+      assert_equal('Foo::Bar', c2.superclass_name)
     end
 
     it "should have a function Foo::Bar#baz" do

@@ -57,6 +57,7 @@ module RubyLanguageServer
       @project_manager.tags_for_uri(uri)
     end
 
+    # Oh... This content should probably be refactored into the project manager
     def on_textDocument_definition(params)
       RubyLanguageServer.logger.debug('on_textDocument_definition')
       RubyLanguageServer.logger.debug(params)
@@ -109,10 +110,13 @@ module RubyLanguageServer
 
     def on_textDocument_completion(params)
       RubyLanguageServer.logger.error(params)
+      uri = uri_from_params(params)
+      position = postition_from_params(params)
+      @project_manager.completion_at(uri, position)
     end
 
-    def on_shutdown
-      "EXIT"
+    def on_shutdown(params)
+      # "EXIT"
     end
 
     private
@@ -120,6 +124,13 @@ module RubyLanguageServer
     def uri_from_params(params)
       textDocument = params['textDocument']
       uri = textDocument['uri']
+    end
+
+    Position = Struct.new('Position', :line, :character)
+
+    def postition_from_params(params)
+      position = params['position']
+      Position.new((position['line']).to_i, position['character'].to_i)
     end
 
   end
