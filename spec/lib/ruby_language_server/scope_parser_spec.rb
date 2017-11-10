@@ -41,9 +41,20 @@ EOF
       children = m.children
       assert_equal(2, children.size)
       c1 = children.first
-      assert_equal('Foo', c1.name)
-      assert_equal('Foo', c1.full_name)
+      assert_equal('Bar', c1.name)
+      assert_equal('Foo::Bar', c1.full_name)
+      c2 = children.last
+      assert_equal('Nar', c2.name)
+      assert_equal('Foo::Nar', c2.full_name)
     end
+
+    it "should have a function Foo::Bar#baz" do
+      m = @parser.root_scope.children.first
+      bar = m.children.first
+      baz = bar.children.first
+      assert_equal('baz', baz.name)
+    end
+
   end
 
 end

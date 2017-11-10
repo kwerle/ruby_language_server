@@ -23,31 +23,46 @@ module RubyLanguageServer
     end
 
     def process(sexp)
-      # return if sexp.nil?
+      return if sexp.nil?
       case sexp.first
       when Array
         sexp.each{ |child| process(child) }
       when Symbol
-        root, rest = sexp
+        root, args, *rest = sexp
         method_name = "on_#{root.to_s}"
         if respond_to? method_name
-          self.send(method_name, rest)
+          self.send(method_name, args, rest)
         else
           RubyLanguageServer.logger.error("We don't have a #{method_name}")
         end
+      when NilClass
+        # Seriously.  Nothing.
       else
         RubyLanguageServer.logger.error("We don't respond to the likes of #{root} of class #{root.class}")
         # byebug
       end
     end
 
-    def on_program(args)
+    def on_program(args, rest)
       process(args)
     end
 
-    def on_module(args)
+    def on_module(args, rest)
       (_, (_, name, (line, column))) = args
       push_scope(CodeFile::Scope::TYPE_MODULE, name, line, column)
+      process(rest)
+      pop_scope()
+    end
+
+    def on_class(args, rest)
+      (_, (_, name, (line, column))) = args
+      push_scope(CodeFile::Scope::TYPE_CLASS, name, line, column)
+      process(rest)
+      pop_scope()
+    end
+
+    def on_bodystmt(args, rest)
+      process(args)
     end
 
     private
@@ -56,6 +71,10 @@ module RubyLanguageServer
       new_scope = CodeFile::Scope.new(@current_scope, type, name, top_line, column)
       @current_scope.children << new_scope
       @current_scope = new_scope
+    end
+
+    def pop_scope
+      @current_scope = @current_scope.parent
     end
 
     def new_root_scope

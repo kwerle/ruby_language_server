@@ -23,11 +23,11 @@ module RubyLanguageServer
       TYPE_ROOT = :root
 
       JoinHash = {
-        TYPE_MODULE: '::',
-        TYPE_CLASS: '::',
-        TYPE_FUNCTION: '.',
-        TYPE_BLOCK: '>',
-        TYPE_ROOT: '',
+        TYPE_MODULE => '::',
+        TYPE_CLASS => '::',
+        TYPE_FUNCTION => '#',
+        TYPE_BLOCK => '>',
+        TYPE_ROOT => '',
       }
 
       def initialize(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1)
@@ -37,7 +37,7 @@ module RubyLanguageServer
         @name = name
         @top_line = top_line
         @depth = parent.nil? ? 0 : parent.depth + 1
-        @full_name = [parent ? parent.full_name : nil, @name].compact.join(JoinHash[type])
+        @full_name = [parent ? parent.full_name : nil, @name].compact.join(JoinHash[type]) unless type == TYPE_ROOT
         @children = []
         @variables = []
         @constants = []
