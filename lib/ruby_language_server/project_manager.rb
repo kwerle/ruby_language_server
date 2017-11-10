@@ -57,7 +57,10 @@ module RubyLanguageServer
       return code_file.root_scope unless code_file.nil?
     end
 
+    require 'levenshtein'
     def completion_at(uri, position)
+      word = word_at_location(uri, position)
+      return {} if word.nil? || word == ''
       line = position.line
       root_scope = root_scope_for(uri)
       # root_scope.each{ |scope| RubyLanguageServer.logger.error scope.inspect }
@@ -65,26 +68,50 @@ module RubyLanguageServer
       return if matching_scopes == []
       deepest_scope = matching_scopes.sort_by(&:depth).last
       applicable_scopes = deepest_scope.self_and_ancestors
-      RubyLanguageServer.logger.error("applicable_scopes #{applicable_scopes.map(&:name)}")
+      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.map(&:name)}")
+      words = {}
+      applicable_scopes.inject(words) do |hash, scope|
+        scope.children.each{ |function| hash[function.name] ||= {
+          depth: scope.depth,
+          type: 1,
+          distance: Levenshtein.distance(word, function.name)
+          }
+        }
+        scope.variables.each{ |variable| hash[variable.name] ||= {
+          depth: scope.depth,
+          type: 2,
+          distance: Levenshtein.distance(word, variable.name)
+          }
+        }
+        hash
+      end
+      words.reject!{|word, hash| hash[:distance] > 5}
+      words = words.sort_by{|word, hash| hash[:depth] - hash[:distance]}
+      RubyLanguageServer.logger.error("words #{words.inspect}")
       {
         isIncomplete: true,
-        items: [
-          {
-          	label: 'string;',
-          	kind: 'number;',
-          	# detail: 'string;',
-          	# documentation: 'string;',
-          	# sortText: 'string;',
-          	# filterText: 'string;',
-          	# insertText: 'string;',
-          	# insertTextFormat: 'InsertTextFormat;',
-          	# textEdit: 'TextEdit;',
-          	# additionalTextEdits: 'TextEdit[];',
-          	# commitCharacters: 'string[];',
-          	# command: 'Command;',
-          	# data: 'any',
+        items: words.map{ |word, hash| {
+            label: word,
+            kind: hash[:type],
           }
-        ]
+        }
+        # [
+        #   {
+        #   	label: 'string;',
+        #   	kind: 'number;',
+        #   	# detail: 'string;',
+        #   	# documentation: 'string;',
+        #   	# sortText: 'string;',
+        #   	# filterText: 'string;',
+        #   	# insertText: 'string;',
+        #   	# insertTextFormat: 'InsertTextFormat;',
+        #   	# textEdit: 'TextEdit;',
+        #   	# additionalTextEdits: 'TextEdit[];',
+        #   	# commitCharacters: 'string[];',
+        #   	# command: 'Command;',
+        #   	# data: 'any',
+        #   }
+        # ]
       }
     end
 
@@ -171,6 +198,23 @@ module RubyLanguageServer
       unless (tags.nil? || tags == [])
         @file_tags[uri][:tags] = tags
       end
+    end
+
+    def word_at_location(uri, position)
+      character = position.character
+      lines = text_for_uri(uri).split("\n")
+      line = lines[position.line]
+      return nil if line.nil?
+      line_end = line[character..-1]
+      return nil if line_end.nil?
+      RubyLanguageServer.logger.debug("line_end: #{line_end}")
+      match = line_end.partition(/^(@{0,2}\w+)/)[1]
+      RubyLanguageServer.logger.debug("match: #{match}")
+      line_start = line[0..(character + match.length - 1)]
+      RubyLanguageServer.logger.debug("line_start: #{line_start}")
+      end_match = line_start.partition(/(@{0,2}\w+)$/)[1]
+      RubyLanguageServer.logger.debug("end_match: #{end_match}")
+      end_match
     end
 
     def possible_definitions_for(name)
