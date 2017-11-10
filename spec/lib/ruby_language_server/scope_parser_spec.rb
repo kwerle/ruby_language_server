@@ -6,17 +6,23 @@ describe RubyLanguageServer::ScopeParser do
     @code_file_lines=<<EOF
     module Foo
       class Bar
-        attr :top
-        def baz(bing, zing)
+        @bottom = 1
+
+        public def baz(bing, zing)
           zang = 1
           @biz = bing
         end
+
       end
+
       class Nar
+        attr :top
+
         def naz(ning)
           @niz = ning
         end
       end
+
     end
 EOF
   end
@@ -58,12 +64,23 @@ EOF
       assert_equal(3, baz_function.variables.size)
     end
 
-    it "should have a function Foo::Bar#baz" do
+    it "should have a couple of ivars for Bar" do
       m = @parser.root_scope.children.first
       bar = m.children.first
-      baz_function = bar.children.first
-      assert_equal('baz', baz_function.name)
-      assert_equal(3, baz_function.variables.size)
+      assert_equal(2, bar.variables.size)
+    end
+
+    it "should have a 3 methods for Nar" do
+      m = @parser.root_scope.children.first
+      bar = m.children.last
+      assert_equal(3, bar.children.size)
+      assert_equal(['top', 'top=', 'naz'], bar.children.map(&:name))
+    end
+
+    it "should have a couple of ivars for Nar" do
+      m = @parser.root_scope.children.first
+      bar = m.children.last
+      assert_equal(2, bar.variables.size)
     end
 
   end

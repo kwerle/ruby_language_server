@@ -8,7 +8,6 @@ module RubyLanguageServer
   class SEXPProcessor
     attr :sexp
     attr_reader :current_scope
-    attr_reader :current_class
 
     def initialize(sexp)
       @sexp = sexp
@@ -82,58 +81,37 @@ module RubyLanguageServer
       end
     end
 
-    private
-
-    def add_variable(name, line, column, scope = @current_scope)
-      new_variable = ScopeData::Variable.new(scope, name, line, column)
-      scope.variables << new_variable
-    end
-
-    def add_ivar(name, line, column)
-      scope = @current_scope
-      ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
-      while (!ivar_scope_types.include?(scope.type) && !scope.parent.nil?)
-        scope = scope.parent
-      end
-      add_variable(name, line, column, scope)
-    end
-
-    def add_scope(args, rest, type)
+    # The on_command function idea is stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb
+    def on_command(args, rest)
+      # [:@ident, "public", [6, 8]]
       (_, name, (line, column)) = args
-      push_scope(type, name, line, column)
-      process(rest)
-      pop_scope()
-    end
-
-    def push_scope(type, name, top_line, column)
-      new_scope = ScopeData::Scope.new(@current_scope, type, name, top_line, column)
-      @current_scope.children << new_scope
-      @current_scope = new_scope
-    end
-
-    def pop_scope
-      @current_scope = @current_scope.parent
-    end
-
-    def new_root_scope
-      ScopeData::Scope.new().tap do |scope|
-        scope.type = ScopeData::Scope::TYPE_ROOT
-        scope.name = 'Object'
+      case name
+      when 'public', 'private', 'protected'
+        # FIXME access control...
+        process(rest)
+      when "define_method", "alias_method",
+           "has_one", "has_many",
+           "belongs_to", "has_and_belongs_to_many",
+           "scope", "named_scope",
+           "public_class_method", "private_class_method",
+           "public", "protected", "private",
+           /^attr_(accessor|reader|writer)$/
+        # on_method_add_arg([:fcall, name], args[0])
+      when "attr"
+        # [[:args_add_block, [[:symbol_literal, [:symbol, [:@ident, "top", [3, 14]]]]], false]]
+        ((_, ((_, (_, (_, name, (line, column))))))) = rest
+        add_ivar("@#{name}", line, column)
+        push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column)
+        pop_scope()
+        push_scope(ScopeData::Scope::TYPE_METHOD, "#{name}=", line, column)
+        pop_scope()
+      when "delegate"
+        # on_delegate(*args[0][1..-1])
+      when "def_delegator", "def_instance_delegator"
+        # on_def_delegator(*args[0][1..-1])
+      when "def_delegators", "def_instance_delegators"
+        # on_def_delegators(*args[0][1..-1])
       end
-    end
-  end
-
-
-  # This class builds on Ripper's sexp processor to add ruby and rails magic.
-  # Specifically it knows about things like alias, attr_*, has_one/many, etc.
-  # It adds the appropriate definitions for those magic words.
-  class ScopeParser < Ripper
-    attr_reader :root_scope
-
-    def initialize(text)
-      sexp = self.class.sexp(text)
-      processor = SEXPProcessor.new(sexp)
-      @root_scope = processor.root_scope
     end
 
     # The on_method_add_arg function is downright stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb
@@ -205,6 +183,75 @@ module RubyLanguageServer
         super
       end
     end
+
+    private
+
+    def add_variable(name, line, column, scope = @current_scope)
+      new_variable = ScopeData::Variable.new(scope, name, line, column)
+      scope.variables << new_variable
+    end
+
+    def add_ivar(name, line, column)
+      scope = @current_scope
+      ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
+      while (!ivar_scope_types.include?(scope.type) && !scope.parent.nil?)
+        scope = scope.parent
+      end
+      add_variable(name, line, column, scope)
+    end
+
+    def add_scope(args, rest, type)
+      (_, name, (line, column)) = args
+      push_scope(type, name, line, column)
+      process(rest)
+      pop_scope()
+    end
+
+    def push_scope(type, name, top_line, column)
+      close_sibling_scopes(top_line)
+      new_scope = ScopeData::Scope.new(@current_scope, type, name, top_line, column)
+      @current_scope.children << new_scope
+      @current_scope = new_scope
+    end
+
+    # This is a very poor man's "end" handler.
+    # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
+    def close_sibling_scopes(line)
+      parent_scope = @current_scope.parent
+      unless (parent_scope.nil?)
+        last_sibling = parent_scope.children.last
+        while !last_sibling.nil?
+          last_sibling.bottom_line = line - 1
+          last_sibling = last_sibling.children.last
+        end
+      end
+    end
+
+    def pop_scope
+      @current_scope = @current_scope.parent
+    end
+
+    def new_root_scope
+      ScopeData::Scope.new().tap do |scope|
+        scope.type = ScopeData::Scope::TYPE_ROOT
+        scope.name = 'Object'
+      end
+    end
+  end
+
+
+  # This class builds on Ripper's sexp processor to add ruby and rails magic.
+  # Specifically it knows about things like alias, attr_*, has_one/many, etc.
+  # It adds the appropriate definitions for those magic words.
+  class ScopeParser < Ripper
+    attr_reader :root_scope
+
+    def initialize(text)
+      sexp = self.class.sexp(text)
+      processor = SEXPProcessor.new(sexp)
+      @root_scope = processor.root_scope
+    end
+
 
   end
 end
