@@ -10,6 +10,9 @@ module RubyLanguageServer
         begin
           (id, response) = process_request(STDIN)
           return_response(id, response, STDOUT) unless id.nil?
+        rescue SignalException => e
+          RubyLanguageServer.logger.error "We received a signal.  Let's bail: #{e}"
+          exit(true)
         rescue Exception => e
           RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
           backtrace = e.backtrace * "\n"
@@ -43,6 +46,9 @@ module RubyLanguageServer
       method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
         response = @server.send(method_name, params)
+        if response == "EXIT"
+          exit(true)
+        end
         return id, response
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"

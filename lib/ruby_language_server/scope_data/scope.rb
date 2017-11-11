@@ -1,6 +1,8 @@
 module RubyLanguageServer
   module ScopeData
     class Scope < Base
+      include Enumerable
+
       attr_accessor :top_line        # first line
       attr_accessor :bottom_line     # last line
       attr_accessor :depth           # how many parent scopes
@@ -24,6 +26,27 @@ module RubyLanguageServer
         @children = []
         @variables = []
         @constants = []
+      end
+
+      def each(&block)
+        self_and_descendants.each{ |member| yield member }
+      end
+
+      def self_and_descendants
+        [self, children.map(&:self_and_descendants)].flatten
+      end
+
+      def self_and_ancestors
+        return [self, parent.self_and_ancestors].flatten unless parent.nil?
+        self
+      end
+
+      def set_superclass_name(partial)
+        if partial.start_with?('::')
+          @superclass_name = partial.gsub(/^::/, '')
+        else
+          @superclass_name = [parent ? parent.full_name : nil, partial].compact.join(JoinHash[type])
+        end
       end
     end
   end

@@ -24,6 +24,7 @@ module RubyLanguageServer
     def process(sexp)
       return if sexp.nil?
       root, args, *rest = sexp
+      # RubyLanguageServer.logger.error("Doing #{[root, args, rest]}")
       case root
       when Array
         sexp.each{ |child| process(child) }
@@ -47,9 +48,22 @@ module RubyLanguageServer
       process(args)
     end
 
-    def on_assign(args, rest)
-      # [:var_field, [:@ident, "zang", [4, 10]]]
-      (_, (_, name, (line, column))) = args
+    # def on_assign(args, rest)
+    #   # [:var_field, [:@ident, "zang", [4, 10]]]
+    #   # (_, (_, name, (line, column))) = args
+    #   name = process(args)
+    #   return if name.nil?
+    #   if name.start_with?('@')
+    #     add_ivar(name, line, column)
+    #   else
+    #     add_variable(name, line, column)
+    #   end
+    #   process(rest)
+    # end
+
+    def on_var_field(args, rest)
+      (_, name, (line, column)) = args
+      return if name.nil?
       if name.start_with?('@')
         add_ivar(name, line, column)
       else
@@ -70,11 +84,19 @@ module RubyLanguageServer
       add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
     end
 
+    # Used only to describe subclasses?
+    def on_var_ref(args, rest)
+      # [:@const, "Bar", [13, 20]]
+      (_, name) = args
+      @current_scope.set_superclass_name(name)
+    end
+
     def on_def(args, rest)
       add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
     end
 
     def on_params(args, rest)
+      return if args.nil?
       # [[:@ident, "bing", [3, 16]], [:@ident, "zing", [3, 22]]]
       args.each do |_, name, (line, column)|
         add_variable(name, line, column)
@@ -180,7 +202,7 @@ module RubyLanguageServer
           end
         end
       else
-        super
+        # super
       end
     end
 
@@ -252,6 +274,6 @@ module RubyLanguageServer
       @root_scope = processor.root_scope
     end
 
-
   end
+
 end

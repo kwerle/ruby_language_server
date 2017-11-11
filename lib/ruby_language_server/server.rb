@@ -1,5 +1,6 @@
 require 'json'
 
+# Deal with the various languageserver calls.
 module RubyLanguageServer
   class Server
 
@@ -36,19 +37,19 @@ module RubyLanguageServer
     end
 
     def on_workspace_didChangeWatchedFiles(params)
-      RubyLanguageServer.logger.debug('==============================================')
+      RubyLanguageServer.logger.debug('on_workspace_didChangeWatchedFiles')
       RubyLanguageServer.logger.debug(params)
       {}
     end
 
     def on_textDocument_hover(params)
-      RubyLanguageServer.logger.debug('----------------------------------------------')
+      RubyLanguageServer.logger.debug('on_textDocument_hover')
       RubyLanguageServer.logger.debug(params)
       {}
     end
 
     def on_textDocument_documentSymbol(params)
-      RubyLanguageServer.logger.debug('??????????????????????????????????????????????')
+      RubyLanguageServer.logger.debug('on_textDocument_documentSymbol')
       RubyLanguageServer.logger.debug(params)
       uri = uri_from_params(params)
 
@@ -57,25 +58,11 @@ module RubyLanguageServer
     end
 
     def on_textDocument_definition(params)
-      RubyLanguageServer.logger.debug('??????????????????????????????????????????????')
+      RubyLanguageServer.logger.debug('on_textDocument_definition')
       RubyLanguageServer.logger.debug(params)
       uri = uri_from_params(params)
-      position = params['position']
-      line_number = (position['line']).to_i
-      RubyLanguageServer.logger.debug("line number: #{line_number}")
-      character = position['character'].to_i
-      lines = @project_manager.text_for_uri(uri).split("\n")
-      line = lines[line_number]
-      return nil if line.nil?
-      line_end = line[character..-1]
-      return nil if line_end.nil?
-      RubyLanguageServer.logger.debug("line_end: #{line_end}")
-      match = line_end.partition(/^(@{0,2}\w+)/)[1]
-      RubyLanguageServer.logger.debug("match: #{match}")
-      line_start = line[0..(character + match.length - 1)]
-      RubyLanguageServer.logger.debug("line_start: #{line_start}")
-      end_match = line_start.partition(/(@{0,2}\w+)$/)[1]
-      RubyLanguageServer.logger.debug("end_match: #{end_match}")
+      position = postition_from_params(params)
+      end_match = @project_manager.word_at_location(uri, position)
       @project_manager.possible_definitions_for(end_match)
     end
 
@@ -106,11 +93,29 @@ module RubyLanguageServer
       {}
     end
 
+    def on_textDocument_completion(params)
+      RubyLanguageServer.logger.error(params)
+      uri = uri_from_params(params)
+      position = postition_from_params(params)
+      @project_manager.completion_at(uri, position)
+    end
+
+    def on_shutdown(params)
+      # "EXIT"
+    end
+
     private
 
     def uri_from_params(params)
       textDocument = params['textDocument']
       uri = textDocument['uri']
+    end
+
+    Position = Struct.new('Position', :line, :character)
+
+    def postition_from_params(params)
+      position = params['position']
+      Position.new((position['line']).to_i, position['character'].to_i)
     end
 
   end

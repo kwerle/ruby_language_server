@@ -2,33 +2,32 @@ require_relative '../../test_helper'
 require "minitest/autorun"
 
 describe RubyLanguageServer::ScopeParser do
-  before do
-    @code_file_lines=<<EOF
-    module Foo
-      class Bar
-        @bottom = 1
 
-        public def baz(bing, zing)
-          zang = 1
-          @biz = bing
-        end
-
-      end
-
-      class Nar
-        attr :top
-
-        def naz(ning)
-          @niz = ning
-        end
-      end
-
-    end
-EOF
-  end
-
-  describe "ScopeParser" do
+  describe "Small file" do
     before do
+      @code_file_lines=<<EOF
+      bogus = Some::Bogus
+      module Foo
+        class Bar
+          @bottom = 1
+
+          public def baz(bing, zing)
+            zang = 1
+            @biz = bing
+          end
+
+        end
+
+        class Nar < Bar
+          attr :top
+
+          def naz(ning)
+            @niz = ning
+          end
+        end
+
+      end
+EOF
       @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
     end
 
@@ -56,6 +55,14 @@ EOF
       assert_equal('Foo::Nar', c2.full_name)
     end
 
+    it "should see Nar subclasses Bar" do
+      m = @parser.root_scope.children.first
+      children = m.children
+      c2 = children.last
+      assert_equal('Nar', c2.name)
+      assert_equal('Foo::Bar', c2.superclass_name)
+    end
+
     it "should have a function Foo::Bar#baz" do
       m = @parser.root_scope.children.first
       bar = m.children.first
@@ -81,6 +88,14 @@ EOF
       m = @parser.root_scope.children.first
       bar = m.children.last
       assert_equal(2, bar.variables.size)
+    end
+
+  end
+
+  describe "on_assign" do
+
+    it "should handle complex lvars" do
+      parser = RubyLanguageServer::ScopeParser.new("some.tricky.thing = bob")
     end
 
   end
