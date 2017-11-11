@@ -7,8 +7,7 @@ LABEL maintainer="kurt@CircleW.org"
 
 WORKDIR /app
 
-COPY lib/ruby_language_server/version.rb lib/ruby_language_server/
-COPY Gemfile ruby_language_server.gemspec ./
+COPY Gemfile .
 
 RUN bundle install
 
