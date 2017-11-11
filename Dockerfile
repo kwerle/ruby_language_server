@@ -1,16 +1,16 @@
 # docker build -t ruby_language_server .
 #
 # For development:
-# docker run -it -v $PWD:/tmp/src -w /tmp/src ruby_language_server guard
+# docker run -it -v $PWD:/tmp/src -w /tmp/src ruby_language_server bash -c 'bundle && guard'
 FROM ruby
+LABEL maintainer="kurt@CircleW.org"
 
 WORKDIR /app
 
-COPY lib/ruby_language_server/version.rb lib/ruby_language_server/
-COPY Gemfile ruby_language_server.gemspec ./
+COPY Gemfile .
 
 RUN bundle install
 
 COPY . ./
 
-CMD ["bash"]
+CMD ["ruby", "bin/ruby_language_server"]
