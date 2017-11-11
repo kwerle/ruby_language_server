@@ -1,7 +1,9 @@
 require 'logger'
 
 module RubyLanguageServer
-  @logger = ::Logger.new(STDERR, ENV.fetch('LOG_LEVEL'){ 'debug' })
+  level_name = ENV.fetch('LOG_LEVEL'){ 'info' }.upcase
+  level = Logger::Severity.const_get(level_name)
+  @logger = ::Logger.new(STDERR, level: level)
   def RubyLanguageServer.logger
     @logger
   end

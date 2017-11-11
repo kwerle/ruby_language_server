@@ -94,7 +94,7 @@ module RubyLanguageServer
     end
 
     def on_textDocument_completion(params)
-      RubyLanguageServer.logger.error(params)
+      RubyLanguageServer.logger.info(params)
       uri = uri_from_params(params)
       position = postition_from_params(params)
       @project_manager.completion_at(uri, position)

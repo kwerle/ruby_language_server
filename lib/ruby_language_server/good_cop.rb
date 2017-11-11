@@ -10,7 +10,7 @@ module RubyLanguageServer
 
     def diagnostics(text)
       offenses(text).map do |offense|
-        RubyLanguageServer.logger.error(offense)
+        RubyLanguageServer.logger.warn(offense)
       end
       nil
     end

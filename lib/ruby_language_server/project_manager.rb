@@ -9,6 +9,7 @@ module RubyLanguageServer
 
     def initialize(uri)
       # We don't seem to use this - but I'm emotionally attached.
+      # Probably will need it when we start parsing/using Gemfile
       @root_path = uri
       # This is {uri: {content stuff}} where content stuff is like text: , tags: ...
       @file_tags = {}
@@ -65,7 +66,7 @@ module RubyLanguageServer
       return {} if word.nil? || word == ''
       line = position.line
       root_scope = root_scope_for(uri)
-      # root_scope.each{ |scope| RubyLanguageServer.logger.error scope.inspect }
+      # root_scope.each{ |scope| RubyLanguageServer.logger.debug scope.inspect }
       matching_scopes = root_scope.select{ |scope| scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line) }
       return if matching_scopes == []
       deepest_scope = matching_scopes.sort_by(&:depth).last
@@ -87,10 +88,10 @@ module RubyLanguageServer
       end
       words = words.sort_by{|word, hash| hash[:depth] }.to_h
       good_words = FuzzyMatch.new(words.keys).find_all(word)
-      RubyLanguageServer.logger.error("all words #{words.keys}")
+      RubyLanguageServer.logger.info("all words #{words.keys}")
       # words.select!{|word, hash| good_words.include?(word)}.to_h
       words = good_words.map{|word| [word, words[word]]}.to_h
-      RubyLanguageServer.logger.error("words #{words}")
+      RubyLanguageServer.logger.info("words #{words}")
       {
         isIncomplete: true,
         items: words.map{ |word, hash| {

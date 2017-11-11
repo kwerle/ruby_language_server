@@ -24,7 +24,7 @@ module RubyLanguageServer
     def process(sexp)
       return if sexp.nil?
       root, args, *rest = sexp
-      # RubyLanguageServer.logger.error("Doing #{[root, args, rest]}")
+      # RubyLanguageServer.logger.info("Doing #{[root, args, rest]}")
       case root
       when Array
         sexp.each{ |child| process(child) }
@@ -36,10 +36,13 @@ module RubyLanguageServer
           RubyLanguageServer.logger.debug("We don't have a #{method_name} with #{args}")
           process(args)
         end
+      when String
+        # We really don't do anything with it!
+        RubyLanguageServer.logger.debug("We don't do Strings like #{root} with #{args}")
       when NilClass
         process(args)
       else
-        RubyLanguageServer.logger.error("We don't respond to the likes of #{root} of class #{root.class}")
+        RubyLanguageServer.logger.warn("We don't respond to the likes of #{root} of class #{root.class}")
         # byebug
       end
     end

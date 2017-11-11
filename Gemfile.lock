@@ -1,13 +1,3 @@
-PATH
-  remote: .
-  specs:
-    ruby_language_server (0.0.1)
-      amatch
-      fuzzy_match
-      rcodetools
-      ripper-tags
-      rubocop
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -89,7 +79,9 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  amatch
   bundler
+  fuzzy_match
   guard
   guard-minitest
   minitest
@@ -97,7 +89,9 @@ DEPENDENCIES
   pry
   pry-byebug
   rake
-  ruby_language_server!
+  rcodetools
+  ripper-tags
+  rubocop
 
 BUNDLED WITH
    1.15.4
