@@ -1,0 +1,8 @@
+# Changelog
+
+#### Sat Nov 11 07:59:25 PST 2017
+
+* Outline working but buggy (double listing for parents)
+* Go to definition working but lazy (have to visit a file before definitions 'known')
+* Completions working in a very basic way - local scope context only
+* Linter not working (not being called, NYI)

@@ -14,21 +14,14 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/kwerle/ruby_language_server"
   spec.license       = "MIT"
 
-  spec.files         = begin
-    `git ls-files -z`.split("\x0").reject do |f|
-      f.match(%r{^(test|spec|features)/})
-    end
-  rescue
-    Dir.glob("**/*").reject {|path| File.directory?(path) }
-  end
-  # spec.bindir        = "exe"
-  # spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  spec.files         = Dir.glob("**/*").reject {|path| File.directory?(path) || path.start_with?('spec') }
+  spec.bindir        = "bin"
+  spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
   spec.add_dependency "rcodetools"
   spec.add_dependency "rubocop"
   spec.add_dependency "ripper-tags"
-  # spec.add_dependency "levenshtein-ffi"
   spec.add_dependency "fuzzy_match"
   spec.add_dependency "amatch"
 

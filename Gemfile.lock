@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_language_server (0.0.0)
+    ruby_language_server (0.0.1)
       amatch
       fuzzy_match
       rcodetools
