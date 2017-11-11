@@ -1,4 +1,7 @@
 require 'ripper-tags'
+require 'fuzzy_match'
+require 'amatch' # note that you have to require this... fuzzy_match won't require it for you
+FuzzyMatch.engine = :amatch # This should be in a config somewhere
 
 module RubyLanguageServer
 
@@ -57,7 +60,6 @@ module RubyLanguageServer
       return code_file.root_scope unless code_file.nil?
     end
 
-    require 'levenshtein'
     def completion_at(uri, position)
       word = word_at_location(uri, position)
       return {} if word.nil? || word == ''
@@ -73,26 +75,27 @@ module RubyLanguageServer
       applicable_scopes.inject(words) do |hash, scope|
         scope.children.each{ |function| hash[function.name] ||= {
           depth: scope.depth,
-          type: 1,
-          distance: Levenshtein.distance(word, function.name)
+          type: function.type,
           }
         }
         scope.variables.each{ |variable| hash[variable.name] ||= {
           depth: scope.depth,
-          type: 2,
-          distance: Levenshtein.distance(word, variable.name)
+          type: variable.type,
           }
         }
         hash
       end
-      words.reject!{|word, hash| hash[:distance] > 5}
-      words = words.sort_by{|word, hash| hash[:depth] - hash[:distance]}
-      RubyLanguageServer.logger.error("words #{words.inspect}")
+      words = words.sort_by{|word, hash| hash[:depth] }.to_h
+      good_words = FuzzyMatch.new(words.keys).find_all(word)
+      RubyLanguageServer.logger.error("all words #{words.keys}")
+      # words.select!{|word, hash| good_words.include?(word)}.to_h
+      words = good_words.map{|word| [word, words[word]]}.to_h
+      RubyLanguageServer.logger.error("words #{words}")
       {
         isIncomplete: true,
         items: words.map{ |word, hash| {
             label: word,
-            kind: hash[:type],
+            kind: CompletionItemKind[hash[:type]],
           }
         }
         # [
@@ -114,6 +117,27 @@ module RubyLanguageServer
         # ]
       }
     end
+
+    CompletionItemKind = {
+      text: 1,
+      method: 2,
+      function: 3,
+      constructor: 4,
+      field: 5,
+      variable: 6,
+      :class => 7,
+      interface: 8,
+      :module => 9,
+      property: 10,
+      unit: 11,
+      value: 12,
+      enum: 13,
+      keyword: 14,
+      snippet: 15,
+      color: 16,
+      file: 17,
+      reference: 18,
+    }
 
     # interface CompletionItem {
     # 	/**

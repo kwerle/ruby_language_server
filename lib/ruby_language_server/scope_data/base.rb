@@ -16,6 +16,7 @@ module RubyLanguageServer
         TYPE_ROOT => '',
         TYPE_VARIABLE => '^',
       }
+      
     end
 
   end

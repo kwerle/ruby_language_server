@@ -2,7 +2,8 @@ PATH
   remote: .
   specs:
     ruby_language_server (0.0.0)
-      levenshtein-ffi
+      amatch
+      fuzzy_match
       rcodetools
       ripper-tags
       rubocop
@@ -10,11 +11,15 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
+    amatch (0.4.0)
+      mize
+      tins (~> 1.0)
     ast (2.3.0)
     byebug (9.1.0)
     coderay (1.1.2)
     ffi (1.9.18)
     formatador (0.2.5)
+    fuzzy_match (2.1.0)
     guard (2.14.1)
       formatador (>= 0.2.4)
       listen (>= 2.7, < 4.0)
@@ -28,8 +33,6 @@ GEM
     guard-minitest (2.4.6)
       guard-compat (~> 1.2)
       minitest (>= 3.0)
-    levenshtein-ffi (1.1.0)
-      ffi (~> 1.9)
     listen (3.1.5)
       rb-fsevent (~> 0.9, >= 0.9.4)
       rb-inotify (~> 0.9, >= 0.9.7)
@@ -39,6 +42,8 @@ GEM
     minitest (5.10.3)
     minitest-color (0.0.2)
       minitest (~> 5)
+    mize (0.3.4)
+      protocol
     nenv (0.3.0)
     notiffany (0.1.1)
       nenv (~> 0.1)
@@ -47,6 +52,8 @@ GEM
     parser (2.4.0.0)
       ast (~> 2.2)
     powerpack (0.1.1)
+    protocol (1.0.1)
+      ruby_parser (~> 3.0)
     pry (0.11.2)
       coderay (~> 1.1.0)
       method_source (~> 0.9.0)
@@ -70,8 +77,12 @@ GEM
       unicode-display_width (~> 1.0, >= 1.0.1)
     ruby-progressbar (1.9.0)
     ruby_dep (1.5.0)
+    ruby_parser (3.10.1)
+      sexp_processor (~> 4.9)
+    sexp_processor (4.10.0)
     shellany (0.0.1)
     thor (0.20.0)
+    tins (1.15.1)
     unicode-display_width (1.3.0)
 
 PLATFORMS

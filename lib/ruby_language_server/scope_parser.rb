@@ -33,7 +33,7 @@ module RubyLanguageServer
         if respond_to? method_name
           self.send(method_name, args, rest)
         else
-          RubyLanguageServer.logger.error("We don't have a #{method_name} with #{args}")
+          RubyLanguageServer.logger.debug("We don't have a #{method_name} with #{args}")
           process(args)
         end
       when NilClass
@@ -47,19 +47,6 @@ module RubyLanguageServer
     def on_program(args, rest)
       process(args)
     end
-
-    # def on_assign(args, rest)
-    #   # [:var_field, [:@ident, "zang", [4, 10]]]
-    #   # (_, (_, name, (line, column))) = args
-    #   name = process(args)
-    #   return if name.nil?
-    #   if name.start_with?('@')
-    #     add_ivar(name, line, column)
-    #   else
-    #     add_variable(name, line, column)
-    #   end
-    #   process(rest)
-    # end
 
     def on_var_field(args, rest)
       (_, name, (line, column)) = args

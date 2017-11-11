@@ -28,7 +28,9 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rcodetools"
   spec.add_dependency "rubocop"
   spec.add_dependency "ripper-tags"
-  spec.add_dependency "levenshtein-ffi"
+  # spec.add_dependency "levenshtein-ffi"
+  spec.add_dependency "fuzzy_match"
+  spec.add_dependency "amatch"
 
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "pry"
