@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.0.2 Mon Nov 13 20:49:54 PST 2017
+
+* Fix rails has_one(etc) so it gets the right parent
+
 #### Sat Nov 11 07:59:25 PST 2017
 
 * Outline working but buggy (double listing for parents)
