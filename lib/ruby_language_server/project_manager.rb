@@ -58,6 +58,11 @@ module RubyLanguageServer
         return_hash[:containerName] = container_name if container_name
         return_hash
       }
+      tags.reverse.each do |tag|
+        child_tags = tags.select{ |child_tag| child_tag[:containerName] == tag[:name]}
+        max_line = child_tags.map{ |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0
+        tag[:location][:range][:end][:line] = [tag[:location][:range][:end][:line], max_line].max
+      end
     end
 
     def update_tags(uri)
