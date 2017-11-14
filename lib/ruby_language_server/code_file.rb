@@ -6,12 +6,6 @@ module RubyLanguageServer
 
   class CodeFile
 
-    # class Constant
-    #   attr_accessor :line            # line
-    #   attr_accessor :name            # name
-    #   attr_accessor :full_name       # Module::Class::Name
-    # end
-
     attr :text
 
     def initialize(text)
