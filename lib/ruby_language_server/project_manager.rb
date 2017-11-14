@@ -41,19 +41,31 @@ module RubyLanguageServer
       array: 18,
     }
 
-    def tags_for_uri(uri)
-      hash = @file_tags[uri] || []
-      cop_tags = hash[:tags] || []
-      cop_tags.map{ |reference|
+    # OK - this really does not belong here.  It should probably be in CodeFile.
+    def tags_for_text(text, uri)
+      cop_tags = RipperTags::Parser.extract(text)
+
+      # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
+      return if (cop_tags.nil? || cop_tags == [])
+
+      tags = cop_tags.map{ |reference|
         return_hash = {
           name: reference[:name] || 'undefined?',
           kind: SymbolKind[reference[:kind].to_sym] || 7,
           location: Location.hash(uri, reference[:line])
         }
-        container_name = reference[:full_name].split(/(:{2}|\#)/).compact[-3]
+        container_name = reference[:full_name].split(/(:{2}|\#|\.)/).compact[-3]
         return_hash[:containerName] = container_name if container_name
         return_hash
       }
+    end
+
+    def update_tags(uri)
+      @file_tags[uri][:tags] = tags_for_text(text_for_uri(uri), uri)
+    end
+
+    def tags_for_uri(uri)
+      hash = @file_tags[uri][:tags] || {}
     end
 
     def root_scope_for(uri)
@@ -218,11 +230,7 @@ module RubyLanguageServer
     def update_document_content(uri, text)
       @file_tags[uri] = {text: text}
       @file_tags[uri][:code_file] ||= CodeFile.new(text)
-      tags = RipperTags::Parser.extract(text)
-      # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      unless (tags.nil? || tags == [])
-        @file_tags[uri][:tags] = tags
-      end
+      update_tags(uri)
     end
 
     def word_at_location(uri, position)
