@@ -1,5 +1,8 @@
 module RubyLanguageServer
   module ScopeData
+    # The Scope class is basically a container with context.
+    # It is used to track top & bottom line, variables in this scope, contanst, and children - which could be functions, classes, blocks, etc.  Anything that adds scope.
+    # Remember, this is scope for a file.  It seems reasonabble that this will get used less in the future when we know more about classes.
     class Scope < Base
       include Enumerable
 
@@ -32,10 +35,12 @@ module RubyLanguageServer
         self_and_descendants.each{ |member| yield member }
       end
 
+      # Self and all descendents flattened into array
       def self_and_descendants
         [self, children.map(&:self_and_descendants)].flatten
       end
 
+      # [self, parent, parent.parent...]
       def self_and_ancestors
         return [self, parent.self_and_ancestors].flatten unless parent.nil?
         self
