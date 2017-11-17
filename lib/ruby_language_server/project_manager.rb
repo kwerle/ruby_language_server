@@ -87,6 +87,7 @@ module RubyLanguageServer
       applicable_scopes = deepest_scope.self_and_ancestors
     end
 
+    # This really wants more refactoring
     def scope_completions(word, scopes)
       words = {}
       scopes.inject(words) do |hash, scope|
@@ -240,10 +241,10 @@ module RubyLanguageServer
 
     def update_document_content(uri, text)
       @file_tags[uri] = {text: text}
-      @file_tags[uri][:code_file] ||= CodeFile.new(text)
+      code_file = @file_tags[uri][:code_file] ||= CodeFile.new(uri, text)
       update_tags(uri)
+      code_file.diagnostics
     end
-
 
     def word_at_location(uri, position)
       character = position.character

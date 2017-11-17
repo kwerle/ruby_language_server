@@ -3,6 +3,7 @@ require 'json'
 # Deal with the various languageserver calls.
 module RubyLanguageServer
   class Server
+    attr_accessor :io
 
     def on_initialize(params)
       root_path = params['rootPath']
@@ -66,11 +67,6 @@ module RubyLanguageServer
       @project_manager.possible_definitions_for(end_match)
     end
 
-    def on_textDocument_publishDiagnostics
-      @good_cop ||= GoodCop.new()
-      cop_out = @good_cop.diagnostics(text)
-    end
-
     def on_textDocument_didOpen(params)
       textDocument = params['textDocument']
       uri = textDocument['uri']
@@ -78,8 +74,8 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug(params.keys)
       RubyLanguageServer.logger.debug("uri: #{uri}")
       RubyLanguageServer.logger.debug("text: #{text}")
-      @project_manager.update_document_content(uri, text)
-      {}
+      diagnostics = @project_manager.update_document_content(uri, text)
+      io.send_notification('textDocument/publishDiagnostics', {uri: uri, diagnostics: diagnostics})
     end
 
     def on_textDocument_didChange(params)
