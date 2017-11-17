@@ -73,11 +73,11 @@ module RubyLanguageServer
     def diagnostics(text)
       offenses(text).map do |offense|
         {
-        	range: Location.position_hash(offense.location.line + 1, offense.location.column, offense.location.last_line + 1, offense.location.last_column),
-        	severity: diagnostic_severity_for(offense.severity),
-        	# code?: number | string;
-        	source: 'RuboCop',
-        	message: offense.message,
+          range: Location.position_hash(offense.location.line, offense.location.column, offense.location.last_line, offense.location.last_column),
+          severity: diagnostic_severity_for(offense.severity),
+          # code?: number | string;
+          source: 'RuboCop',
+          message: offense.message,
         }
       end
     end
