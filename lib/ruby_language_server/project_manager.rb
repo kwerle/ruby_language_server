@@ -27,6 +27,7 @@ module RubyLanguageServer
       package: 4,
       :'class' => 5,
       :'method' => 6,
+      :'singleton method' => 6,
       property: 7,
       field: 8,
       constructor: 9,
@@ -49,9 +50,12 @@ module RubyLanguageServer
       return if (cop_tags.nil? || cop_tags == [])
 
       tags = cop_tags.map{ |reference|
+        name = reference[:name] || 'undefined?'
+        kind = SymbolKind[reference[:kind].to_sym] || 7
+        kind = 9 if name == 'initialize' # Magical special case
         return_hash = {
-          name: reference[:name] || 'undefined?',
-          kind: SymbolKind[reference[:kind].to_sym] || 7,
+          name: name,
+          kind: kind,
           location: Location.hash(uri, reference[:line])
         }
         container_name = reference[:full_name].split(/(:{2}|\#|\.)/).compact[-3]
