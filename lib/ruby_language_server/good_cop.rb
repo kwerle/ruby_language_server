@@ -71,53 +71,25 @@ module RubyLanguageServer
     end
 
     def diagnostics(text)
+      maximum_severity = (ENV['LINT_LEVEL'] || 4).to_i
       offenses(text).map do |offense|
         {
           range: Location.position_hash(offense.location.line, offense.location.column, offense.location.last_line, offense.location.last_column),
           severity: diagnostic_severity_for(offense.severity),
           # code?: number | string;
-          source: 'RuboCop',
+          code: 'code',
+          source: "RuboCop:#{offense.cop_name}",
           message: offense.message,
         }
-      end
+      end.select{ |hash| hash[:severity] <= maximum_severity }
     end
 
     private
 
     def offenses(text)
-      source = RuboCop::ProcessedSource.new(text, 2.4)
       processed_source = RuboCop::ProcessedSource.new(text, 2.4)
       offenses = inspect_file(processed_source)
       offenses.compact.flatten
     end
   end
 end
-
-# {
-# 	/**
-# 	 * The range at which the message applies.
-# 	 */
-# 	range: Range;
-#
-# 	/**
-# 	 * The diagnostic's severity. Can be omitted. If omitted it is up to the
-# 	 * client to interpret diagnostics as error, warning, info or hint.
-# 	 */
-# 	severity?: number;
-#
-# 	/**
-# 	 * The diagnostic's code. Can be omitted.
-# 	 */
-# 	code?: number | string;
-#
-# 	/**
-# 	 * A human-readable string describing the source of this
-# 	 * diagnostic, e.g. 'typescript' or 'super lint'.
-# 	 */
-# 	source?: string;
-#
-# 	/**
-# 	 * The diagnostic's message.
-# 	 */
-# 	message: string;
-# }
