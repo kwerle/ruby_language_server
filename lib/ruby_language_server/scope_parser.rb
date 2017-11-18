@@ -76,16 +76,17 @@ module RubyLanguageServer
       add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
     end
 
-    def on_method_add_block(args, rest)
-      add_scope(args, rest, ScopeData::Scope::TYPE_BLOCK)
+    def on_method_add_block(_, rest)
+      process(rest)
+      # add_scope(args, rest, ScopeData::Scope::TYPE_BLOCK)
     end
 
-    def on_do_block(args, rest)
+    def on_do_block(_, rest)
       process(rest)
     end
 
     # Used only to describe subclasses?
-    def on_var_ref(args, rest)
+    def on_var_ref(args, _)
       # [:@const, "Bar", [13, 20]]
       (_, name) = args
       @current_scope.set_superclass_name(name)

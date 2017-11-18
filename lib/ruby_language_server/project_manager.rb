@@ -48,7 +48,6 @@ module RubyLanguageServer
 
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
       return if (cop_tags.nil? || cop_tags == [])
-
       tags = cop_tags.map{ |reference|
         name = reference[:name] || 'undefined?'
         kind = SymbolKind[reference[:kind].to_sym] || 7
@@ -274,13 +273,14 @@ module RubyLanguageServer
 
     def possible_definitions_for(name)
       return {} if name == ''
-      return_array = @file_tags.keys.inject([]) do |return_array, uri|
+      name = 'initialize' if name == 'new'
+      return_array = @file_tags.keys.inject([]) do |ary, uri|
         tags = tags_for_uri(uri)
         match_tags = tags.select{|tag| tag[:name] == name}
         match_tags.each do |tag|
-          return_array << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
+          ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
         end
-        return_array
+        ary
       end
       return_array
     end
