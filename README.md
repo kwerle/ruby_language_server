@@ -12,8 +12,9 @@ Help wanted.
 
 # Features
 
-* Definitions (somewhat)
+* Definitions (somewhat) - thanks to [ripper-tags](https://github.com/tmm1/ripper-tags)
 * Completions (a little)
+* Lint - thanks to [RuboCop](https://github.com/bbatsov/rubocop)
 * Please see the [FAQ_ROADMAP.md](./FAQ_ROADMAP.md)
 
 # Requirements

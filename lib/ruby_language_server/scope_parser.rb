@@ -7,10 +7,12 @@ module RubyLanguageServer
   # classes, methods, variables, etc - are in each scope.
   class SEXPProcessor
     attr :sexp
+    attr :lines
     attr_reader :current_scope
 
-    def initialize(sexp)
+    def initialize(sexp, lines = 1)
       @sexp = sexp
+      @lines = lines
     end
 
     def root_scope
@@ -29,7 +31,7 @@ module RubyLanguageServer
       when Array
         sexp.each{ |child| process(child) }
       when Symbol
-        method_name = "on_#{root.to_s}"
+        method_name = "on_#{root}"
         if respond_to? method_name
           self.send(method_name, args, rest)
         else
@@ -72,6 +74,14 @@ module RubyLanguageServer
 
     def on_class(args, rest)
       add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
+    end
+
+    def on_method_add_block(args, rest)
+      add_scope(args, rest, ScopeData::Scope::TYPE_BLOCK)
+    end
+
+    def on_do_block(args, rest)
+      process(rest)
     end
 
     # Used only to describe subclasses?
@@ -222,6 +232,7 @@ module RubyLanguageServer
     def push_scope(type, name, top_line, column)
       close_sibling_scopes(top_line)
       new_scope = ScopeData::Scope.new(@current_scope, type, name, top_line, column)
+      new_scope.bottom_line = @lines
       @current_scope.children << new_scope
       @current_scope = new_scope
     end
@@ -260,7 +271,7 @@ module RubyLanguageServer
 
     def initialize(text)
       sexp = self.class.sexp(text)
-      processor = SEXPProcessor.new(sexp)
+      processor = SEXPProcessor.new(sexp, text.length)
       @root_scope = processor.root_scope
     end
 
