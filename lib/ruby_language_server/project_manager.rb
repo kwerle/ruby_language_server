@@ -58,6 +58,11 @@ module RubyLanguageServer
         return_hash[:containerName] = container_name if container_name
         return_hash
       }
+      tags.reverse.each do |tag|
+        child_tags = tags.select{ |child_tag| child_tag[:containerName] == tag[:name]}
+        max_line = child_tags.map{ |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0
+        tag[:location][:range][:end][:line] = [tag[:location][:range][:end][:line], max_line].max
+      end
     end
 
     def update_tags(uri)
@@ -73,19 +78,19 @@ module RubyLanguageServer
       return code_file.root_scope unless code_file.nil?
     end
 
-    def completion_at(uri, position)
-      word = word_at_location(uri, position)
-      return {} if word.nil? || word == ''
+    def scopes_at(uri, position)
       line = position.line
       root_scope = root_scope_for(uri)
-      # root_scope.each{ |scope| RubyLanguageServer.logger.debug scope.inspect }
       matching_scopes = root_scope.select{ |scope| scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line) }
-      return if matching_scopes == []
+      return [] if matching_scopes == []
       deepest_scope = matching_scopes.sort_by(&:depth).last
       applicable_scopes = deepest_scope.self_and_ancestors
-      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.map(&:name)}")
+    end
+
+    # This really wants more refactoring
+    def scope_completions(word, scopes)
       words = {}
-      applicable_scopes.inject(words) do |hash, scope|
+      scopes.inject(words) do |hash, scope|
         scope.children.each{ |function| hash[function.name] ||= {
           depth: scope.depth,
           type: function.type,
@@ -98,19 +103,26 @@ module RubyLanguageServer
         }
         hash
       end
-      words = words.sort_by{|word, hash| hash[:depth] }.to_h
-      good_words = FuzzyMatch.new(words.keys).find_all(word)
-      RubyLanguageServer.logger.info("all words #{words.keys}")
-      # words.select!{|word, hash| good_words.include?(word)}.to_h
+      # words = words.sort_by{|word, hash| hash[:depth] }.to_h
+      good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
       words = good_words.map{|word| [word, words[word]]}.to_h
-      RubyLanguageServer.logger.info("words #{words}")
+    end
+
+    def completion_at(uri, position)
+      word = word_at_location(uri, position)
+      return {} if word.nil? || word == ''
+      applicable_scopes = scopes_at(uri, position)
+      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.map(&:name)}")
+      good_words = scope_completions(word, applicable_scopes)
+      RubyLanguageServer.logger.debug("good_words #{good_words}")
       {
         isIncomplete: true,
-        items: words.map{ |word, hash| {
+        items: good_words.map do |word, hash|
+          {
             label: word,
             kind: CompletionItemKind[hash[:type]],
           }
-        }
+        end
         # [
         #   {
         #   	label: 'string;',
@@ -229,22 +241,28 @@ module RubyLanguageServer
 
     def update_document_content(uri, text)
       @file_tags[uri] = {text: text}
-      @file_tags[uri][:code_file] ||= CodeFile.new(text)
+      code_file = @file_tags[uri][:code_file] ||= CodeFile.new(uri, text)
       update_tags(uri)
+      code_file.diagnostics
     end
 
     def word_at_location(uri, position)
       character = position.character
       lines = text_for_uri(uri).split("\n")
+      # Grab the line
       line = lines[position.line]
       return nil if line.nil?
+      # Grab just the last part of the line - from the index onward
       line_end = line[character..-1]
       return nil if line_end.nil?
       RubyLanguageServer.logger.debug("line_end: #{line_end}")
+      # Grab the portion of the word that starts at the position toward the end of the line
       match = line_end.partition(/^(@{0,2}\w+)/)[1]
       RubyLanguageServer.logger.debug("match: #{match}")
+      # Get the start of the line to the end of the matched word
       line_start = line[0..(character + match.length - 1)]
       RubyLanguageServer.logger.debug("line_start: #{line_start}")
+      # Match as much as we can to the end of the line - which is now the end of the word
       end_match = line_start.partition(/(@{0,2}\w+)$/)[1]
       RubyLanguageServer.logger.debug("end_match: #{end_match}")
       end_match

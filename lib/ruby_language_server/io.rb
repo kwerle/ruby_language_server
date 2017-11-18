@@ -6,6 +6,7 @@ module RubyLanguageServer
     def initialize(server)
       RubyLanguageServer.logger.level = Logger::INFO
       @server = server
+      server.io = self
       while true do
         begin
           (id, response) = process_request(STDIN)
@@ -32,6 +33,20 @@ module RubyLanguageServer
       io.write "Content-Length: #{response_body.length + 0}\r\n"
       io.write "\r\n"
       io.write response_body
+      io.flush
+    end
+
+    def send_notification(message, params, io=STDOUT)
+      full_response = {
+        jsonrpc: '2.0',
+        method: message,
+        params: params
+      }
+      body = JSON.unparse(full_response)
+      RubyLanguageServer.logger.debug "body: #{body}"
+      io.write "Content-Length: #{body.length + 0}\r\n"
+      io.write "\r\n"
+      io.write body
       io.flush
     end
 

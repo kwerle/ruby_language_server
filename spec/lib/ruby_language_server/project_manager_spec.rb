@@ -5,8 +5,8 @@ describe RubyLanguageServer::ProjectManager do
   before do
   end
 
-  describe "when asked about cheeseburgers" do
-    it "must respond positively" do
+  describe "ProjectManager" do
+    it "must init" do
       pm = RubyLanguageServer::ProjectManager.new("/")
     end
   end
@@ -27,6 +27,23 @@ describe RubyLanguageServer::ProjectManager do
       bar_tag = tags.detect{ |tag| tag[:name] == 'bar' }
       assert_equal("Foo", bar_tag[:containerName])
     end
+  end
+
+  describe "scope_completions" do
+
+    let(:scopes) {
+      scope = RubyLanguageServer::ScopeData::Scope.new
+      scope.variables << RubyLanguageServer::ScopeData::Variable.new(scope, 'some_var')
+      [scope]
+    }
+
+    let(:pm) { RubyLanguageServer::ProjectManager.new('foo') }
+
+    it "should find completions" do
+      results = pm.scope_completions('some', scopes)
+      assert_equal({"some_var"=>{:depth=>0, :type=>:variable}}, results)
+    end
+
   end
 
 end
