@@ -12,8 +12,9 @@ Help wanted.
 
 # Features
 
-* Definitions (somewhat)
+* Definitions (somewhat) - thanks to [ripper-tags](https://github.com/tmm1/ripper-tags)
 * Completions (a little)
+* Lint - thanks to [RuboCop](https://github.com/bbatsov/rubocop)
 * Please see the [FAQ_ROADMAP.md](./FAQ_ROADMAP.md)
 
 # Requirements
@@ -21,6 +22,12 @@ Help wanted.
 * [Docker](http://docker.com/)
 * I use [Atom](https://atom.io/) as a client - I'm hoping others work
 * I use OS X - I'm hoping others work
+
+# Running
+
+The expectation is that you will be running this using the Atom package ide-ruby.  In general this expects to be launched like
+
+`docker run -v PROJECT_ROOT:/project -w /project ruby_language_server`
 
 # Development
 

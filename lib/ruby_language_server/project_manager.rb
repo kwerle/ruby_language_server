@@ -27,6 +27,7 @@ module RubyLanguageServer
       package: 4,
       :'class' => 5,
       :'method' => 6,
+      :'singleton method' => 6,
       property: 7,
       field: 8,
       constructor: 9,
@@ -47,11 +48,13 @@ module RubyLanguageServer
 
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
       return if (cop_tags.nil? || cop_tags == [])
-
       tags = cop_tags.map{ |reference|
+        name = reference[:name] || 'undefined?'
+        kind = SymbolKind[reference[:kind].to_sym] || 7
+        kind = 9 if name == 'initialize' # Magical special case
         return_hash = {
-          name: reference[:name] || 'undefined?',
-          kind: SymbolKind[reference[:kind].to_sym] || 7,
+          name: name,
+          kind: kind,
           location: Location.hash(uri, reference[:line])
         }
         container_name = reference[:full_name].split(/(:{2}|\#|\.)/).compact[-3]
@@ -70,7 +73,7 @@ module RubyLanguageServer
     end
 
     def tags_for_uri(uri)
-      hash = @file_tags[uri][:tags] || {}
+      @file_tags[uri][:tags] || {}
     end
 
     def root_scope_for(uri)
@@ -84,7 +87,7 @@ module RubyLanguageServer
       matching_scopes = root_scope.select{ |scope| scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line) }
       return [] if matching_scopes == []
       deepest_scope = matching_scopes.sort_by(&:depth).last
-      applicable_scopes = deepest_scope.self_and_ancestors
+      deepest_scope.self_and_ancestors
     end
 
     # This really wants more refactoring
@@ -105,7 +108,7 @@ module RubyLanguageServer
       end
       # words = words.sort_by{|word, hash| hash[:depth] }.to_h
       good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-      words = good_words.map{|word| [word, words[word]]}.to_h
+      words = good_words.map{|w| [w, words[w]]}.to_h
     end
 
     def completion_at(uri, position)
@@ -270,13 +273,14 @@ module RubyLanguageServer
 
     def possible_definitions_for(name)
       return {} if name == ''
-      return_array = @file_tags.keys.inject([]) do |return_array, uri|
+      name = 'initialize' if name == 'new'
+      return_array = @file_tags.keys.inject([]) do |ary, uri|
         tags = tags_for_uri(uri)
         match_tags = tags.select{|tag| tag[:name] == name}
         match_tags.each do |tag|
-          return_array << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
+          ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
         end
-        return_array
+        ary
       end
       return_array
     end

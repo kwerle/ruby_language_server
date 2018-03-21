@@ -1,11 +1,11 @@
 require_relative '../../test_helper'
-require "minitest/autorun"
+require 'minitest/autorun'
 
 describe RubyLanguageServer::ScopeParser do
 
-  describe "Small file" do
+  describe 'Small file' do
     before do
-      @code_file_lines=<<EOF
+      @code_file_lines=<<-SOURCE
       bogus = Some::Bogus
       module Foo
         class Bar
@@ -27,15 +27,15 @@ describe RubyLanguageServer::ScopeParser do
         end
 
       end
-EOF
+      SOURCE
       @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
     end
 
-    it "should have a root scope" do
+    it 'should have a root scope' do
       refute_nil(@parser.root_scope)
     end
 
-    it "should have one module" do
+    it 'should have one module' do
       children = @parser.root_scope.children
       assert_equal(1, children.size)
       m = children.first
@@ -43,7 +43,13 @@ EOF
       assert_equal('Foo', m.full_name)
     end
 
-    it "should have two classes" do
+    it 'module should span the whole file' do
+      m = @parser.root_scope.children.first
+      assert_equal(2, m.top_line)
+      assert_equal(12, m.bottom_line)
+    end
+
+    it 'should have two classes' do
       m = @parser.root_scope.children.first
       children = m.children
       assert_equal(2, children.size)
@@ -55,7 +61,7 @@ EOF
       assert_equal('Foo::Nar', c2.full_name)
     end
 
-    it "should see Nar subclasses Bar" do
+    it 'should see Nar subclasses Bar' do
       m = @parser.root_scope.children.first
       children = m.children
       c2 = children.last
@@ -63,7 +69,7 @@ EOF
       assert_equal('Foo::Bar', c2.superclass_name)
     end
 
-    it "should have a function Foo::Bar#baz" do
+    it 'should have a function Foo::Bar#baz' do
       m = @parser.root_scope.children.first
       bar = m.children.first
       baz_function = bar.children.first
@@ -71,20 +77,20 @@ EOF
       assert_equal(3, baz_function.variables.size)
     end
 
-    it "should have a couple of ivars for Bar" do
+    it 'should have a couple of ivars for Bar' do
       m = @parser.root_scope.children.first
       bar = m.children.first
       assert_equal(2, bar.variables.size)
     end
 
-    it "should have a 3 methods for Nar" do
+    it 'should have a 3 methods for Nar' do
       m = @parser.root_scope.children.first
       bar = m.children.last
       assert_equal(3, bar.children.size)
       assert_equal(['top', 'top=', 'naz'], bar.children.map(&:name))
     end
 
-    it "should have a couple of ivars for Nar" do
+    it 'should have a couple of ivars for Nar' do
       m = @parser.root_scope.children.first
       bar = m.children.last
       assert_equal(2, bar.variables.size)
@@ -92,12 +98,29 @@ EOF
 
   end
 
-  describe "on_assign" do
+  describe 'on_assign' do
 
-    it "should handle complex lvars" do
-      parser = RubyLanguageServer::ScopeParser.new("some.tricky.thing = bob")
+    it 'should handle complex lvars' do
+      parser = RubyLanguageServer::ScopeParser.new('some.tricky.thing = bob')
     end
 
+  end
+
+  describe 'Rakefile' do
+    let(:rake_source) {
+      <<-RAKE
+      desc 'Run guard'
+      task guard: [] do
+        foo = 1
+        `guard`
+      end
+      RAKE
+    }
+    let(:scope_parser) { RubyLanguageServer::ScopeParser.new(rake_source) }
+
+    it 'should find a block with a variable' do
+      assert_equal('foo', scope_parser.root_scope.self_and_descendants.last.variables.first.name)
+    end
   end
 
 end

@@ -4,7 +4,7 @@ module RubyLanguageServer
   class GoodCop < RuboCop::Runner
     def initialize
       config_store = RuboCop::ConfigStore.new
-      config_store.options_config= '.rubocop.yml'
+      config_store.options_config = '/project/.rubocop.yml'
       super({}, config_store)
     end
 
