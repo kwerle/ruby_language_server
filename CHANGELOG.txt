@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.0.4 Tue Mar 20 19:39:06 PDT 2018
+
+* Provide support for .rubocop.yml.  This will work once I update ide-ruby.
+
 #### 0.0.3
 
 * Uhh.  What did I do?  Looks like a bunch.
