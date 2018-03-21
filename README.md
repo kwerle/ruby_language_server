@@ -23,6 +23,12 @@ Help wanted.
 * I use [Atom](https://atom.io/) as a client - I'm hoping others work
 * I use OS X - I'm hoping others work
 
+# Running
+
+The expectation is that you will be running this using the Atom package ide-ruby.  In general this expects to be launched like
+
+`docker run -v PROJECT_ROOT:/project -w /project ruby_language_server`
+
 # Development
 
 Clone.  I love git [HubFlow](https://datasift.github.io/gitflow/).
