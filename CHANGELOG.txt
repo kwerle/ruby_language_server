@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.0.5 Thu Jul 12 15:07:58 PDT 2018
+
+* Parse all project files on startup
+* Fix possible issue with RuboCop config
+
 #### 0.0.4 Tue Mar 20 19:39:06 PDT 2018
 
 * Provide support for .rubocop.yml.  This will work once I update ide-ruby.
