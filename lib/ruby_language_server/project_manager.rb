@@ -8,11 +8,12 @@ module RubyLanguageServer
   class ProjectManager
 
     def initialize(uri)
-      # We don't seem to use this - but I'm emotionally attached.
-      # Probably will need it when we start parsing/using Gemfile
       @root_path = uri
+      @root_uri = "file://#{@root_path}"
       # This is {uri: {content stuff}} where content stuff is like text: , tags: ...
       @file_tags = {}
+      @update_mutext = Mutex.new
+      scan_all_project_files()
     end
 
     def text_for_uri(uri)
@@ -43,11 +44,11 @@ module RubyLanguageServer
     }
 
     # OK - this really does not belong here.  It should probably be in CodeFile.
-    def tags_for_text(text, uri)
+    def tags_for_text(uri, text)
       cop_tags = RipperTags::Parser.extract(text)
-
+      # RubyLanguageServer.logger.error("cop_tags: #{cop_tags}")
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      return if (cop_tags.nil? || cop_tags == [])
+      return nil if (cop_tags.nil? || cop_tags.length == 0)
       tags = cop_tags.map{ |reference|
         name = reference[:name] || 'undefined?'
         kind = SymbolKind[reference[:kind].to_sym] || 7
@@ -68,8 +69,10 @@ module RubyLanguageServer
       end
     end
 
-    def update_tags(uri)
-      @file_tags[uri][:tags] = tags_for_text(text_for_uri(uri), uri)
+    def update_tags(uri, text)
+      tags = tags_for_text(uri, text)
+      return if tags.nil?
+      @file_tags[uri][:tags] = tags unless @file_tags[uri][:tags] != nil && tags.nil?
     end
 
     def tags_for_uri(uri)
@@ -241,12 +244,32 @@ module RubyLanguageServer
     # 	data?: any
     # }
 
+    def scan_all_project_files
+      project_ruby_files = Dir.glob("/project/**/*.rb")
+      Thread.new do
+        project_ruby_files.each do |container_path|
+          text = File.read(container_path)
+          relative_path = container_path.delete_prefix('/project/')
+          host_uri = @root_uri + relative_path
+          update_document_content(host_uri, text)
+        end
+      end
+    end
 
     def update_document_content(uri, text)
-      @file_tags[uri] = {text: text}
-      code_file = @file_tags[uri][:code_file] ||= CodeFile.new(uri, text)
-      update_tags(uri)
-      code_file.diagnostics
+      @update_mutext.synchronize do
+        @file_tags[uri] ||= {text: text}
+        # RubyLanguageServer.logger.error("path: #{uri.delete_prefix(@root_uri)}")
+        # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
+        code_file = @file_tags[uri][:code_file]
+        if code_file.nil?
+          code_file = @file_tags[uri][:code_file] = CodeFile.new(uri, text)
+        else
+          code_file.text = text
+        end
+        update_tags(uri, text)
+        code_file.diagnostics
+      end
     end
 
     def word_at_location(uri, position)
