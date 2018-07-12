@@ -1,7 +1,7 @@
 # docker build -t ruby_language_server .
 #
 # For development:
-# docker run -it -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
+# docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
 FROM ruby:alpine
 LABEL maintainer="kurt@CircleW.org"
 

@@ -4,6 +4,12 @@ require "minitest/autorun"
 describe RubyLanguageServer::GoodCop do
   let(:good_cop) { RubyLanguageServer::GoodCop.new() }
 
+  describe 'basics' do
+    it 'should init without config' do
+      refute_nil(good_cop)
+    end
+  end
+
   describe "offenses" do
 
     it "must lint" do
