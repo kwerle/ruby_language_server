@@ -258,7 +258,8 @@ module RubyLanguageServer
 
     def update_document_content(uri, text)
       @update_mutext.synchronize do
-        @file_tags[uri] ||= {text: text}
+        @file_tags[uri] ||= {}
+        @file_tags[uri][:text] = text
         # RubyLanguageServer.logger.error("path: #{uri.delete_prefix(@root_uri)}")
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = @file_tags[uri][:code_file]
