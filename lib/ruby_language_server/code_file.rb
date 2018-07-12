@@ -12,6 +12,7 @@ module RubyLanguageServer
 
     def initialize(uri, text)
       RubyLanguageServer.logger.debug(@root_scope)
+      RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
       @uri = uri
       @text = text
       # diagnostics
@@ -29,6 +30,7 @@ module RubyLanguageServer
     end
 
     def root_scope
+      RubyLanguageServer.logger.debug("Asking about root_scope")
       @root_scope ||= ScopeParser.new(text).root_scope
     end
 

@@ -29,6 +29,8 @@ The expectation is that you will be running this using the Atom package ide-ruby
 
 `docker run -v PROJECT_ROOT:/project -w /project ruby_language_server`
 
+*You must mount the project directory to /project*
+
 # Development
 
 Clone.  I love git [HubFlow](https://datasift.github.io/gitflow/).
