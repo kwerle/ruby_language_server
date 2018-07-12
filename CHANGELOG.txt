@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.0.6 Thu Jul 12 16:11:26 PDT 2018
+
+* Fix RuboCop again.  Sigh.
+
 #### 0.0.5 Thu Jul 12 15:07:58 PDT 2018
 
 * Parse all project files on startup
