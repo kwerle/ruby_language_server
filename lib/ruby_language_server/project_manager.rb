@@ -115,8 +115,12 @@ module RubyLanguageServer
     end
 
     def completion_at(uri, position)
-      word = word_at_location(uri, position)
+      relative_position = position.dup
+      relative_position.character = relative_position.character - 2 # To get before the . or ::
+      RubyLanguageServer.logger.debug("relative_position #{relative_position}")
+      word = word_at_location(uri, relative_position)
       return {} if word.nil? || word == ''
+      RubyLanguageServer.logger.debug("word #{word}")
       applicable_scopes = scopes_at(uri, position)
       RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.map(&:name)}")
       good_words = scope_completions(word, applicable_scopes)
