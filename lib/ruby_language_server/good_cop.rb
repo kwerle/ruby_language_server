@@ -8,7 +8,7 @@ module RubyLanguageServer
       if File.exists?(config_path)
         config_store.options_config = config_path
       else
-        config_store.options_config = '/project/'
+        config_store.options_config = '/app/.rubocop.yml'
       end
       super({}, config_store)
     end
