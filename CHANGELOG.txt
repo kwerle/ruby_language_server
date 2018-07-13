@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.0.7 Thu Jul 12 16:11:26 PDT 2018
+
+* Whoops - forgot to merge changes in.
+
 #### 0.0.6 Thu Jul 12 16:11:26 PDT 2018
 
 * Fix RuboCop again.  Sigh.
