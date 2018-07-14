@@ -17,6 +17,7 @@ module RubyLanguageServer
   module LineContext
 
     def self.for(line, position)
+      position += 2 # Because we're looking at the insertion point with a 1 offset?
       # Grab just the last part of the line - from the index onward
       line_end = line[position..-1]
       return nil if line_end.nil?
@@ -29,9 +30,9 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("line_start: #{line_start}")
       # Match as much as we can to the end of the line - which is now the end of the word
       end_match = line_start.partition(/(@{0,2}[:\.\w]+)$/)[1]
-      RubyLanguageServer.logger.debug("end_match: #{end_match}")
-      matches = end_match.split(/\./)
-      matches = matches.map{ |match| match.split(/::/) }.flatten
+      matches = end_match.split('.', -1)
+      matches = matches.map{ |match| match.length > 0 ? match.split('::', -1) : match }.flatten
+      RubyLanguageServer.logger.debug("matches: #{matches}")
       matches
     end
 
