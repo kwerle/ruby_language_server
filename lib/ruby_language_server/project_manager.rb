@@ -243,25 +243,9 @@ module RubyLanguageServer
     end
 
     def word_at_location(uri, position)
-      character = position.character
       lines = text_for_uri(uri).split("\n")
-      # Grab the line
       line = lines[position.line]
-      return nil if line.nil?
-      # Grab just the last part of the line - from the index onward
-      line_end = line[character..-1]
-      return nil if line_end.nil?
-      # RubyLanguageServer.logger.debug("line_end: #{line_end}")
-      # Grab the portion of the word that starts at the position toward the end of the line
-      match = line_end.partition(/^(@{0,2}\w+)/)[1]
-      # RubyLanguageServer.logger.debug("match: #{match}")
-      # Get the start of the line to the end of the matched word
-      line_start = line[0..(character + match.length - 1)]
-      # RubyLanguageServer.logger.debug("line_start: #{line_start}")
-      # Match as much as we can to the end of the line - which is now the end of the word
-      end_match = line_start.partition(/(@{0,2}\w+)$/)[1]
-      # RubyLanguageServer.logger.debug("end_match: #{end_match}")
-      end_match
+      LineContext.for(line, position.character).last
     end
 
     def possible_definitions_for(name)
