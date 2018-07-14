@@ -25,10 +25,10 @@ describe RubyLanguageServer::LineContext do
     let(:line) { 'instance.method = another_instance.something' }
 
     it "should get the base" do
-      assert_equal(['instance'], line_context.for(line, 0))
-      assert_equal(['instance'], line_context.for(line, 1))
-      assert_equal(['instance'], line_context.for(line, 8))
-      assert_equal([], line_context.for(line, 17))
+      assert_equal(['instance'], line_context.for(line, 2))
+      assert_equal(['instance'], line_context.for(line, 3))
+      assert_equal(['instance'], line_context.for(line, 6))
+      assert_equal([], line_context.for(line, 15))
       assert_equal(['another_instance'], line_context.for(line, 18))
     end
 
@@ -42,13 +42,12 @@ describe RubyLanguageServer::LineContext do
     let(:line) { 'Some::Module.instance.method = Max::Mod.another_instance.something' }
 
     it "should get the base" do
-      assert_equal(['Some'], line_context.for(line, 0))
-      assert_equal(['Some:'], line_context.for(line, 5))
-      assert_equal(['Some', 'Module'], line_context.for(line, 6))
+      assert_equal(['Some'], line_context.for(line, 1))
+      assert_equal(['Some:'], line_context.for(line, 3))
+      assert_equal(['Some', 'Module'], line_context.for(line, 4))
     end
 
     it "should the method" do
-      xxx
     end
 
   end
