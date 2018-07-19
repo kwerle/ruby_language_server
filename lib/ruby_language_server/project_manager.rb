@@ -17,70 +17,38 @@ module RubyLanguageServer
     end
 
     def text_for_uri(uri)
-      hash = @file_tags[uri]
-      hash[:text] || ''
-    end
-
-    SymbolKind = {
-      file: 1,
-      :'module' => 5, #2,
-      namespace: 3,
-      package: 4,
-      :'class' => 5,
-      :'method' => 6,
-      :'singleton method' => 6,
-      property: 7,
-      field: 8,
-      constructor: 9,
-      enum: 10,
-      interface: 11,
-      function: 12,
-      variable: 13,
-      constant: 14,
-      string: 15,
-      number: 16,
-      boolean: 17,
-      array: 18,
-    }
-
-    # OK - this really does not belong here.  It should probably be in CodeFile.
-    def tags_for_text(uri, text)
-      cop_tags = RipperTags::Parser.extract(text)
-      # RubyLanguageServer.logger.error("cop_tags: #{cop_tags}")
-      # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      return nil if (cop_tags.nil? || cop_tags.length == 0)
-      tags = cop_tags.map{ |reference|
-        name = reference[:name] || 'undefined?'
-        kind = SymbolKind[reference[:kind].to_sym] || 7
-        kind = 9 if name == 'initialize' # Magical special case
-        return_hash = {
-          name: name,
-          kind: kind,
-          location: Location.hash(uri, reference[:line])
-        }
-        container_name = reference[:full_name].split(/(:{2}|\#|\.)/).compact[-3]
-        return_hash[:containerName] = container_name if container_name
-        return_hash
-      }
-      tags.reverse.each do |tag|
-        child_tags = tags.select{ |child_tag| child_tag[:containerName] == tag[:name]}
-        max_line = child_tags.map{ |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0
-        tag[:location][:range][:end][:line] = [tag[:location][:range][:end][:line], max_line].max
-      end
+      # hash = @file_tags[uri]
+      # hash[:text] || ''
+      code_file = code_file_for_uri(uri)
+      code_file&.text || ''
     end
 
     def update_tags(uri, text)
-      tags = tags_for_text(uri, text)
-      return if tags.nil?
-      @file_tags[uri][:tags] = tags unless @file_tags[uri][:tags] != nil && tags.nil?
+      code_file = code_file_for_uri(uri)
+      tags = code_file_for_uri(uri).tags
+      @file_tags[uri][:tags] = tags
+    end
+
+    def code_file_for_uri(uri, text = nil)
+      code_file = @file_tags[uri][:code_file]
+      if code_file.nil?
+        code_file = @file_tags[uri][:code_file] = CodeFile.new(uri, text)
+      end
+      code_file
     end
 
     def tags_for_uri(uri)
-      @file_tags[uri][:tags] || {}
+      # RubyLanguageServer.logger.debug("tags_for_uri: #{uri}")
+      code_file = code_file_for_uri(uri)
+      # RubyLanguageServer.logger.debug("tags_for_uri: code_file #{code_file}")
+      return {} if code_file.nil?
+      # RubyLanguageServer.logger.debug("tags_for_uri code_file.tags: #{code_file.tags}")
+      @file_tags[uri][:tags] = code_file.tags
     end
 
     def root_scope_for(uri)
-      code_file = @file_tags[uri][:code_file]
+      code_file = code_file_for_uri(uri)
+      RubyLanguageServer.logger.error("code_file.nil?!!!!!!!!!!!!!!") if code_file.nil?
       return code_file.root_scope unless code_file.nil?
     end
 
@@ -117,7 +85,7 @@ module RubyLanguageServer
     def completion_at(uri, position)
       relative_position = position.dup
       relative_position.character = relative_position.character - 2 # To get before the . or ::
-      RubyLanguageServer.logger.debug("relative_position #{relative_position}")
+      # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
       word = word_at_location(uri, relative_position)
       return {} if word.nil? || word == ''
       RubyLanguageServer.logger.debug("word #{word}")
@@ -250,6 +218,7 @@ module RubyLanguageServer
 
     def scan_all_project_files
       project_ruby_files = Dir.glob("/project/**/*.rb")
+      RubyLanguageServer.logger.debug("scan_all_project_files: #{project_ruby_files * ','}")
       Thread.new do
         project_ruby_files.each do |container_path|
           text = File.read(container_path)
@@ -262,16 +231,12 @@ module RubyLanguageServer
 
     def update_document_content(uri, text)
       @update_mutext.synchronize do
+        RubyLanguageServer.logger.debug("update_document_content: #{uri}")
         @file_tags[uri] ||= {}
-        @file_tags[uri][:text] = text
-        # RubyLanguageServer.logger.error("path: #{uri.delete_prefix(@root_uri)}")
+        # @file_tags[uri][:text] = text
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
-        code_file = @file_tags[uri][:code_file]
-        if code_file.nil?
-          code_file = @file_tags[uri][:code_file] = CodeFile.new(uri, text)
-        else
-          code_file.text = text
-        end
+        code_file = code_file_for_uri(uri, text)
+        code_file.text = text
         update_tags(uri, text)
         code_file.diagnostics
       end
@@ -286,16 +251,16 @@ module RubyLanguageServer
       # Grab just the last part of the line - from the index onward
       line_end = line[character..-1]
       return nil if line_end.nil?
-      RubyLanguageServer.logger.debug("line_end: #{line_end}")
+      # RubyLanguageServer.logger.debug("line_end: #{line_end}")
       # Grab the portion of the word that starts at the position toward the end of the line
       match = line_end.partition(/^(@{0,2}\w+)/)[1]
-      RubyLanguageServer.logger.debug("match: #{match}")
+      # RubyLanguageServer.logger.debug("match: #{match}")
       # Get the start of the line to the end of the matched word
       line_start = line[0..(character + match.length - 1)]
-      RubyLanguageServer.logger.debug("line_start: #{line_start}")
+      # RubyLanguageServer.logger.debug("line_start: #{line_start}")
       # Match as much as we can to the end of the line - which is now the end of the word
       end_match = line_start.partition(/(@{0,2}\w+)$/)[1]
-      RubyLanguageServer.logger.debug("end_match: #{end_match}")
+      # RubyLanguageServer.logger.debug("end_match: #{end_match}")
       end_match
     end
 
@@ -304,9 +269,12 @@ module RubyLanguageServer
       name = 'initialize' if name == 'new'
       return_array = @file_tags.keys.inject([]) do |ary, uri|
         tags = tags_for_uri(uri)
-        match_tags = tags.select{|tag| tag[:name] == name}
-        match_tags.each do |tag|
-          ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
+        RubyLanguageServer.logger.debug("tags_for_uri(#{uri}): #{tags_for_uri(uri)}")
+        unless tags.nil?
+          match_tags = tags.select{|tag| tag[:name] == name}
+          match_tags.each do |tag|
+            ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
+          end
         end
         ary
       end
