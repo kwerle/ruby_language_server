@@ -1,5 +1,12 @@
 # Changelog
 
+#### 0.0.8 Thu Jul 19 00:01:25 PDT 2018
+
+* Bump ruby version
+* Fix the initial background thread
+* Refactor
+* Ignore setting text to the same
+
 #### 0.0.7 Thu Jul 12 16:11:26 PDT 2018
 
 * Whoops - forgot to merge changes in.
