@@ -4,7 +4,6 @@ module RubyLanguageServer
   class IO
 
     def initialize(server)
-      RubyLanguageServer.logger.level = Logger::INFO
       @server = server
       server.io = self
       loop do
@@ -29,7 +28,7 @@ module RubyLanguageServer
         result: response
       }
       response_body = JSON.unparse(full_response)
-      RubyLanguageServer.logger.debug "response_body: #{response_body}"
+      # RubyLanguageServer.logger.debug "response_body: #{response_body}"
       io.write "Content-Length: #{response_body.length + 0}\r\n"
       io.write "\r\n"
       io.write response_body
@@ -43,7 +42,7 @@ module RubyLanguageServer
         params: params
       }
       body = JSON.unparse(full_response)
-      RubyLanguageServer.logger.debug "body: #{body}"
+      # RubyLanguageServer.logger.debug "body: #{body}"
       io.write "Content-Length: #{body.length + 0}\r\n"
       io.write "\r\n"
       io.write body
@@ -52,9 +51,8 @@ module RubyLanguageServer
 
     def process_request(io = STDIN)
       request_body = get_request(io)
-      RubyLanguageServer.logger.debug "request_body: #{request_body}"
+      # RubyLanguageServer.logger.debug "request_body: #{request_body}"
       request_json = JSON.parse request_body
-      RubyLanguageServer.logger.debug "request_body: #{request_body}"
       id = request_json['id']
       method_name = request_json['method']
       params = request_json['params']
