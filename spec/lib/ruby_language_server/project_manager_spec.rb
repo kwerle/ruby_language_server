@@ -11,39 +11,6 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
-  describe "tags_for_text" do
-    let(:pm) { RubyLanguageServer::ProjectManager.new('uri') }
-
-    it "should find functions" do
-      tags = pm.tags_for_text('uri', "def foo\nend\n")
-      assert_equal('foo', tags.first[:name])
-      assert_equal(6, tags.first[:kind])
-    end
-
-    it "should find constants" do
-      tags = pm.tags_for_text('uri', "FOO=1\n")
-      assert_equal('FOO', tags.first[:name])
-      assert_equal(14, tags.first[:kind])
-    end
-
-    it "should not find variables" do
-      tags = pm.tags_for_text('uri', "@foo=1\n")
-      assert_nil(tags)
-    end
-
-    it "should do the right thing with self.methods" do
-      tags = pm.tags_for_text('uri', "def self.foo\nend\n")
-      assert_equal('foo', tags.first[:name])
-      assert_equal(6, tags.first[:kind])
-    end
-
-    it "should do the right thing with initialize" do
-      tags = pm.tags_for_text('uri', "def initialize\nend\n")
-      assert_equal('initialize', tags.first[:name])
-      assert_equal(9, tags.first[:kind])
-    end
-  end
-
   describe "update_tags" do
     let(:rails_file_text) {
       <<~EOF
@@ -56,7 +23,8 @@ describe RubyLanguageServer::ProjectManager do
     let(:pm) { RubyLanguageServer::ProjectManager.new('foo') }
 
     it "should have text" do
-      tags = pm.tags_for_text('uri', rails_file_text)
+      pm.update_document_content('uri', rails_file_text)
+      tags = pm.tags_for_uri('uri')
       bar_tag = tags.detect{ |tag| tag[:name] == 'bar' }
       assert_equal("Foo", bar_tag[:containerName])
     end

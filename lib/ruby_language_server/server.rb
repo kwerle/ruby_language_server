@@ -70,21 +70,23 @@ module RubyLanguageServer
     def on_textDocument_didOpen(params)
       textDocument = params['textDocument']
       uri = textDocument['uri']
+      RubyLanguageServer.logger.debug("on_textDocument_didOpen #{uri}")
       text = textDocument['text']
-      RubyLanguageServer.logger.debug(params.keys)
-      RubyLanguageServer.logger.debug("uri: #{uri}")
-      RubyLanguageServer.logger.debug("text: #{text}")
+      # RubyLanguageServer.logger.debug(params.keys)
+      # RubyLanguageServer.logger.debug("uri: #{uri}")
+      # RubyLanguageServer.logger.debug("text: #{text}")
       diagnostics = @project_manager.update_document_content(uri, text)
       io.send_notification('textDocument/publishDiagnostics', {uri: uri, diagnostics: diagnostics})
     end
 
     def on_textDocument_didChange(params)
       uri = uri_from_params(params)
+      RubyLanguageServer.logger.debug("on_textDocument_didChange #{uri}")
       content_changes = params['contentChanges']
       text = content_changes.first['text']
-      RubyLanguageServer.logger.debug(params.keys)
-      RubyLanguageServer.logger.debug("uri: #{uri}")
-      RubyLanguageServer.logger.debug("contentChanges: #{content_changes}")
+      # RubyLanguageServer.logger.debug(params.keys)
+      # RubyLanguageServer.logger.debug("uri: #{uri}")
+      # RubyLanguageServer.logger.debug("contentChanges: #{content_changes}")
       @project_manager.update_document_content(uri, text)
 
       diagnostics = @project_manager.update_document_content(uri, text)
