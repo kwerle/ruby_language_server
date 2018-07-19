@@ -15,7 +15,6 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
       @uri = uri
       @text = text
-      # diagnostics
     end
 
     def text=(new_text)
