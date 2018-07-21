@@ -53,29 +53,26 @@ module RubyLanguageServer
     end
 
     def scopes_at(uri, position)
-      line = position.line
       root_scope = root_scope_for(uri)
-      matching_scopes = root_scope.select{ |scope| scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line) }
-      return [] if matching_scopes == []
-      deepest_scope = matching_scopes.sort_by(&:depth).last
-      deepest_scope.self_and_ancestors
+      root_scope.scopes_at(position)
     end
 
     # This really wants more refactoring
-    def scope_completions(word, scopes)
+    def scope_completions(context, scopes)
+      word = context.last
       words = {}
-      scopes.inject(words) do |hash, scope|
-        scope.children.each{ |function| hash[function.name] ||= {
+      scopes.inject(words) do |words_hash, scope|
+        scope.children.each{ |function| words_hash[function.name] ||= {
           depth: scope.depth,
           type: function.type,
           }
         }
-        scope.variables.each{ |variable| hash[variable.name] ||= {
+        scope.variables.each{ |variable| words_hash[variable.name] ||= {
           depth: scope.depth,
           type: variable.type,
           }
         }
-        hash
+        words_hash
       end
       # words = words.sort_by{|word, hash| hash[:depth] }.to_h
       good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
@@ -86,13 +83,30 @@ module RubyLanguageServer
       relative_position = position.dup
       relative_position.character = relative_position.character - 2 # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
-      word = word_at_location(uri, relative_position)
-      return {} if word.nil? || word == ''
-      RubyLanguageServer.logger.debug("word #{word}")
+      words = context_at_location(uri, relative_position)
+      return {} if words.nil? || words == ''
+      RubyLanguageServer.logger.debug("words #{words}")
       applicable_scopes = scopes_at(uri, position)
-      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.map(&:name)}")
-      good_words = scope_completions(word, applicable_scopes)
+      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.to_s}")
+      good_words = scope_completions(words, applicable_scopes)
       RubyLanguageServer.logger.debug("good_words #{good_words}")
+      # [
+      #   {
+      #   	label: 'string;',
+      #   	kind: 'number;',
+      #   	# detail: 'string;',
+      #   	# documentation: 'string;',
+      #   	# sortText: 'string;',
+      #   	# filterText: 'string;',
+      #   	# insertText: 'string;',
+      #   	# insertTextFormat: 'InsertTextFormat;',
+      #   	# textEdit: 'TextEdit;',
+      #   	# additionalTextEdits: 'TextEdit[];',
+      #   	# commitCharacters: 'string[];',
+      #   	# command: 'Command;',
+      #   	# data: 'any',
+      #   }
+      # ]
       {
         isIncomplete: true,
         items: good_words.map do |word, hash|
@@ -101,23 +115,6 @@ module RubyLanguageServer
             kind: CompletionItemKind[hash[:type]],
           }
         end
-        # [
-        #   {
-        #   	label: 'string;',
-        #   	kind: 'number;',
-        #   	# detail: 'string;',
-        #   	# documentation: 'string;',
-        #   	# sortText: 'string;',
-        #   	# filterText: 'string;',
-        #   	# insertText: 'string;',
-        #   	# insertTextFormat: 'InsertTextFormat;',
-        #   	# textEdit: 'TextEdit;',
-        #   	# additionalTextEdits: 'TextEdit[];',
-        #   	# commitCharacters: 'string[];',
-        #   	# command: 'Command;',
-        #   	# data: 'any',
-        #   }
-        # ]
       }
     end
 
@@ -242,10 +239,15 @@ module RubyLanguageServer
       end
     end
 
-    def word_at_location(uri, position)
+    def context_at_location(uri, position)
       lines = text_for_uri(uri).split("\n")
       line = lines[position.line]
-      LineContext.for(line, position.character).last
+      RubyLanguageServer.logger.error("LineContext.for(line, position.character): #{LineContext.for(line, position.character)}")
+      LineContext.for(line, position.character)
+    end
+
+    def word_at_location(uri, position)
+      context_at_location(uri, position).last
     end
 
     def possible_definitions_for(name)

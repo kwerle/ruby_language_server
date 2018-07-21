@@ -41,7 +41,7 @@ describe RubyLanguageServer::ProjectManager do
     let(:pm) { RubyLanguageServer::ProjectManager.new('foo') }
 
     it "should find completions" do
-      results = pm.scope_completions('some', scopes)
+      results = pm.scope_completions(['some'], scopes)
       assert_equal({"some_var"=>{:depth=>0, :type=>:variable}}, results)
     end
 

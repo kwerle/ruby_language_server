@@ -31,6 +31,19 @@ module RubyLanguageServer
         @constants = []
       end
 
+      # Return the deepest child scopes of this scope - and on up.
+      # Not done recuresively because we don't really need to.
+      # Normally called on a root scope.
+      def scopes_at(position)
+        line = position.line
+        matching_scopes = select do |scope|
+          scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line)
+        end
+        return [] if matching_scopes == []
+        deepest_scope = matching_scopes.sort_by(&:depth).last
+        deepest_scope.self_and_ancestors
+      end
+
       def each(&block)
         self_and_descendants.each{ |member| yield member }
       end
