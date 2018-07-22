@@ -6,12 +6,13 @@ FuzzyMatch.engine = :amatch # This should be in a config somewhere
 module RubyLanguageServer
 
   class ProjectManager
+    attr :uri_code_file_hash
 
     def initialize(uri)
       @root_path = uri
       @root_uri = "file://#{@root_path}"
       # This is {uri: code_file} where content stuff is like
-      @file_tags = {}
+      @uri_code_file_hash = {}
       @update_mutext = Mutex.new
       scan_all_project_files()
     end
@@ -22,9 +23,9 @@ module RubyLanguageServer
     end
 
     def code_file_for_uri(uri, text = nil)
-      code_file = @file_tags[uri]
+      code_file = @uri_code_file_hash[uri]
       if code_file.nil?
-        code_file = @file_tags[uri] = CodeFile.new(uri, text)
+        code_file = @uri_code_file_hash[uri] = CodeFile.new(uri, text)
       end
       code_file
     end
@@ -41,25 +42,32 @@ module RubyLanguageServer
       return code_file.root_scope unless code_file.nil?
     end
 
+    def all_scopes
+      @uri_code_file_hash.values.map(&:root_scope).map(&:self_and_descendants).flatten
+    end
+
     def scopes_at(uri, position)
       root_scope = root_scope_for(uri)
       root_scope.scopes_at(position)
     end
 
-    def scope_completions(context, scopes)
-      RubyLanguageServer::Completion.scope_completions(context, scopes)
+    def scope_completions(context, context_scope, scopes)
+      RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
     end
 
     def completion_at(uri, position)
       relative_position = position.dup
       relative_position.character = relative_position.character - 2 # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
+      RubyLanguageServer.logger.error("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
+      scopes_at(uri, position)
+      context_scope = scopes_at(uri, position).first
       context = context_at_location(uri, relative_position)
       return {} if context.nil? || context == ''
       RubyLanguageServer.logger.debug("context #{context}")
       applicable_scopes = scopes_at(uri, position)
       RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.to_s}")
-      good_words = scope_completions(context, applicable_scopes)
+      good_words = scope_completions(context, context_scope, applicable_scopes)
       RubyLanguageServer.logger.debug("good_words #{good_words}")
       # [
       #   {
@@ -200,7 +208,7 @@ module RubyLanguageServer
     def update_document_content(uri, text)
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-        # @file_tags[uri]
+        # @uri_code_file_hash[uri]
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
@@ -222,7 +230,7 @@ module RubyLanguageServer
     def possible_definitions_for(name)
       return {} if name == ''
       name = 'initialize' if name == 'new'
-      return_array = @file_tags.keys.inject([]) do |ary, uri|
+      return_array = @uri_code_file_hash.keys.inject([]) do |ary, uri|
         tags = tags_for_uri(uri)
         RubyLanguageServer.logger.debug("tags_for_uri(#{uri}): #{tags_for_uri(uri)}")
         unless tags.nil?

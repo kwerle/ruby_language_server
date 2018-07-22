@@ -3,6 +3,7 @@ module RubyLanguageServer
     class << self
 
       def completion(context, context_scope, scopes)
+        # RubyLanguageServer.logger.error("completion(#{context}, #{context_scope.map(&:name)}, #{scopes.map(&:name)})")
         scope_completions(context, scopes)
       end
 
