@@ -10,23 +10,15 @@ module RubyLanguageServer
     def initialize(uri)
       @root_path = uri
       @root_uri = "file://#{@root_path}"
-      # This is {uri: {content stuff}} where content stuff is like text: , tags: ...
+      # This is {uri: {content stuff}} where content stuff is like
       @file_tags = {}
       @update_mutext = Mutex.new
       scan_all_project_files()
     end
 
     def text_for_uri(uri)
-      # hash = @file_tags[uri]
-      # hash[:text] || ''
       code_file = code_file_for_uri(uri)
       code_file&.text || ''
-    end
-
-    def update_tags(uri, text)
-      code_file = code_file_for_uri(uri)
-      tags = code_file_for_uri(uri).tags
-      @file_tags[uri][:tags] = tags
     end
 
     def code_file_for_uri(uri, text = nil)
@@ -38,12 +30,9 @@ module RubyLanguageServer
     end
 
     def tags_for_uri(uri)
-      # RubyLanguageServer.logger.debug("tags_for_uri: #{uri}")
       code_file = code_file_for_uri(uri)
-      # RubyLanguageServer.logger.debug("tags_for_uri: code_file #{code_file}")
       return {} if code_file.nil?
-      # RubyLanguageServer.logger.debug("tags_for_uri code_file.tags: #{code_file.tags}")
-      @file_tags[uri][:tags] = code_file.tags
+      code_file.tags
     end
 
     def root_scope_for(uri)
@@ -57,38 +46,20 @@ module RubyLanguageServer
       root_scope.scopes_at(position)
     end
 
-    # This really wants more refactoring
     def scope_completions(context, scopes)
-      word = context.last
-      words = {}
-      scopes.inject(words) do |words_hash, scope|
-        scope.children.each{ |function| words_hash[function.name] ||= {
-          depth: scope.depth,
-          type: function.type,
-          }
-        }
-        scope.variables.each{ |variable| words_hash[variable.name] ||= {
-          depth: scope.depth,
-          type: variable.type,
-          }
-        }
-        words_hash
-      end
-      # words = words.sort_by{|word, hash| hash[:depth] }.to_h
-      good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-      words = good_words.map{|w| [w, words[w]]}.to_h
+      RubyLanguageServer::Completion.scope_completions(context, scopes)
     end
 
     def completion_at(uri, position)
       relative_position = position.dup
       relative_position.character = relative_position.character - 2 # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
-      words = context_at_location(uri, relative_position)
-      return {} if words.nil? || words == ''
-      RubyLanguageServer.logger.debug("words #{words}")
+      context = context_at_location(uri, relative_position)
+      return {} if context.nil? || context == ''
+      RubyLanguageServer.logger.debug("context #{context}")
       applicable_scopes = scopes_at(uri, position)
       RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.to_s}")
-      good_words = scope_completions(words, applicable_scopes)
+      good_words = scope_completions(context, applicable_scopes)
       RubyLanguageServer.logger.debug("good_words #{good_words}")
       # [
       #   {
@@ -230,11 +201,9 @@ module RubyLanguageServer
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
         @file_tags[uri] ||= {}
-        # @file_tags[uri][:text] = text
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
-        update_tags(uri, text)
         code_file.diagnostics
       end
     end

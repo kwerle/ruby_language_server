@@ -7,7 +7,7 @@ module RubyLanguageServer
   class CodeFile
 
     attr_reader :uri
-    attr :text
+    attr_accessor :text
     attr_reader :lint_found
     attr_reader :tags
 
