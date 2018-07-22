@@ -10,7 +10,7 @@ module RubyLanguageServer
     def initialize(uri)
       @root_path = uri
       @root_uri = "file://#{@root_path}"
-      # This is {uri: {content stuff}} where content stuff is like
+      # This is {uri: code_file} where content stuff is like
       @file_tags = {}
       @update_mutext = Mutex.new
       scan_all_project_files()
@@ -22,9 +22,9 @@ module RubyLanguageServer
     end
 
     def code_file_for_uri(uri, text = nil)
-      code_file = @file_tags[uri][:code_file]
+      code_file = @file_tags[uri]
       if code_file.nil?
-        code_file = @file_tags[uri][:code_file] = CodeFile.new(uri, text)
+        code_file = @file_tags[uri] = CodeFile.new(uri, text)
       end
       code_file
     end
@@ -200,7 +200,7 @@ module RubyLanguageServer
     def update_document_content(uri, text)
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-        @file_tags[uri] ||= {}
+        # @file_tags[uri]
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
