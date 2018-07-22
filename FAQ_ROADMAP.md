@@ -14,9 +14,11 @@ Oh yeah.  Tests are mostly for when you know where you're going.  I'm doing a wh
 
 # Next?
 
+* Guess a symbol's class.
+  * `def some_method(parent)` should guess that parent is a Parent.
+* Be smarter about context and completions
+* `class << self` is busted.  Fix it.
 * Fix the outline.  Seriously - why isn't it working as expected?
-* Get definitions working better.  Why does it not seem to scan the whole project until you visit each file?
-* Get the linter working.  Why isn't it being called by Atom?  Still implementation work to do, but the Atom side is the real blocker.
 * Symbol pairs.  If I have typed 'foo.bar' a thousand times in my project, the next time I type 'foo.' the IDE had damn well ought to show me 'bar' as a completion option.
 * It makes me very sad that I could not get this working using sockets.  Tried and tried and failed.
 
@@ -24,7 +26,4 @@ Oh yeah.  Tests are mostly for when you know where you're going.  I'm doing a wh
 
 * Pay special attention to the project's Gemfile.  Install all the gems (we can).  Integrate with gem server?
   * Full scan of installed gems?
-* Guess a symbol's class.
-  * `dad = Parent.new('dad')` should see dad as an instance of Parent.  Then suggest class based completions for 'dad.'
-  * `def some_method(parent)` should guess that parent is a Parent.
 * Integrate class based scope logic.  If I'm in Foo < Bar then I should see Bar's methods at just slightly lower priority than Foo's.
