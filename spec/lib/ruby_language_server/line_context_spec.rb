@@ -28,7 +28,7 @@ describe RubyLanguageServer::LineContext do
       assert_equal(['instance'], line_context.for(line, 2))
       assert_equal(['instance'], line_context.for(line, 3))
       assert_equal(['instance'], line_context.for(line, 6))
-      assert_equal([], line_context.for(line, 15))
+      assert_equal([], line_context.for(line, 16))
       assert_equal(['another_instance'], line_context.for(line, 18))
     end
 
