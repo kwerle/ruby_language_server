@@ -51,10 +51,6 @@ module RubyLanguageServer
       root_scope.scopes_at(position)
     end
 
-    def scope_completions(context, context_scope, scopes)
-      RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
-    end
-
     def completion_at(uri, position)
       relative_position = position.dup
       relative_position.character = relative_position.character - 2 # To get before the . or ::
@@ -67,7 +63,7 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("context #{context}")
       applicable_scopes = scopes_at(uri, position)
       RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.to_s}")
-      good_words = scope_completions(context, context_scope, applicable_scopes)
+      good_words = RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
       RubyLanguageServer.logger.debug("good_words #{good_words}")
       # [
       #   {
