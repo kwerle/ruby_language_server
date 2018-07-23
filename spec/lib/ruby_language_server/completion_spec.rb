@@ -43,8 +43,6 @@ describe RubyLanguageServer::Completion do
       context_scope = @scope_parser.root_scope
       completions = RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
       assert_equal(['bogus'], completions.map(&:first))
-      # byebug
-      true
     end
   end
 

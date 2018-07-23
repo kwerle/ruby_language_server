@@ -43,8 +43,8 @@ describe RubyLanguageServer::LineContext do
 
     it "should get the base" do
       assert_equal(['Some'], line_context.for(line, 1))
-      assert_equal(['Some:'], line_context.for(line, 3))
-      assert_equal(['Some', 'Module'], line_context.for(line, 4))
+      assert_equal(['Some:'], line_context.for(line, 5))
+      assert_equal(['Some', 'Module'], line_context.for(line, 6))
     end
 
     it "should the method" do

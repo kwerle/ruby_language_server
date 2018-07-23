@@ -56,7 +56,7 @@ module RubyLanguageServer
       # [self, parent, parent.parent...]
       def self_and_ancestors
         return [self, parent.self_and_ancestors].flatten unless parent.nil?
-        self
+        [self]
       end
 
       def set_superclass_name(partial)
