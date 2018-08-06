@@ -97,6 +97,7 @@ module RubyLanguageServer
     end
 
     def on_params(args, rest)
+      # RubyLanguageServer.logger.info("on_params #{[args, rest]}")
       return if args.nil?
       # [[:@ident, "bing", [3, 16]], [:@ident, "zing", [3, 22]]]
       args.each do |_, name, (line, column)|
