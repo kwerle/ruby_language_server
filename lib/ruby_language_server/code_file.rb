@@ -5,9 +5,8 @@ require_relative 'scope_data/variable'
 module RubyLanguageServer
 
   class CodeFile
-
     attr_reader :uri
-    attr :text
+    attr_accessor :text
     attr_reader :lint_found
     attr_reader :tags
 
@@ -54,11 +53,12 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return {} if text.nil?
       RubyLanguageServer.logger.debug("Getting tags for #{uri}")
-      cop_tags = RipperTags::Parser.extract(text)
-      # RubyLanguageServer.logger.error("cop_tags: #{cop_tags}")
+      ripper_tags = RipperTags::Parser.extract(text)
+      # RubyLanguageServer.logger.error("ripper_tags: #{ripper_tags}")
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      return @tags if (cop_tags.nil? || cop_tags.length == 0)
-      tags = cop_tags.map{ |reference|
+      return @tags if !@tags.nil? && (ripper_tags.nil? || ripper_tags.length == 0)
+
+      tags = ripper_tags.map{ |reference|
         name = reference[:name] || 'undefined?'
         kind = SymbolKind[reference[:kind].to_sym] || 7
         kind = 9 if name == 'initialize' # Magical special case

@@ -17,11 +17,9 @@ module RubyLanguageServer
   module LineContext
 
     def self.for(line, position)
-      position += 2 # Because we're looking at the insertion point with a 1 offset?
       # Grab just the last part of the line - from the index onward
       line_end = line[position..-1]
       return nil if line_end.nil?
-      RubyLanguageServer.logger.debug("line_end: #{line_end}")
       # Grab the portion of the word that starts at the position toward the end of the line
       match = line_end.partition(/^(@{0,2}\w+)/)[1]
       RubyLanguageServer.logger.debug("match: #{match}")

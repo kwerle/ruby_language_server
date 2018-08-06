@@ -1,4 +1,5 @@
 module RubyLanguageServer
+  # Hash factories for the language server
   module Location
 
     def self.hash(uri, start_line, start_character = 1, end_line = nil, end_character = nil)

@@ -6,44 +6,34 @@ FuzzyMatch.engine = :amatch # This should be in a config somewhere
 module RubyLanguageServer
 
   class ProjectManager
+    attr :uri_code_file_hash
 
     def initialize(uri)
       @root_path = uri
       @root_uri = "file://#{@root_path}"
-      # This is {uri: {content stuff}} where content stuff is like text: , tags: ...
-      @file_tags = {}
+      # This is {uri: code_file} where content stuff is like
+      @uri_code_file_hash = {}
       @update_mutext = Mutex.new
       scan_all_project_files()
     end
 
     def text_for_uri(uri)
-      # hash = @file_tags[uri]
-      # hash[:text] || ''
       code_file = code_file_for_uri(uri)
       code_file&.text || ''
     end
 
-    def update_tags(uri, text)
-      code_file = code_file_for_uri(uri)
-      tags = code_file_for_uri(uri).tags
-      @file_tags[uri][:tags] = tags
-    end
-
     def code_file_for_uri(uri, text = nil)
-      code_file = @file_tags[uri][:code_file]
+      code_file = @uri_code_file_hash[uri]
       if code_file.nil?
-        code_file = @file_tags[uri][:code_file] = CodeFile.new(uri, text)
+        code_file = @uri_code_file_hash[uri] = CodeFile.new(uri, text)
       end
       code_file
     end
 
     def tags_for_uri(uri)
-      # RubyLanguageServer.logger.debug("tags_for_uri: #{uri}")
       code_file = code_file_for_uri(uri)
-      # RubyLanguageServer.logger.debug("tags_for_uri: code_file #{code_file}")
       return {} if code_file.nil?
-      # RubyLanguageServer.logger.debug("tags_for_uri code_file.tags: #{code_file.tags}")
-      @file_tags[uri][:tags] = code_file.tags
+      code_file.tags
     end
 
     def root_scope_for(uri)
@@ -52,47 +42,45 @@ module RubyLanguageServer
       return code_file.root_scope unless code_file.nil?
     end
 
-    def scopes_at(uri, position)
-      line = position.line
-      root_scope = root_scope_for(uri)
-      matching_scopes = root_scope.select{ |scope| scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line) }
-      return [] if matching_scopes == []
-      deepest_scope = matching_scopes.sort_by(&:depth).last
-      deepest_scope.self_and_ancestors
+    def all_scopes
+      @uri_code_file_hash.values.map(&:root_scope).map(&:self_and_descendants).flatten
     end
 
-    # This really wants more refactoring
-    def scope_completions(word, scopes)
-      words = {}
-      scopes.inject(words) do |hash, scope|
-        scope.children.each{ |function| hash[function.name] ||= {
-          depth: scope.depth,
-          type: function.type,
-          }
-        }
-        scope.variables.each{ |variable| hash[variable.name] ||= {
-          depth: scope.depth,
-          type: variable.type,
-          }
-        }
-        hash
-      end
-      # words = words.sort_by{|word, hash| hash[:depth] }.to_h
-      good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-      words = good_words.map{|w| [w, words[w]]}.to_h
+    def scopes_at(uri, position)
+      root_scope = root_scope_for(uri)
+      root_scope.scopes_at(position)
     end
 
     def completion_at(uri, position)
       relative_position = position.dup
       relative_position.character = relative_position.character - 2 # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
-      word = word_at_location(uri, relative_position)
-      return {} if word.nil? || word == ''
-      RubyLanguageServer.logger.debug("word #{word}")
+      RubyLanguageServer.logger.error("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
+      context_scope = scopes_at(uri, position).first || root_scope_for(uri)
+      context = context_at_location(uri, relative_position)
+      return {} if context.nil? || context == ''
+      RubyLanguageServer.logger.debug("context #{context}")
       applicable_scopes = scopes_at(uri, position)
-      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.map(&:name)}")
-      good_words = scope_completions(word, applicable_scopes)
+      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.to_s}")
+      good_words = RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
       RubyLanguageServer.logger.debug("good_words #{good_words}")
+      # [
+      #   {
+      #   	label: 'string;',
+      #   	kind: 'number;',
+      #   	# detail: 'string;',
+      #   	# documentation: 'string;',
+      #   	# sortText: 'string;',
+      #   	# filterText: 'string;',
+      #   	# insertText: 'string;',
+      #   	# insertTextFormat: 'InsertTextFormat;',
+      #   	# textEdit: 'TextEdit;',
+      #   	# additionalTextEdits: 'TextEdit[];',
+      #   	# commitCharacters: 'string[];',
+      #   	# command: 'Command;',
+      #   	# data: 'any',
+      #   }
+      # ]
       {
         isIncomplete: true,
         items: good_words.map do |word, hash|
@@ -101,23 +89,6 @@ module RubyLanguageServer
             kind: CompletionItemKind[hash[:type]],
           }
         end
-        # [
-        #   {
-        #   	label: 'string;',
-        #   	kind: 'number;',
-        #   	# detail: 'string;',
-        #   	# documentation: 'string;',
-        #   	# sortText: 'string;',
-        #   	# filterText: 'string;',
-        #   	# insertText: 'string;',
-        #   	# insertTextFormat: 'InsertTextFormat;',
-        #   	# textEdit: 'TextEdit;',
-        #   	# additionalTextEdits: 'TextEdit[];',
-        #   	# commitCharacters: 'string[];',
-        #   	# command: 'Command;',
-        #   	# data: 'any',
-        #   }
-        # ]
       }
     end
 
@@ -232,26 +203,29 @@ module RubyLanguageServer
     def update_document_content(uri, text)
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-        @file_tags[uri] ||= {}
-        # @file_tags[uri][:text] = text
+        # @uri_code_file_hash[uri]
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
-        update_tags(uri, text)
         code_file.diagnostics
       end
     end
 
-    def word_at_location(uri, position)
+    def context_at_location(uri, position)
       lines = text_for_uri(uri).split("\n")
       line = lines[position.line]
-      LineContext.for(line, position.character).last
+      RubyLanguageServer.logger.error("LineContext.for(line, position.character): #{LineContext.for(line, position.character)}")
+      LineContext.for(line, position.character)
+    end
+
+    def word_at_location(uri, position)
+      context_at_location(uri, position).last
     end
 
     def possible_definitions_for(name)
       return {} if name == ''
       name = 'initialize' if name == 'new'
-      return_array = @file_tags.keys.inject([]) do |ary, uri|
+      return_array = @uri_code_file_hash.keys.inject([]) do |ary, uri|
         tags = tags_for_uri(uri)
         RubyLanguageServer.logger.debug("tags_for_uri(#{uri}): #{tags_for_uri(uri)}")
         unless tags.nil?

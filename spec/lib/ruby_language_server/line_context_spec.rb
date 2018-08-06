@@ -28,7 +28,7 @@ describe RubyLanguageServer::LineContext do
       assert_equal(['instance'], line_context.for(line, 2))
       assert_equal(['instance'], line_context.for(line, 3))
       assert_equal(['instance'], line_context.for(line, 6))
-      assert_equal([], line_context.for(line, 15))
+      assert_equal([], line_context.for(line, 16))
       assert_equal(['another_instance'], line_context.for(line, 18))
     end
 
@@ -43,8 +43,8 @@ describe RubyLanguageServer::LineContext do
 
     it "should get the base" do
       assert_equal(['Some'], line_context.for(line, 1))
-      assert_equal(['Some:'], line_context.for(line, 3))
-      assert_equal(['Some', 'Module'], line_context.for(line, 4))
+      assert_equal(['Some:'], line_context.for(line, 5))
+      assert_equal(['Some', 'Module'], line_context.for(line, 6))
     end
 
     it "should the method" do

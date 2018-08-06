@@ -86,6 +86,7 @@ module RubyLanguageServer
     end
 
     def get_length(string)
+      return 0 if string.nil?
       string.match(/Content-Length: (\d+)/)[1].to_i
     end
 

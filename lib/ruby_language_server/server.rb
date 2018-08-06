@@ -8,7 +8,7 @@ module RubyLanguageServer
     def on_initialize(params)
       root_path = params['rootPath']
       @project_manager = ProjectManager.new(root_path)
-      @file_tags = {}
+      # @file_tags = {}
       {
         capabilities: {
           textDocumentSync: 1,
