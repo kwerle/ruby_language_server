@@ -14,6 +14,7 @@ Oh yeah.  Tests are mostly for when you know where you're going.  I'm doing a wh
 
 # Next?
 
+* Getting a definition just looks at the tags - but tags do not include parameters passed in a method - which seems like it should.  We are functional, right?
 * Guess a symbol's class.
   * `def some_method(parent)` should guess that parent is a Parent.
 * Be smarter about context and completions
