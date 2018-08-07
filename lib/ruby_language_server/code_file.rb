@@ -49,14 +49,14 @@ module RubyLanguageServer
     }
 
     def tags
-      return @tags unless @tags.nil?
+      return @tags if !!@tags&.first
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return {} if text.nil?
       RubyLanguageServer.logger.debug("Getting tags for #{uri}")
       ripper_tags = RipperTags::Parser.extract(text)
       # RubyLanguageServer.logger.error("ripper_tags: #{ripper_tags}")
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      return @tags if !@tags.nil? && (ripper_tags.nil? || ripper_tags.length == 0)
+      return @tags if !!@tags&.first && ripper_tags&.first.nil?
 
       tags = ripper_tags.map{ |reference|
         name = reference[:name] || 'undefined?'

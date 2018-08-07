@@ -64,7 +64,8 @@ module RubyLanguageServer
       uri = uri_from_params(params)
       position = postition_from_params(params)
       end_match = @project_manager.word_at_location(uri, position)
-      @project_manager.possible_definitions_for(end_match)
+      scope = @project_manager.scopes_at(uri, position).first
+      @project_manager.possible_definitions_for(end_match, scope, uri)
     end
 
     def on_textDocument_didOpen(params)

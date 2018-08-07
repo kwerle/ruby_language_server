@@ -46,6 +46,7 @@ module RubyLanguageServer
       @uri_code_file_hash.values.map(&:root_scope).map(&:self_and_descendants).flatten
     end
 
+    # Return the list of scopes [deepest, parent, ..., Object]
     def scopes_at(uri, position)
       root_scope = root_scope_for(uri)
       root_scope.scopes_at(position)
@@ -203,7 +204,6 @@ module RubyLanguageServer
     def update_document_content(uri, text)
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-        # @uri_code_file_hash[uri]
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
@@ -222,9 +222,27 @@ module RubyLanguageServer
       context_at_location(uri, position).last
     end
 
-    def possible_definitions_for(name)
+    def possible_definitions_for(name, scope, uri)
       return {} if name == ''
       name = 'initialize' if name == 'new'
+      results = scope_definitions_for(name, scope, uri)
+      return results if results.length > 0
+      project_definitions_for(name, scope)
+    end
+
+    def scope_definitions_for(name, scope, uri)
+      check_scope = scope
+      return_array = []
+      while !!check_scope
+        scope.variables.each do |variable|
+          return_array << Location.hash(uri, variable.line) if variable.name == name
+        end
+        check_scope = check_scope.parent
+      end
+      return_array.uniq
+    end
+
+    def project_definitions_for(name, scope)
       return_array = @uri_code_file_hash.keys.inject([]) do |ary, uri|
         tags = tags_for_uri(uri)
         RubyLanguageServer.logger.debug("tags_for_uri(#{uri}): #{tags_for_uri(uri)}")
