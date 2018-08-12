@@ -3,7 +3,7 @@ module RubyLanguageServer
     class << self
 
       def completion(context, context_scope, scopes)
-        # RubyLanguageServer.logger.error("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
+        RubyLanguageServer.logger.error("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
         if context.length < 2
           return scope_completions(context.last, context_scope.self_and_ancestors)
         else
@@ -15,10 +15,10 @@ module RubyLanguageServer
           else
             context_word = context_word.split(/_/).map(&:capitalize).join('')
             scope = scope_with_name(context_word, scopes)
-            # RubyLanguageServer.logger.error("scope_with_name: #{scope&.name}")
+            RubyLanguageServer.logger.error("scope_with_name: #{scope&.name}")
           end
           scope ||= context_scope
-          # RubyLanguageServer.logger.error("scope: #{scope&.name}")
+          RubyLanguageServer.logger.error("scope: #{scope&.name}")
           scope_completions(context.last, scope.self_and_ancestors)
         end
       end
