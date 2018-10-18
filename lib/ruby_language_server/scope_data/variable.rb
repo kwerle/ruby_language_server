@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RubyLanguageServer
   module ScopeData
     class Variable < Base

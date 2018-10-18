@@ -1,9 +1,10 @@
+# frozen_string_literal: true
+
 require_relative 'scope_data/base'
 require_relative 'scope_data/scope'
 require_relative 'scope_data/variable'
 
 module RubyLanguageServer
-
   class CodeFile
     attr_reader :uri
     attr_accessor :text
@@ -19,7 +20,7 @@ module RubyLanguageServer
     def text=(new_text)
       RubyLanguageServer.logger.debug("text= for #{uri}")
       if @text == new_text
-        RubyLanguageServer.logger.debug("IT WAS THE SAME!!!!!!!!!!!!")
+        RubyLanguageServer.logger.debug('IT WAS THE SAME!!!!!!!!!!!!')
         return
       end
       @text = new_text
@@ -28,12 +29,12 @@ module RubyLanguageServer
 
     SymbolKind = {
       file: 1,
-      :'module' => 5, #2,
+      'module': 5, # 2,
       namespace: 3,
       package: 4,
-      :'class' => 5,
-      :'method' => 6,
-      :'singleton method' => 6,
+      'class': 5,
+      'method': 6,
+      'singleton method': 6,
       property: 7,
       field: 8,
       constructor: 9,
@@ -45,8 +46,8 @@ module RubyLanguageServer
       string: 15,
       number: 16,
       boolean: 17,
-      array: 18,
-    }
+      array: 18
+    }.freeze
 
     def tags
       return @tags if !!@tags&.first
@@ -58,7 +59,7 @@ module RubyLanguageServer
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
       return @tags if !!@tags&.first && ripper_tags&.first.nil?
 
-      tags = ripper_tags.map{ |reference|
+      tags = ripper_tags.map do |reference|
         name = reference[:name] || 'undefined?'
         kind = SymbolKind[reference[:kind].to_sym] || 7
         kind = 9 if name == 'initialize' # Magical special case
@@ -70,10 +71,10 @@ module RubyLanguageServer
         container_name = reference[:full_name].split(/(:{2}|\#|\.)/).compact[-3]
         return_hash[:containerName] = container_name if container_name
         return_hash
-      }
-      @tags = tags.reverse.each do |tag|
-        child_tags = tags.select{ |child_tag| child_tag[:containerName] == tag[:name]}
-        max_line = child_tags.map{ |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0
+      end
+      @tags = tags.reverse_each do |tag|
+        child_tags = tags.select { |child_tag| child_tag[:containerName] == tag[:name] }
+        max_line = child_tags.map { |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0
         tag[:location][:range][:end][:line] = [tag[:location][:range][:end][:line], max_line].max
       end
       RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
@@ -83,15 +84,13 @@ module RubyLanguageServer
 
     def diagnostics
       # Maybe we should be sharing this GoodCop across instances
-      @good_cop ||= GoodCop.new()
-      cop_out = @good_cop.diagnostics(@text)
+      @good_cop ||= GoodCop.new
+      cop_out = @good_cop.diagnostics(@text, @uri)
     end
 
     def root_scope
-      RubyLanguageServer.logger.debug("Asking about root_scope")
+      RubyLanguageServer.logger.debug('Asking about root_scope')
       @root_scope ||= ScopeParser.new(text).root_scope
     end
-
   end
-
 end

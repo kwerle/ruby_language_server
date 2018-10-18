@@ -1,10 +1,10 @@
 require_relative '../../test_helper'
-require "minitest/autorun"
+require 'minitest/autorun'
 
 describe RubyLanguageServer::Completion do
 
   before do
-    @code_file_lines=<<-SOURCE
+    @code_file_lines = <<-SOURCE
     bogus = Some::Bogus
     module Foo
       class Bar

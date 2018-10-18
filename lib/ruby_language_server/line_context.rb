@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The purpose of this class is to parse a single line and return an array of the
 # context words given the position of the cursor.
 

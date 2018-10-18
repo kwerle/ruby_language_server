@@ -1,5 +1,7 @@
 #!/usr/local/bin/ruby
-$LOAD_PATH << File.join(__dir__, "..", "lib")
+# frozen_string_literal: true
+
+$LOAD_PATH << File.join(__dir__, '..', 'lib')
 
 require 'ruby_language_server'
 
