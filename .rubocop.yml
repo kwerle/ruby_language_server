@@ -1,5 +1,20 @@
+
+AllCops:
+  TargetRubyVersion: 2.5
+  Exclude:
+    - 'Gemfile'
+    - 'Guardfile'
+    - 'Rakefile'
+
+Naming/MethodName:
+  Exclude:
+    # We do crazy case to match the server standard
+    - 'lib/ruby_language_server/server.rb'
+
+inherit_from: .rubocop_todo.yml
+
 # This is the configuration used to check the rubocop source code.
 
 # We kind of don't have a place to display issues with the filename.
-Naming/FileName:
-  Enabled: false
+# Naming/FileName:
+#   Enabled: false
