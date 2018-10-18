@@ -77,7 +77,8 @@ module RubyLanguageServer
 
     def diagnostics(text)
       maximum_severity = (ENV['LINT_LEVEL'] || 4).to_i
-      offenses(text).map do |offense|
+      enabled_offenses = offenses(text).select{ |offense| offense.status != :disabled  }
+      enabled_offenses.map do |offense|
         {
           range: Location.position_hash(offense.location.line, offense.location.column, offense.location.last_line, offense.location.last_column),
           severity: diagnostic_severity_for(offense.severity),
