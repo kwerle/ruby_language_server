@@ -1,11 +1,32 @@
 module RubyLanguageServer
   module Completion
+    CompletionItemKind = {
+      text: 1,
+      method: 2,
+      function: 3,
+      constructor: 4,
+      field: 5,
+      variable: 6,
+      :class => 7,
+      interface: 8,
+      :module => 9,
+      property: 10,
+      unit: 11,
+      value: 12,
+      enum: 13,
+      keyword: 14,
+      snippet: 15,
+      color: 16,
+      file: 17,
+      reference: 18,
+    }
+    
     class << self
 
       def completion(context, context_scope, scopes)
         RubyLanguageServer.logger.error("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
-        if context.length < 2
-          return scope_completions(context.last, context_scope.self_and_ancestors)
+        completions = if context.length < 2
+          scope_completions(context.last, context_scope.self_and_ancestors)
         else
           working_array = context.dup
           working_word = working_array.pop
@@ -21,6 +42,15 @@ module RubyLanguageServer
           RubyLanguageServer.logger.error("scope: #{scope&.name}")
           scope_completions(context.last, scope.self_and_ancestors)
         end
+        {
+          isIncomplete: true,
+          items: completions.map do |word, hash|
+            {
+              label: word,
+              kind: CompletionItemKind[hash[:type]],
+            }
+          end
+        }
       end
 
       def scope_with_name(name, scopes)

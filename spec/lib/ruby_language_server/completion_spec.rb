@@ -21,6 +21,7 @@ describe RubyLanguageServer::Completion do
         attr :top
 
         def naz(ning)
+          bar = Bar.new
           @niz = ning
         end
       end
@@ -41,6 +42,16 @@ describe RubyLanguageServer::Completion do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = ['bog']
       context_scope = @scope_parser.root_scope
+      completions = RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
+      assert_equal(['bogus'], completions.map(&:first))
+    end
+  end
+
+  describe 'with context' do
+    it 'should find the appropriate stuff from inside Foo::Bar' do
+      context = ['bar', 'ba']
+      context_scope = all_scopes.detect{ |scope| scope.full_name == 'Foo::Nar#naz' }
+      # byebug
       completions = RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
       assert_equal(['bogus'], completions.map(&:first))
     end
