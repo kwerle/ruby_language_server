@@ -42,7 +42,7 @@ describe RubyLanguageServer::Completion do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = ['bog']
       context_scope = @scope_parser.root_scope
-      completions = RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
+      completions = RubyLanguageServer::Completion.scope_completions(context.last, context_scope.self_and_ancestors)
       assert_equal(['bogus'], completions.map(&:first))
     end
   end
@@ -51,9 +51,8 @@ describe RubyLanguageServer::Completion do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = ['bar', 'ba']
       context_scope = all_scopes.detect{ |scope| scope.full_name == 'Foo::Nar#naz' }
-      # byebug
-      completions = RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
-      assert_equal(['bogus'], completions.map(&:first))
+      completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, all_scopes)
+      assert_equal(["baz", "Bar", "Nar", "@biz", "bogus", "@bottom"], completions.map(&:first))
     end
   end
 

@@ -2,7 +2,7 @@
 
 module RubyLanguageServer
   module Completion
-    CompletionItemKind = {
+    COMPLETION_ITEM_KIND = {
       text: 1,
       method: 2,
       function: 3,
@@ -25,29 +25,19 @@ module RubyLanguageServer
 
     class << self
       def completion(context, context_scope, scopes)
-        RubyLanguageServer.logger.error("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
-        completions = if context.length < 2
-                        scope_completions(context.last, context_scope.self_and_ancestors)
-                      else
-                        working_array = context.dup
-                        context_word = working_array.pop
-                        if context_word.match?(/^[A-Z]/)
-                          scope = scope_with_name(context_word, scopes)
-                        else
-                          context_word = context_word.split(/_/).map(&:capitalize).join('')
-                          scope = scope_with_name(context_word, scopes)
-                          RubyLanguageServer.logger.error("scope_with_name: #{scope&.name}")
-                        end
-                        scope ||= context_scope
-                        RubyLanguageServer.logger.error("scope: #{scope&.name}")
-                        scope_completions(context.last, scope.self_and_ancestors)
-                      end
+        RubyLanguageServer.logger.debug("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
+        completions =
+          if context.length < 2
+            scope_completions(context.last, context_scope.self_and_ancestors)
+          else
+            scope_completions_in_target_context(context, context_scope, scopes)
+          end
         {
           isIncomplete: true,
-          items: completions.map do |word, hash|
+          items: completions.uniq.map do |word, hash|
             {
               label: word,
-              kind: CompletionItemKind[hash[:type]]
+              kind: COMPLETION_ITEM_KIND[hash[:type]]
             }
           end
         }
@@ -55,6 +45,21 @@ module RubyLanguageServer
 
       def scope_with_name(name, scopes)
         scopes.detect { |scope| scope.name == name }
+      end
+
+      def scope_completions_in_target_context(context, context_scope, scopes)
+        working_array = context.dup
+        context_word = working_array[-2]
+        if context_word.match?(/^[A-Z]/)
+          scope = scope_with_name(context_word, scopes)
+        else
+          context_word = context_word.split(/_/).map(&:capitalize).join('')
+          scope = scope_with_name(context_word, scopes)
+          RubyLanguageServer.logger.debug("scope_with_name: #{scope&.name}")
+        end
+        scope ||= context_scope
+        RubyLanguageServer.logger.debug("scope: #{scope&.name}")
+        scope_completions(context.last, scope.self_and_ancestors)
       end
 
       def scope_completions(word, scopes)
