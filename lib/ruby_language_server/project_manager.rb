@@ -1,223 +1,143 @@
+# frozen_string_literal: true
+
 require 'ripper-tags'
 require 'fuzzy_match'
 require 'amatch' # note that you have to require this... fuzzy_match won't require it for you
 FuzzyMatch.engine = :amatch # This should be in a config somewhere
 
 module RubyLanguageServer
-
   class ProjectManager
+    attr_reader :uri_code_file_hash
 
     def initialize(uri)
       @root_path = uri
       @root_uri = "file://#{@root_path}"
-      # This is {uri: {content stuff}} where content stuff is like text: , tags: ...
-      @file_tags = {}
+      # This is {uri: code_file} where content stuff is like
+      @uri_code_file_hash = {}
       @update_mutext = Mutex.new
-      scan_all_project_files()
+      scan_all_project_files
     end
 
     def text_for_uri(uri)
-      # hash = @file_tags[uri]
-      # hash[:text] || ''
       code_file = code_file_for_uri(uri)
       code_file&.text || ''
     end
 
-    def update_tags(uri, text)
-      code_file = code_file_for_uri(uri)
-      tags = code_file_for_uri(uri).tags
-      @file_tags[uri][:tags] = tags
-    end
-
     def code_file_for_uri(uri, text = nil)
-      code_file = @file_tags[uri][:code_file]
-      if code_file.nil?
-        code_file = @file_tags[uri][:code_file] = CodeFile.new(uri, text)
-      end
+      code_file = @uri_code_file_hash[uri]
+      code_file = @uri_code_file_hash[uri] = CodeFile.new(uri, text) if code_file.nil?
       code_file
     end
 
     def tags_for_uri(uri)
-      # RubyLanguageServer.logger.debug("tags_for_uri: #{uri}")
       code_file = code_file_for_uri(uri)
-      # RubyLanguageServer.logger.debug("tags_for_uri: code_file #{code_file}")
       return {} if code_file.nil?
-      # RubyLanguageServer.logger.debug("tags_for_uri code_file.tags: #{code_file.tags}")
-      @file_tags[uri][:tags] = code_file.tags
+      code_file.tags
     end
 
     def root_scope_for(uri)
       code_file = code_file_for_uri(uri)
-      RubyLanguageServer.logger.error("code_file.nil?!!!!!!!!!!!!!!") if code_file.nil?
+      RubyLanguageServer.logger.error('code_file.nil?!!!!!!!!!!!!!!') if code_file.nil?
       return code_file.root_scope unless code_file.nil?
     end
 
-    def scopes_at(uri, position)
-      line = position.line
-      root_scope = root_scope_for(uri)
-      matching_scopes = root_scope.select{ |scope| scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line) }
-      return [] if matching_scopes == []
-      deepest_scope = matching_scopes.sort_by(&:depth).last
-      deepest_scope.self_and_ancestors
+    def all_scopes
+      @uri_code_file_hash.values.map(&:root_scope).map(&:self_and_descendants).flatten
     end
 
-    # This really wants more refactoring
-    def scope_completions(word, scopes)
-      words = {}
-      scopes.inject(words) do |hash, scope|
-        scope.children.each{ |function| hash[function.name] ||= {
-          depth: scope.depth,
-          type: function.type,
-          }
-        }
-        scope.variables.each{ |variable| hash[variable.name] ||= {
-          depth: scope.depth,
-          type: variable.type,
-          }
-        }
-        hash
-      end
-      # words = words.sort_by{|word, hash| hash[:depth] }.to_h
-      good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-      words = good_words.map{|w| [w, words[w]]}.to_h
+    # Return the list of scopes [deepest, parent, ..., Object]
+    def scopes_at(uri, position)
+      root_scope = root_scope_for(uri)
+      root_scope.scopes_at(position)
     end
 
     def completion_at(uri, position)
       relative_position = position.dup
-      relative_position.character = relative_position.character - 2 # To get before the . or ::
+      relative_position.character = relative_position.character # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
-      word = word_at_location(uri, relative_position)
-      return {} if word.nil? || word == ''
-      RubyLanguageServer.logger.debug("word #{word}")
-      applicable_scopes = scopes_at(uri, position)
-      RubyLanguageServer.logger.debug("applicable_scopes #{applicable_scopes.map(&:name)}")
-      good_words = scope_completions(word, applicable_scopes)
-      RubyLanguageServer.logger.debug("good_words #{good_words}")
-      {
-        isIncomplete: true,
-        items: good_words.map do |word, hash|
-          {
-            label: word,
-            kind: CompletionItemKind[hash[:type]],
-          }
-        end
-        # [
-        #   {
-        #   	label: 'string;',
-        #   	kind: 'number;',
-        #   	# detail: 'string;',
-        #   	# documentation: 'string;',
-        #   	# sortText: 'string;',
-        #   	# filterText: 'string;',
-        #   	# insertText: 'string;',
-        #   	# insertTextFormat: 'InsertTextFormat;',
-        #   	# textEdit: 'TextEdit;',
-        #   	# additionalTextEdits: 'TextEdit[];',
-        #   	# commitCharacters: 'string[];',
-        #   	# command: 'Command;',
-        #   	# data: 'any',
-        #   }
-        # ]
-      }
+      RubyLanguageServer.logger.error("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
+      context_scope = scopes_at(uri, position).first || root_scope_for(uri)
+      context = context_at_location(uri, relative_position)
+      return {} if context.nil? || context == ''
+      RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
     end
 
-    CompletionItemKind = {
-      text: 1,
-      method: 2,
-      function: 3,
-      constructor: 4,
-      field: 5,
-      variable: 6,
-      :class => 7,
-      interface: 8,
-      :module => 9,
-      property: 10,
-      unit: 11,
-      value: 12,
-      enum: 13,
-      keyword: 14,
-      snippet: 15,
-      color: 16,
-      file: 17,
-      reference: 18,
-    }
-
     # interface CompletionItem {
-    # 	/**
-    # 	 * The label of this completion item. By default
-    # 	 * also the text that is inserted when selecting
-    # 	 * this completion.
-    # 	 */
-    # 	label: string;
-    # 	/**
-    # 	 * The kind of this completion item. Based of the kind
-    # 	 * an icon is chosen by the editor.
-    # 	 */
-    # 	kind?: number;
-    # 	/**
-    # 	 * A human-readable string with additional information
-    # 	 * about this item, like type or symbol information.
-    # 	 */
-    # 	detail?: string;
-    # 	/**
-    # 	 * A human-readable string that represents a doc-comment.
-    # 	 */
-    # 	documentation?: string;
-    # 	/**
-    # 	 * A string that shoud be used when comparing this item
-    # 	 * with other items. When `falsy` the label is used.
-    # 	 */
-    # 	sortText?: string;
-    # 	/**
-    # 	 * A string that should be used when filtering a set of
-    # 	 * completion items. When `falsy` the label is used.
-    # 	 */
-    # 	filterText?: string;
-    # 	/**
-    # 	 * A string that should be inserted a document when selecting
-    # 	 * this completion. When `falsy` the label is used.
-    # 	 */
-    # 	insertText?: string;
-    # 	/**
-    # 	 * The format of the insert text. The format applies to both the `insertText` property
-    # 	 * and the `newText` property of a provided `textEdit`.
-    # 	 */
-    # 	insertTextFormat?: InsertTextFormat;
-    # 	/**
-    # 	 * An edit which is applied to a document when selecting this completion. When an edit is provided the value of
-    # 	 * `insertText` is ignored.
-    # 	 *
-    # 	 * *Note:* The range of the edit must be a single line range and it must contain the position at which completion
-    # 	 * has been requested.
-    # 	 */
-    # 	textEdit?: TextEdit;
-    # 	/**
-    # 	 * An optional array of additional text edits that are applied when
-    # 	 * selecting this completion. Edits must not overlap with the main edit
-    # 	 * nor with themselves.
-    # 	 */
-    # 	additionalTextEdits?: TextEdit[];
-    # 	/**
-    # 	 * An optional set of characters that when pressed while this completion is active will accept it first and
-    # 	 * then type that character. *Note* that all commit characters should have `length=1` and that superfluous
-    # 	 * characters will be ignored.
-    # 	 */
-    # 	commitCharacters?: string[];
-    # 	/**
-    # 	 * An optional command that is executed *after* inserting this completion. *Note* that
-    # 	 * additional modifications to the current document should be described with the
-    # 	 * additionalTextEdits-property.
-    # 	 */
-    # 	command?: Command;
-    # 	/**
-    # 	 * An data entry field that is preserved on a completion item between
-    # 	 * a completion and a completion resolve request.
-    # 	 */
-    # 	data?: any
+    #   /**
+    #    * The label of this completion item. By default
+    #    * also the text that is inserted when selecting
+    #    * this completion.
+    #    */
+    #   label: string;
+    #   /**
+    #    * The kind of this completion item. Based of the kind
+    #    * an icon is chosen by the editor.
+    #    */
+    #   kind?: number;
+    #   /**
+    #    * A human-readable string with additional information
+    #    * about this item, like type or symbol information.
+    #    */
+    #   detail?: string;
+    #   /**
+    #    * A human-readable string that represents a doc-comment.
+    #    */
+    #   documentation?: string;
+    #   /**
+    #    * A string that shoud be used when comparing this item
+    #    * with other items. When `falsy` the label is used.
+    #    */
+    #   sortText?: string;
+    #   /**
+    #    * A string that should be used when filtering a set of
+    #    * completion items. When `falsy` the label is used.
+    #    */
+    #   filterText?: string;
+    #   /**
+    #    * A string that should be inserted a document when selecting
+    #    * this completion. When `falsy` the label is used.
+    #    */
+    #   insertText?: string;
+    #   /**
+    #    * The format of the insert text. The format applies to both the `insertText` property
+    #    * and the `newText` property of a provided `textEdit`.
+    #    */
+    #   insertTextFormat?: InsertTextFormat;
+    #   /**
+    #    * An edit which is applied to a document when selecting this completion. When an edit is provided the value of
+    #    * `insertText` is ignored.
+    #    *
+    #    * *Note:* The range of the edit must be a single line range and it must contain the position at which completion
+    #    * has been requested.
+    #    */
+    #   textEdit?: TextEdit;
+    #   /**
+    #    * An optional array of additional text edits that are applied when
+    #    * selecting this completion. Edits must not overlap with the main edit
+    #    * nor with themselves.
+    #    */
+    #   additionalTextEdits?: TextEdit[];
+    #   /**
+    #    * An optional set of characters that when pressed while this completion is active will accept it first and
+    #    * then type that character. *Note* that all commit characters should have `length=1` and that superfluous
+    #    * characters will be ignored.
+    #    */
+    #   commitCharacters?: string[];
+    #   /**
+    #    * An optional command that is executed *after* inserting this completion. *Note* that
+    #    * additional modifications to the current document should be described with the
+    #    * additionalTextEdits-property.
+    #    */
+    #   command?: Command;
+    #   /**
+    #    * An data entry field that is preserved on a completion item between
+    #    * a completion and a completion resolve request.
+    #    */
+    #   data?: any
     # }
 
     def scan_all_project_files
-      project_ruby_files = Dir.glob("/project/**/*.rb")
+      project_ruby_files = Dir.glob('/project/**/*.rb')
       RubyLanguageServer.logger.debug("scan_all_project_files: #{project_ruby_files * ','}")
       Thread.new do
         project_ruby_files.each do |container_path|
@@ -232,54 +152,55 @@ module RubyLanguageServer
     def update_document_content(uri, text)
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-        @file_tags[uri] ||= {}
-        # @file_tags[uri][:text] = text
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
-        update_tags(uri, text)
         code_file.diagnostics
       end
     end
 
-    def word_at_location(uri, position)
-      character = position.character
+    def context_at_location(uri, position)
       lines = text_for_uri(uri).split("\n")
-      # Grab the line
       line = lines[position.line]
-      return nil if line.nil?
-      # Grab just the last part of the line - from the index onward
-      line_end = line[character..-1]
-      return nil if line_end.nil?
-      # RubyLanguageServer.logger.debug("line_end: #{line_end}")
-      # Grab the portion of the word that starts at the position toward the end of the line
-      match = line_end.partition(/^(@{0,2}\w+)/)[1]
-      # RubyLanguageServer.logger.debug("match: #{match}")
-      # Get the start of the line to the end of the matched word
-      line_start = line[0..(character + match.length - 1)]
-      # RubyLanguageServer.logger.debug("line_start: #{line_start}")
-      # Match as much as we can to the end of the line - which is now the end of the word
-      end_match = line_start.partition(/(@{0,2}\w+)$/)[1]
-      # RubyLanguageServer.logger.debug("end_match: #{end_match}")
-      end_match
+      RubyLanguageServer.logger.error("LineContext.for(line, position.character): #{LineContext.for(line, position.character)}")
+      LineContext.for(line, position.character)
     end
 
-    def possible_definitions_for(name)
+    def word_at_location(uri, position)
+      context_at_location(uri, position).last
+    end
+
+    def possible_definitions_for(name, scope, uri)
       return {} if name == ''
       name = 'initialize' if name == 'new'
-      return_array = @file_tags.keys.inject([]) do |ary, uri|
+      results = scope_definitions_for(name, scope, uri)
+      return results unless results.empty?
+      project_definitions_for(name, scope)
+    end
+
+    def scope_definitions_for(name, scope, uri)
+      check_scope = scope
+      return_array = []
+      while !!check_scope
+        scope.variables.each do |variable|
+          return_array << Location.hash(uri, variable.line) if variable.name == name
+        end
+        check_scope = check_scope.parent
+      end
+      return_array.uniq
+    end
+
+    def project_definitions_for(name, _scope)
+      return_array = @uri_code_file_hash.keys.each_with_object([]) do |uri, ary|
         tags = tags_for_uri(uri)
         RubyLanguageServer.logger.debug("tags_for_uri(#{uri}): #{tags_for_uri(uri)}")
-        unless tags.nil?
-          match_tags = tags.select{|tag| tag[:name] == name}
-          match_tags.each do |tag|
-            ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
-          end
+        next if tags.nil?
+        match_tags = tags.select { |tag| tag[:name] == name }
+        match_tags.each do |tag|
+          ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
         end
-        ary
       end
       return_array
     end
-
   end
 end

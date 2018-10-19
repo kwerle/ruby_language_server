@@ -35,6 +35,9 @@ The expectation is that you will be running this using the Atom package ide-ruby
 
 Clone.  I love git [HubFlow](https://datasift.github.io/gitflow/).
 
+Check out the [Makefile](Makefile).  You are going to want to do
+`make guard` and `make continuous_development`.
+
 ```sh
 docker run -it -v $PWD:/tmp/src -w /tmp/src ruby_language_server bash -c 'bundle && guard'
 ```

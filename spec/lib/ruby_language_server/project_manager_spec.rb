@@ -30,21 +30,4 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
-  describe "scope_completions" do
-
-    let(:scopes) {
-      scope = RubyLanguageServer::ScopeData::Scope.new
-      scope.variables << RubyLanguageServer::ScopeData::Variable.new(scope, 'some_var')
-      [scope]
-    }
-
-    let(:pm) { RubyLanguageServer::ProjectManager.new('foo') }
-
-    it "should find completions" do
-      results = pm.scope_completions('some', scopes)
-      assert_equal({"some_var"=>{:depth=>0, :type=>:variable}}, results)
-    end
-
-  end
-
 end

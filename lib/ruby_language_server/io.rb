@@ -7,17 +7,15 @@ module RubyLanguageServer
       @server = server
       server.io = self
       loop do
-        begin
-          (id, response) = process_request(STDIN)
-          return_response(id, response, STDOUT) unless id.nil?
-        rescue SignalException => e
-          RubyLanguageServer.logger.error "We received a signal.  Let's bail: #{e}"
-          exit(true)
-        rescue Exception => e
-          RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
-          backtrace = e.backtrace * "\n"
-          RubyLanguageServer.logger.error "Backtrace:\n#{backtrace}"
-        end
+        (id, response) = process_request(STDIN)
+        return_response(id, response, STDOUT) unless id.nil?
+      rescue SignalException => e
+        RubyLanguageServer.logger.error "We received a signal.  Let's bail: #{e}"
+        exit(true)
+      rescue Exception => e
+        RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
+        backtrace = e.backtrace * "\n"
+        RubyLanguageServer.logger.error "Backtrace:\n#{backtrace}"
       end
     end
 
@@ -86,6 +84,7 @@ module RubyLanguageServer
     end
 
     def get_length(string)
+      return 0 if string.nil?
       string.match(/Content-Length: (\d+)/)[1].to_i
     end
 

@@ -1,5 +1,15 @@
 # Changelog
 
+#### 0.0.9 Thu Oct 18 17:48:35 PDT 2018
+
+* Refactor & some RuboCop
+* Fix most of https://github.com/kwerle/ide-ruby/issues/18
+* * Rubocop issues: no inline support,
+* * invalid snake_case warnings,
+* * NOT missing "rubocop failed to load" indicator
+* More work on completion stuff
+
+
 #### 0.0.8 Thu Jul 19 00:01:25 PDT 2018
 
 * Bump ruby version

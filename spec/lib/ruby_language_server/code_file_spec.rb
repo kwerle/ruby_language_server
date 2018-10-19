@@ -29,7 +29,7 @@ describe RubyLanguageServer::CodeFile do
 
       it "should not find variables" do
         tags = code_file("@foo=1\n").tags
-        assert_nil(tags)
+        assert_equal([], tags)
       end
 
       it "should do the right thing with self.methods" do
