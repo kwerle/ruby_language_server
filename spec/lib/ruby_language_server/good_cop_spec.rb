@@ -27,7 +27,7 @@ describe RubyLanguageServer::GoodCop do
   describe "diagnostics" do
 
     it "must lint" do
-      diagnostics = good_cop.diagnostics("def BAD\n  true\nend\n")
+      diagnostics = good_cop.diagnostics("def BAD\n  true\nend\n", 'foo.rb')
       assert_equal([{:range=>{:start=>{:line=>0, :character=>4}, :end=>{:line=>0, :character=>7}}, :severity=>3, :code=>"code", :source=>"RuboCop:Naming/MethodName", :message=>"Use snake_case for method names."}], diagnostics)
     end
 
