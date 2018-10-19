@@ -7,7 +7,7 @@ GEM
     ast (2.3.0)
     byebug (9.1.0)
     coderay (1.1.2)
-    ffi (1.9.18)
+    ffi (1.9.25)
     formatador (0.2.5)
     fuzzy_match (2.1.0)
     guard (2.14.1)
@@ -94,4 +94,4 @@ DEPENDENCIES
   rubocop
 
 BUNDLED WITH
-   1.15.4
+   1.16.6
