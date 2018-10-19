@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RubyLanguageServer
   # Hash factories for the language server
   module Location

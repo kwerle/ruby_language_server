@@ -1,5 +1,0 @@
-# This is the configuration used to check the rubocop source code.
-
-# We kind of don't have a place to display issues with the filename.
-Naming/FileName:
-  Enabled: false

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'ruby_language_server/logger' # do this first!
 require_relative 'ruby_language_server/io'
 require_relative 'ruby_language_server/location'
