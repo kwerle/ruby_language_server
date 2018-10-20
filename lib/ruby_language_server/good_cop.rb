@@ -4,16 +4,22 @@ require 'rubocop'
 
 module RubyLanguageServer
   class GoodCop < RuboCop::Runner
+    CONFIG_PATH = '/project/.rubocop.yml'
+    FALLBACK_PATH = '/app/.rubocop.yml'
+    @initialization_error = nil
+
     def initialize
-      config_path = '/project/.rubocop.yml'
       config_store = RuboCop::ConfigStore.new
       config_store.options_config =
-        if File.exist?(config_path)
-          config_path
+        if File.exist?(CONFIG_PATH)
+          CONFIG_PATH
         else
-          '/app/.rubocop.yml'
+          FALLBACK_PATH
         end
       super({}, config_store)
+    rescue Exception => exception
+      RubyLanguageServer.logger.error(exception)
+      @initialization_error = "There was an issue loading the rubocop configuration file: #{exception.to_s}"
     end
 
     # namespace DiagnosticSeverity {
@@ -79,6 +85,7 @@ module RubyLanguageServer
     end
 
     def diagnostics(text, filename = nil)
+      return initialization_offenses unless @initialization_error.nil?
       maximum_severity = (ENV['LINT_LEVEL'] || 4).to_i
       enabled_offenses = offenses(text, filename).reject{ |offense| offense.status == :disabled }
       enabled_offenses.map do |offense|
@@ -99,6 +106,19 @@ module RubyLanguageServer
       processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename)
       offenses = inspect_file(processed_source)
       offenses.compact.flatten
+    end
+
+    def initialization_offenses
+      [
+        {
+          range: Location.position_hash(1, 1, 1, 1),
+          severity: 'startup', #diagnostic_severity_for(offense.severity),
+          # code?: number | string;
+          code: 'code',
+          source: 'RuboCop:RubyLanguageServer',
+          message: @initialization_error
+        }
+      ]
     end
   end
 end
