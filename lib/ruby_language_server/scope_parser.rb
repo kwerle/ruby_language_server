@@ -274,7 +274,11 @@ module RubyLanguageServer
     attr_reader :root_scope
 
     def initialize(text)
-      sexp = self.class.sexp(text)
+      begin
+        sexp = self.class.sexp(text)
+      rescue TypeError => exception
+        RubyLanguageServer.logger.error("Exception in sexp: #{exception} for text: #{text}")
+      end
       processor = SEXPProcessor.new(sexp, text.length)
       @root_scope = processor.root_scope
     end

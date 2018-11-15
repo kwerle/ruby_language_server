@@ -24,7 +24,7 @@ module RubyLanguageServer
         return
       end
       @text = new_text
-      @tags = nil
+      # @tags = nil
     end
 
     SymbolKind = {
@@ -50,11 +50,12 @@ module RubyLanguageServer
     }.freeze
 
     def tags
-      return @tags if !!@tags&.first
+      # return @tags if !!@tags&.first
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
-      return {} if text.nil?
+      return @tags = {} if text.nil? || text == ''
       RubyLanguageServer.logger.debug("Getting tags for #{uri}")
       ripper_tags = RipperTags::Parser.extract(text)
+      RubyLanguageServer.logger.debug("ripper_tags: #{ripper_tags}")
       # RubyLanguageServer.logger.error("ripper_tags: #{ripper_tags}")
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
       return @tags if !!@tags&.first && ripper_tags&.first.nil?
