@@ -15,6 +15,13 @@ describe RubyLanguageServer::CodeFile do
         RubyLanguageServer::CodeFile.new('uri', text)
       end
 
+      it "should retain existing tags when text becomes unparsable" do
+        code_file = code_file("def foo\nend\n")
+        assert_equal('foo', code_file.tags.first[:name])
+        code_file.text= "def foo\n@foo ||\nend\n"
+        assert_equal('foo', code_file.tags.first[:name])
+      end
+
       it "should find functions" do
         tags = code_file("def foo\nend\n").tags
         assert_equal('foo', tags.first[:name])
