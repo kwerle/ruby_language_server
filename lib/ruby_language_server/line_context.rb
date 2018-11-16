@@ -31,7 +31,7 @@ module RubyLanguageServer
       # Match as much as we can to the end of the line - which is now the end of the word
       end_match = line_start.partition(/(@{0,2}[:\.\w]+)$/)[1]
       matches = end_match.split('.', -1)
-      matches = matches.map{ |match| match.length > 0 ? match.split('::', -1) : match }.flatten
+      matches = matches.map{ |match| match.length.positive? ? match.split('::', -1) : match }.flatten
       RubyLanguageServer.logger.debug("matches: #{matches}")
       matches
     end
