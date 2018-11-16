@@ -9,7 +9,16 @@
 AllCops:
   TargetRubyVersion: 2.5
 
+Layout/SpaceInsideHashLiteralBraces:
+  Enabled: false
+
+Lint/EmptyWhen:
+  Enabled: false
+
 Lint/RescueException:
+  Enabled: false
+
+Metrics/LineLength:
   Enabled: false
 
 Style/CommentedKeyword:
@@ -26,157 +35,7 @@ Naming/MethodName:
   Exclude:
     - 'lib/ruby_language_server/server.rb'
 
-# Offense count: 1
-# Configuration parameters: Include.
-# Include: **/*.gemfile, **/Gemfile, **/gems.rb
-# Bundler/DuplicatedGem:
-#   Exclude:
-#     - 'Gemfile'
-
-# Offense count: 4
-# Cop supports --auto-correct.
-# Configuration parameters: TreatCommentsAsGroupSeparators, Include.
-# Include: **/*.gemfile, **/Gemfile, **/gems.rb
-Bundler/OrderedGems:
-  Exclude:
-    - 'Gemfile'
-
-# Offense count: 8
-# Cop supports --auto-correct.
-Layout/EmptyLineAfterGuardClause:
-  Exclude:
-    - 'lib/ruby_language_server/good_cop.rb'
-    - 'lib/ruby_language_server/line_context.rb'
-    - 'lib/ruby_language_server/scope_data/scope.rb'
-    - 'lib/ruby_language_server/scope_parser.rb'
-
-# Offense count: 1
-# Cop supports --auto-correct.
-Layout/EmptyLines:
-  Exclude:
-    - 'lib/ruby_language_server/scope_parser.rb'
-
-# Offense count: 21
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle.
-# SupportedStyles: empty_lines, no_empty_lines
-Layout/EmptyLinesAroundBlockBody:
-  Exclude:
-    - 'Guardfile'
-    - 'spec/lib/ruby_language_server/code_file_spec.rb'
-    - 'spec/lib/ruby_language_server/completion_spec.rb'
-    - 'spec/lib/ruby_language_server/good_cop_spec.rb'
-    - 'spec/lib/ruby_language_server/line_context_spec.rb'
-    - 'spec/lib/ruby_language_server/scope_parser_spec.rb'
-
-# Offense count: 2
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle.
-# SupportedStyles: empty_lines, empty_lines_except_namespace, empty_lines_special, no_empty_lines, beginning_only, ending_only
-Layout/EmptyLinesAroundClassBody:
-  Exclude:
-    - 'lib/ruby_language_server/scope_parser.rb'
-    - 'lib/ruby_language_server/server.rb'
-
-# Offense count: 8
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle.
-# SupportedStyles: empty_lines, empty_lines_except_namespace, empty_lines_special, no_empty_lines
-Layout/EmptyLinesAroundModuleBody:
-  Exclude:
-    - 'lib/ruby_language_server/line_context.rb'
-    - 'lib/ruby_language_server/location.rb'
-    - 'lib/ruby_language_server/scope_data/base.rb'
-    - 'lib/ruby_language_server/scope_parser.rb'
-    - 'lib/ruby_language_server/server.rb'
-
-# Offense count: 1
-# Cop supports --auto-correct.
-Layout/LeadingCommentSpace:
-  Exclude:
-    - 'lib/ruby_language_server/good_cop.rb'
-
-# Offense count: 13
-# Cop supports --auto-correct.
-# Configuration parameters: AllowForAlignment.
-Layout/SpaceAroundOperators:
-  Exclude:
-    - 'spec/lib/ruby_language_server/code_file_spec.rb'
-    - 'spec/lib/ruby_language_server/good_cop_spec.rb'
-    - 'spec/lib/ruby_language_server/scope_parser_spec.rb'
-
-# Offense count: 7
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, EnforcedStyleForEmptyBraces.
-# SupportedStyles: space, no_space
-# SupportedStylesForEmptyBraces: space, no_space
-Layout/SpaceBeforeBlockBraces:
-  Exclude:
-    - 'lib/ruby_language_server/good_cop.rb'
-    - 'lib/ruby_language_server/line_context.rb'
-    - 'lib/ruby_language_server/logger.rb'
-    - 'lib/ruby_language_server/scope_data/scope.rb'
-    - 'lib/ruby_language_server/scope_parser.rb'
-    - 'spec/lib/ruby_language_server/completion_spec.rb'
-
-# Offense count: 10
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, EnforcedStyleForEmptyBraces.
-# SupportedStyles: space, no_space, compact
-# SupportedStylesForEmptyBraces: space, no_space
-Layout/SpaceInsideHashLiteralBraces:
-  Exclude:
-    - 'lib/ruby_language_server/server.rb'
-    - 'spec/lib/ruby_language_server/good_cop_spec.rb'
-
-# Offense count: 2
-# Cop supports --auto-correct.
-Layout/SpaceInsidePercentLiteralDelimiters:
-  Exclude:
-    - 'lib/ruby_language_server/scope_parser.rb'
-
-# Offense count: 1
-# Cop supports --auto-correct.
-# Configuration parameters: AllowInHeredoc.
-Layout/TrailingWhitespace:
-  Exclude:
-    - 'lib/ruby_language_server/scope_data/base.rb'
-
-# Offense count: 3
-Lint/DuplicateCaseCondition:
-  Exclude:
-    - 'lib/ruby_language_server/scope_parser.rb'
-
-# Offense count: 4
-Lint/EmptyWhen:
-  Exclude:
-    - 'lib/ruby_language_server/scope_parser.rb'
-
-# Offense count: 1
-Lint/ShadowingOuterLocalVariable:
-  Exclude:
-    - 'lib/ruby_language_server/line_context.rb'
-
-# Offense count: 1
-# Cop supports --auto-correct.
-Lint/StringConversionInInterpolation:
-  Exclude:
-    - 'lib/ruby_language_server/good_cop.rb'
-
-# Offense count: 5
-# Cop supports --auto-correct.
-# Configuration parameters: AllowUnusedKeywordArguments, IgnoreEmptyMethods.
-Lint/UnusedMethodArgument:
-  Exclude:
-    - 'lib/ruby_language_server/scope_data/scope.rb'
-    - 'lib/ruby_language_server/scope_parser.rb'
-
-# Offense count: 4
-Lint/UselessAssignment:
-  Exclude:
-    - 'lib/ruby_language_server/scope_parser.rb'
-    - 'spec/lib/ruby_language_server/code_file_spec.rb'
-    - 'spec/lib/ruby_language_server/scope_parser_spec.rb'
+# Think about cleaning up the rest of these
 
 # Offense count: 5
 Metrics/AbcSize:
@@ -439,9 +298,3 @@ Style/YodaCondition:
 Style/ZeroLengthPredicate:
   Exclude:
     - 'lib/ruby_language_server/line_context.rb'
-
-# Offense count: 43
-# Configuration parameters: AllowHeredoc, AllowURI, URISchemes, IgnoreCopDirectives, IgnoredPatterns.
-# URISchemes: http, https
-Metrics/LineLength:
-  Max: 226

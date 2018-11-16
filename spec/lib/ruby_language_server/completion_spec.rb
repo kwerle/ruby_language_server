@@ -4,7 +4,6 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::Completion do
-
   before do
     @code_file_lines = <<-SOURCE
     bogus = Some::Bogus
@@ -52,10 +51,9 @@ describe RubyLanguageServer::Completion do
   describe 'with context' do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = ['bar', 'ba']
-      context_scope = all_scopes.detect{ |scope| scope.full_name == 'Foo::Nar#naz' }
+      context_scope = all_scopes.detect { |scope| scope.full_name == 'Foo::Nar#naz' }
       completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, all_scopes)
       assert_equal(["baz", "Bar", "Nar", "@biz", "bogus", "@bottom"], completions.map(&:first))
     end
   end
-
 end

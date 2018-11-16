@@ -3,7 +3,6 @@
 require 'ripper'
 
 module RubyLanguageServer
-
   # This class is responsible for processing the generated sexp from the ScopeParser below.
   # It builds scopes that amount to heirarchical arrays with information about what
   # classes, methods, variables, etc - are in each scope.
@@ -19,6 +18,7 @@ module RubyLanguageServer
 
     def root_scope
       return @root_scope unless @root_scope.nil?
+
       @root_scope = new_root_scope()
       @current_scope = @root_scope
       process(@sexp)
@@ -27,11 +27,12 @@ module RubyLanguageServer
 
     def process(sexp)
       return if sexp.nil?
+
       root, args, *rest = sexp
       # RubyLanguageServer.logger.info("Doing #{[root, args, rest]}")
       case root
       when Array
-        sexp.each{ |child| process(child) }
+        sexp.each { |child| process(child) }
       when Symbol
         method_name = "on_#{root}"
         if respond_to? method_name
@@ -51,13 +52,14 @@ module RubyLanguageServer
       end
     end
 
-    def on_program(args, rest)
+    def on_program(args, _rest)
       process(args)
     end
 
     def on_var_field(args, rest)
       (_, name, (line, column)) = args
       return if name.nil?
+
       if name.start_with?('@')
         add_ivar(name, line, column)
       else
@@ -66,7 +68,7 @@ module RubyLanguageServer
       process(rest)
     end
 
-    def on_bodystmt(args, rest)
+    def on_bodystmt(args, _rest)
       process(args)
     end
 
@@ -98,9 +100,10 @@ module RubyLanguageServer
       add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
     end
 
-    def on_params(args, rest)
+    def on_params(args, _rest)
       # RubyLanguageServer.logger.info("on_params #{[args, rest]}")
       return if args.nil?
+
       # [[:@ident, "bing", [3, 16]], [:@ident, "zing", [3, 22]]]
       args.each do |_, name, (line, column)|
         add_variable(name, line, column)
@@ -110,7 +113,7 @@ module RubyLanguageServer
     # The on_command function idea is stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb
     def on_command(args, rest)
       # [:@ident, "public", [6, 8]]
-      (_, name, (line, column)) = args
+      (_, name, (_line, _column)) = args
       case name
       when 'public', 'private', 'protected'
         # FIXME access control...
@@ -120,7 +123,7 @@ module RubyLanguageServer
            "belongs_to", "has_and_belongs_to_many",
            "scope", "named_scope",
            "public_class_method", "private_class_method",
-           "public", "protected", "private",
+           # "public", "protected", "private",
            /^attr_(accessor|reader|writer)$/
         # on_method_add_arg([:fcall, name], args[0])
       when "attr"
@@ -200,7 +203,7 @@ module RubyLanguageServer
           a = args[1][0]
           unless a.is_a?(Enumerable) && !a.is_a?(String)
             kind = name.to_sym
-            %W[ #{a} #{a}= build_#{a} create_#{a} create_#{a}! ].inject([]) do |all, ident|
+            %W[#{a} #{a}= build_#{a} create_#{a} create_#{a}!].inject([]) do |all, ident|
               all << [:rails_def, kind, ident, line]
             end
           end
@@ -266,7 +269,6 @@ module RubyLanguageServer
     end
   end
 
-
   # This class builds on Ripper's sexp processor to add ruby and rails magic.
   # Specifically it knows about things like alias, attr_*, has_one/many, etc.
   # It adds the appropriate definitions for those magic words.
@@ -283,7 +285,5 @@ module RubyLanguageServer
       processor = SEXPProcessor.new(sexp, text.length)
       @root_scope = processor.root_scope
     end
-
   end
-
 end

@@ -20,7 +20,6 @@ describe RubyLanguageServer::LineContext do
     it "should find 'em'" do
       assert_equal(['bar'], line_context.for(line, 6))
     end
-
   end
 
   describe "dot variables" do
@@ -37,7 +36,6 @@ describe RubyLanguageServer::LineContext do
     it "should get the method" do
       assert_equal(['instance', 'method'], line_context.for(line, 9))
     end
-
   end
 
   describe "Module relative with methods" do
@@ -51,7 +49,5 @@ describe RubyLanguageServer::LineContext do
 
     it "should the method" do
     end
-
   end
-
 end

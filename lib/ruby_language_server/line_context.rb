@@ -17,11 +17,11 @@
 
 module RubyLanguageServer
   module LineContext
-
     def self.for(line, position)
       # Grab just the last part of the line - from the index onward
       line_end = line[position..-1]
       return nil if line_end.nil?
+
       # Grab the portion of the word that starts at the position toward the end of the line
       match = line_end.partition(/^(@{0,2}\w+)/)[1]
       RubyLanguageServer.logger.debug("match: #{match}")
@@ -31,10 +31,9 @@ module RubyLanguageServer
       # Match as much as we can to the end of the line - which is now the end of the word
       end_match = line_start.partition(/(@{0,2}[:\.\w]+)$/)[1]
       matches = end_match.split('.', -1)
-      matches = matches.map{ |match| match.length.positive? ? match.split('::', -1) : match }.flatten
+      matches = matches.map { |m| m.length.positive? ? m.split('::', -1) : m }.flatten
       RubyLanguageServer.logger.debug("matches: #{matches}")
       matches
     end
-
   end
 end

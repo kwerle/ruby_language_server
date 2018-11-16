@@ -4,10 +4,9 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::ScopeParser do
-
   describe 'Small file' do
     before do
-      @code_file_lines=<<-SOURCE
+      @code_file_lines = <<-SOURCE
       bogus = Some::Bogus
       module Foo
         class Bar
@@ -97,19 +96,15 @@ describe RubyLanguageServer::ScopeParser do
       bar = m.children.last
       assert_equal(2, bar.variables.size)
     end
-
   end
 
   describe 'on_assign' do
-
     it 'should handle complex lvars' do
-      parser = RubyLanguageServer::ScopeParser.new('some.tricky.thing = bob')
+      RubyLanguageServer::ScopeParser.new('some.tricky.thing = bob')
     end
-
   end
 
   describe 'initialize' do
-
     it "should deal with nil" do
       RubyLanguageServer::ScopeParser.new(nil)
     end
@@ -117,7 +112,6 @@ describe RubyLanguageServer::ScopeParser do
     it "should deal with empty" do
       RubyLanguageServer::ScopeParser.new('')
     end
-
   end
 
   describe 'Rakefile' do
@@ -136,5 +130,4 @@ describe RubyLanguageServer::ScopeParser do
       assert_equal('foo', scope_parser.root_scope.self_and_descendants.last.variables.first.name)
     end
   end
-
 end
