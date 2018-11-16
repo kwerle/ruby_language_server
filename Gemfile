@@ -2,7 +2,8 @@ source 'https://rubygems.org'
 
 gem 'rcodetools' # Uhhh...
 
-gem 'rubocop' # Linter
+# No - do not put these in dev - they are needed for the app
+gem 'rubocop'
 gem 'rubocop-rspec' # Linter
 
 gem 'ripper-tags' # Tags - going away?
@@ -17,6 +18,7 @@ group :development do
   gem 'minitest'
   gem 'guard'
   gem 'guard-minitest'
+  gem 'guard-rubocop'
   gem 'minitest-color'
   gem 'pry-byebug'
 end

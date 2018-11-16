@@ -46,7 +46,7 @@ docker run -it -v $PWD:/tmp/src -w /tmp/src ruby_language_server bash -c 'bundle
 ```sh
 while (true)
 do
-  docker build -t local_ruby_language_server .
+  docker build --rm -t local_ruby_language_server .
   sleep 2
 done
 ```

@@ -106,6 +106,18 @@ describe RubyLanguageServer::ScopeParser do
 
   end
 
+  describe 'initialize' do
+
+    it "should deal with nil" do
+      RubyLanguageServer::ScopeParser.new(nil)
+    end
+
+    it "should deal with empty" do
+      RubyLanguageServer::ScopeParser.new('')
+    end
+
+  end
+
   describe 'Rakefile' do
     let(:rake_source) {
       <<-RAKE

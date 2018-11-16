@@ -274,6 +274,7 @@ module RubyLanguageServer
     attr_reader :root_scope
 
     def initialize(text)
+      text ||= '' # empty is the same as nil - but it doesn't crash
       begin
         sexp = self.class.sexp(text)
       rescue TypeError => exception
