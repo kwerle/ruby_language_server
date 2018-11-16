@@ -120,7 +120,5 @@ module RubyLanguageServer
       position = params['position']
       Position.new((position['line']).to_i, position['character'].to_i)
     end
-
   end
-
 end

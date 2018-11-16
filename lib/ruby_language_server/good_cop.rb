@@ -19,7 +19,7 @@ module RubyLanguageServer
       super({}, config_store)
     rescue Exception => exception
       RubyLanguageServer.logger.error(exception)
-      @initialization_error = "There was an issue loading the rubocop configuration file: #{exception.to_s}"
+      @initialization_error = "There was an issue loading the rubocop configuration file: #{exception}"
     end
 
     # namespace DiagnosticSeverity {
@@ -86,8 +86,9 @@ module RubyLanguageServer
 
     def diagnostics(text, filename = nil)
       return initialization_offenses unless @initialization_error.nil?
+
       maximum_severity = (ENV['LINT_LEVEL'] || 4).to_i
-      enabled_offenses = offenses(text, filename).reject{ |offense| offense.status == :disabled }
+      enabled_offenses = offenses(text, filename).reject { |offense| offense.status == :disabled }
       enabled_offenses.map do |offense|
         {
           range: Location.position_hash(offense.location.line, offense.location.column, offense.location.last_line, offense.location.last_column),
@@ -97,7 +98,7 @@ module RubyLanguageServer
           source: "RuboCop:#{offense.cop_name}",
           message: offense.message
         }
-      end.select{ |hash| hash[:severity] <= maximum_severity }
+      end.select { |hash| hash[:severity] <= maximum_severity }
     end
 
     private
@@ -112,7 +113,7 @@ module RubyLanguageServer
       [
         {
           range: Location.position_hash(1, 1, 1, 1),
-          severity: 'startup', #diagnostic_severity_for(offense.severity),
+          severity: 'startup', # diagnostic_severity_for(offense.severity),
           # code?: number | string;
           code: 'code',
           source: 'RuboCop:RubyLanguageServer',

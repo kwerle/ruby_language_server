@@ -32,6 +32,7 @@ module RubyLanguageServer
     def tags_for_uri(uri)
       code_file = code_file_for_uri(uri)
       return {} if code_file.nil?
+
       code_file.tags
     end
 
@@ -59,6 +60,7 @@ module RubyLanguageServer
       context_scope = scopes_at(uri, position).first || root_scope_for(uri)
       context = context_at_location(uri, relative_position)
       return {} if context.nil? || context == ''
+
       RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
     end
 
@@ -172,16 +174,18 @@ module RubyLanguageServer
 
     def possible_definitions_for(name, scope, uri)
       return {} if name == ''
+
       name = 'initialize' if name == 'new'
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?
+
       project_definitions_for(name, scope)
     end
 
     def scope_definitions_for(name, scope, uri)
       check_scope = scope
       return_array = []
-      while !!check_scope
+      while check_scope
         scope.variables.each do |variable|
           return_array << Location.hash(uri, variable.line) if variable.name == name
         end
@@ -195,6 +199,7 @@ module RubyLanguageServer
         tags = tags_for_uri(uri)
         RubyLanguageServer.logger.debug("tags_for_uri(#{uri}): #{tags_for_uri(uri)}")
         next if tags.nil?
+
         match_tags = tags.select { |tag| tag[:name] == name }
         match_tags.each do |tag|
           ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)

@@ -20,7 +20,7 @@ module RubyLanguageServer
       attr_accessor :name            # method
       attr_accessor :superclass_name # superclass name
 
-      def initialize(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1)
+      def initialize(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, _column = 1)
         super()
         @parent = parent
         @type = type
@@ -42,12 +42,13 @@ module RubyLanguageServer
           scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line)
         end
         return [] if matching_scopes == []
+
         deepest_scope = matching_scopes.sort_by(&:depth).last
         deepest_scope.self_and_ancestors
       end
 
-      def each(&block)
-        self_and_descendants.each{ |member| yield member }
+      def each
+        self_and_descendants.each { |member| yield member }
       end
 
       # Self and all descendents flattened into array
@@ -58,6 +59,7 @@ module RubyLanguageServer
       # [self, parent, parent.parent...]
       def self_and_ancestors
         return [self, parent.self_and_ancestors].flatten unless parent.nil?
+
         [self]
       end
 

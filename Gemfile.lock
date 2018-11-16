@@ -23,6 +23,9 @@ GEM
     guard-minitest (2.4.6)
       guard-compat (~> 1.2)
       minitest (>= 3.0)
+    guard-rubocop (1.3.0)
+      guard (~> 2.0)
+      rubocop (~> 0.20)
     listen (3.1.5)
       rb-fsevent (~> 0.9, >= 0.9.4)
       rb-inotify (~> 0.9, >= 0.9.7)
@@ -86,6 +89,7 @@ DEPENDENCIES
   fuzzy_match
   guard
   guard-minitest
+  guard-rubocop
   minitest
   minitest-color
   pry
@@ -97,4 +101,4 @@ DEPENDENCIES
   rubocop-rspec
 
 BUNDLED WITH
-   1.16.6
+   1.17.1

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative '../../test_helper'
 require "minitest/autorun"
 
@@ -7,7 +9,7 @@ describe RubyLanguageServer::CodeFile do
 
   describe "CodeFile" do
     it "must init" do
-      cf = RubyLanguageServer::CodeFile.new('uri', "class Foo\nend\n")
+      RubyLanguageServer::CodeFile.new('uri', "class Foo\nend\n")
     end
 
     describe "tags" do
@@ -18,7 +20,7 @@ describe RubyLanguageServer::CodeFile do
       it "should retain existing tags when text becomes unparsable" do
         code_file = code_file("def foo\nend\n")
         assert_equal('foo', code_file.tags.first[:name])
-        code_file.text= "def foo\n@foo ||\nend\n"
+        code_file.text = "def foo\n@foo ||\nend\n"
         assert_equal('foo', code_file.tags.first[:name])
       end
 
@@ -51,7 +53,5 @@ describe RubyLanguageServer::CodeFile do
         assert_equal(9, tags.first[:kind])
       end
     end
-
   end
-
 end
