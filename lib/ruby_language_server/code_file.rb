@@ -7,9 +7,8 @@ require_relative 'scope_data/variable'
 module RubyLanguageServer
   class CodeFile
     attr_reader :uri
-    attr_accessor :text
+    attr_reader :text
     attr_reader :lint_found
-    attr_reader :tags
 
     def initialize(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
@@ -27,7 +26,7 @@ module RubyLanguageServer
       # @tags = nil
     end
 
-    SymbolKind = {
+    SYMBOL_KIND = {
       file: 1,
       'module': 5, # 2,
       namespace: 3,
@@ -53,16 +52,17 @@ module RubyLanguageServer
       # return @tags if !!@tags&.first
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return @tags = {} if text.nil? || text == ''
+
       RubyLanguageServer.logger.debug("Getting tags for #{uri}")
       ripper_tags = RipperTags::Parser.extract(text)
       RubyLanguageServer.logger.debug("ripper_tags: #{ripper_tags}")
       # RubyLanguageServer.logger.error("ripper_tags: #{ripper_tags}")
       # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      return @tags if !!@tags&.first && ripper_tags&.first.nil?
+      return @tags if @tags&.first && ripper_tags&.first.nil?
 
       tags = ripper_tags.map do |reference|
         name = reference[:name] || 'undefined?'
-        kind = SymbolKind[reference[:kind].to_sym] || 7
+        kind = SYMBOL_KIND[reference[:kind].to_sym] || 7
         kind = 9 if name == 'initialize' # Magical special case
         return_hash = {
           name: name,
@@ -86,7 +86,7 @@ module RubyLanguageServer
     def diagnostics
       # Maybe we should be sharing this GoodCop across instances
       @good_cop ||= GoodCop.new
-      cop_out = @good_cop.diagnostics(@text, @uri)
+      @good_cop.diagnostics(@text, @uri)
     end
 
     def root_scope

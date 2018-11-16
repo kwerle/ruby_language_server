@@ -1,8 +1,9 @@
+# frozen_string_literal: true
+
 require 'json'
 
 module RubyLanguageServer
   class IO
-
     def initialize(server)
       @server = server
       server.io = self
@@ -19,7 +20,7 @@ module RubyLanguageServer
       end
     end
 
-    def return_response(id, response, io=STDOUT)
+    def return_response(id, response, io = STDOUT)
       full_response = {
         jsonrpc: '2.0',
         id: id,
@@ -33,7 +34,7 @@ module RubyLanguageServer
       io.flush
     end
 
-    def send_notification(message, params, io=STDOUT)
+    def send_notification(message, params, io = STDOUT)
       full_response = {
         jsonrpc: '2.0',
         method: message,
@@ -57,9 +58,7 @@ module RubyLanguageServer
       method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
         response = @server.send(method_name, params)
-        if response == "EXIT"
-          exit(true)
-        end
+        exit(true) if response == 'EXIT'
         return id, response
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
@@ -72,8 +71,8 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug "initial_line: #{initial_line}"
       length = get_length(initial_line)
       content = ''
-      while content.length < length + 2 do
-        content << get_content(length + 2, io) # Why + 2?  CRLF?
+      while content.length < length + 2
+        content += get_content(length + 2, io) # Why + 2?  CRLF?
       end
       RubyLanguageServer.logger.debug "content.length: #{content.length}"
       content
@@ -85,6 +84,7 @@ module RubyLanguageServer
 
     def get_length(string)
       return 0 if string.nil?
+
       string.match(/Content-Length: (\d+)/)[1].to_i
     end
 
@@ -120,6 +120,5 @@ module RubyLanguageServer
     #   end
     #   return c
     # end
-
   end # class
 end # module
