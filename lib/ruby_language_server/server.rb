@@ -7,7 +7,23 @@ module RubyLanguageServer
   class Server
     attr_accessor :io
 
+    def initialize
+      @additional_gems_installed = false
+      @additional_gem_mutex = Mutex.new
+    end
+
+    def install_additional_gems
+      gem_string = ENV.fetch('ADDITIONAL_GEMS') { 'rubocop-rails_config' }
+      gem_array = gem_string.split(',').compact.map(&:strip).reject{ |string| string == '' }
+      Thread.new do
+        RubyLanguageServer::GemInstaller.install_gems(gem_array)
+        @additional_gem_mutex.synchronize{ @additional_gems_installed = true }
+      end
+    end
+
     def on_initialize(params)
+      install_additional_gems
+      RubyLanguageServer.logger.error("on_initialize: #{params}")
       root_path = params['rootPath']
       @project_manager = ProjectManager.new(root_path)
       # @file_tags = {}
@@ -75,11 +91,7 @@ module RubyLanguageServer
       uri = textDocument['uri']
       RubyLanguageServer.logger.debug("on_textDocument_didOpen #{uri}")
       text = textDocument['text']
-      # RubyLanguageServer.logger.debug(params.keys)
-      # RubyLanguageServer.logger.debug("uri: #{uri}")
-      # RubyLanguageServer.logger.debug("text: #{text}")
-      diagnostics = @project_manager.update_document_content(uri, text)
-      io.send_notification('textDocument/publishDiagnostics', {uri: uri, diagnostics: diagnostics})
+      send_diagnostics(uri, text)
     end
 
     def on_textDocument_didChange(params)
@@ -87,13 +99,16 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("on_textDocument_didChange #{uri}")
       content_changes = params['contentChanges']
       text = content_changes.first['text']
-      # RubyLanguageServer.logger.debug(params.keys)
-      # RubyLanguageServer.logger.debug("uri: #{uri}")
-      # RubyLanguageServer.logger.debug("contentChanges: #{content_changes}")
-      @project_manager.update_document_content(uri, text)
+      send_diagnostics(uri, text)
+    end
 
-      diagnostics = @project_manager.update_document_content(uri, text)
-      io.send_notification('textDocument/publishDiagnostics', uri: uri, diagnostics: diagnostics)
+    def send_diagnostics(uri, text)
+      hash = diagnostics_ready? ? @project_manager.update_document_content(uri, text) : []
+      io.send_notification('textDocument/publishDiagnostics', {uri: uri, diagnostics: hash})
+    end
+
+    def diagnostics_ready? 
+      @additional_gem_mutex.synchronize{ @additional_gems_installed }
     end
 
     def on_textDocument_completion(params)
