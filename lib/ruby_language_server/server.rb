@@ -14,10 +14,10 @@ module RubyLanguageServer
 
     def install_additional_gems
       gem_string = ENV.fetch('ADDITIONAL_GEMS') { 'rubocop-rails_config' }
-      gem_array = gem_string.split(',').compact.map(&:strip).reject{ |string| string == '' }
+      gem_array = gem_string.split(',').compact.map(&:strip).reject { |string| string == '' }
       Thread.new do
         RubyLanguageServer::GemInstaller.install_gems(gem_array)
-        @additional_gem_mutex.synchronize{ @additional_gems_installed = true }
+        @additional_gem_mutex.synchronize { @additional_gems_installed = true }
       end
     end
 
@@ -32,7 +32,7 @@ module RubyLanguageServer
           textDocumentSync: 1,
           hoverProvider: true,
           signatureHelpProvider: {
-            triggerCharacters: ['(', ','],
+            triggerCharacters: ['(', ',']
           },
           definitionProvider: true,
           referencesProvider: true,
@@ -43,14 +43,14 @@ module RubyLanguageServer
           xdependenciesProvider: true,
           completionProvider: {
             resolveProvider: true,
-            triggerCharacters: ['.', '::'],
+            triggerCharacters: ['.', '::']
           },
           codeActionProvider: true,
           renameProvider: true,
           executeCommandProvider: {
-            commands: [],
+            commands: []
           },
-          xpackagesProvider: true,
+          xpackagesProvider: true
         }
       }
     end
@@ -104,11 +104,11 @@ module RubyLanguageServer
 
     def send_diagnostics(uri, text)
       hash = diagnostics_ready? ? @project_manager.update_document_content(uri, text) : []
-      io.send_notification('textDocument/publishDiagnostics', {uri: uri, diagnostics: hash})
+      io.send_notification('textDocument/publishDiagnostics', uri: uri, diagnostics: hash)
     end
 
-    def diagnostics_ready? 
-      @additional_gem_mutex.synchronize{ @additional_gems_installed }
+    def diagnostics_ready?
+      @additional_gem_mutex.synchronize { @additional_gems_installed }
     end
 
     def on_textDocument_completion(params)

@@ -39,11 +39,11 @@ module RubyLanguageServer
       def scopes_at(position)
         line = position.line
         matching_scopes = select do |scope|
-          scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).include?(line)
+          scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).cover?(line)
         end
         return [] if matching_scopes == []
 
-        deepest_scope = matching_scopes.sort_by(&:depth).last
+        deepest_scope = matching_scopes.max_by(&:depth)
         deepest_scope.self_and_ancestors
       end
 

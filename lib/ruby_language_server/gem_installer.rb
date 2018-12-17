@@ -6,7 +6,6 @@ require 'bundler/inline'
 module RubyLanguageServer
   module GemInstaller
     class << self
-
       def install_gems(gem_names)
         gemfile do
           source 'https://rubygems.org'
@@ -15,7 +14,6 @@ module RubyLanguageServer
           end
         end
       end
-
     end
   end
 end

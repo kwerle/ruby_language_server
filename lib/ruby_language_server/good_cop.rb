@@ -4,8 +4,8 @@ require 'rubocop'
 
 module RubyLanguageServer
   class GoodCop < RuboCop::Runner
-    CONFIG_PATH = '/project/.rubocop.yml'
-    FALLBACK_PATH = '/app/.rubocop.yml'
+    CONFIG_PATH = '/project/.rubocop.yml'.freeze
+    FALLBACK_PATH = '/app/.rubocop.yml'.freeze
     @initialization_error = nil
 
     def initialize
