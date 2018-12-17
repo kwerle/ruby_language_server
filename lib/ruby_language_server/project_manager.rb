@@ -167,7 +167,7 @@ module RubyLanguageServer
     end
 
     def update_document_content(uri, text)
-      # return [] unless diagnostics_ready?
+      return [] unless diagnostics_ready?
 
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
