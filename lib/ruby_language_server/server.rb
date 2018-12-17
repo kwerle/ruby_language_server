@@ -7,25 +7,13 @@ module RubyLanguageServer
   class Server
     attr_accessor :io
 
-    def initialize
-      @additional_gems_installed = false
-      @additional_gem_mutex = Mutex.new
-    end
-
-    def install_additional_gems
-      gem_string = ENV.fetch('ADDITIONAL_GEMS') { 'rubocop-rails_config' }
-      gem_array = gem_string.split(',').compact.map(&:strip).reject { |string| string == '' }
-      Thread.new do
-        RubyLanguageServer::GemInstaller.install_gems(gem_array)
-        @additional_gem_mutex.synchronize { @additional_gems_installed = true }
-      end
-    end
-
     def on_initialize(params)
-      install_additional_gems
       RubyLanguageServer.logger.error("on_initialize: #{params}")
       root_path = params['rootPath']
       @project_manager = ProjectManager.new(root_path)
+      # gem_string = ENV.fetch('ADDITIONAL_GEMS') { 'rubocop-rails_config' }
+      gem_array = gem_string.split(',').compact.map(&:strip).reject { |string| string == '' }
+      @project_manager.install_additional_gems(gem_array)
       # @file_tags = {}
       {
         capabilities: {
@@ -81,9 +69,12 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug(params)
       uri = uri_from_params(params)
       position = postition_from_params(params)
-      end_match = @project_manager.word_at_location(uri, position)
-      scope = @project_manager.scopes_at(uri, position).first
-      @project_manager.possible_definitions_for(end_match, scope, uri)
+      @project_manager.possible_definitions(uri, position)
+    end
+
+    def send_diagnostics(uri, text)
+      hash = @project_manager.update_document_content(uri, text)
+      io.send_notification('textDocument/publishDiagnostics', uri: uri, diagnostics: hash)
     end
 
     def on_textDocument_didOpen(params)
@@ -100,15 +91,6 @@ module RubyLanguageServer
       content_changes = params['contentChanges']
       text = content_changes.first['text']
       send_diagnostics(uri, text)
-    end
-
-    def send_diagnostics(uri, text)
-      hash = diagnostics_ready? ? @project_manager.update_document_content(uri, text) : []
-      io.send_notification('textDocument/publishDiagnostics', uri: uri, diagnostics: hash)
-    end
-
-    def diagnostics_ready?
-      @additional_gem_mutex.synchronize { @additional_gems_installed }
     end
 
     def on_textDocument_completion(params)

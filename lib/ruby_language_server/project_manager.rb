@@ -15,7 +15,22 @@ module RubyLanguageServer
       # This is {uri: code_file} where content stuff is like
       @uri_code_file_hash = {}
       @update_mutext = Mutex.new
+
+      @additional_gems_installed = false
+      @additional_gem_mutex = Mutex.new
+
       scan_all_project_files
+    end
+
+    def diagnostics_ready?
+      @additional_gem_mutex.synchronize { @additional_gems_installed }
+    end
+
+    def install_additional_gems(gem_names)
+      Thread.new do
+        RubyLanguageServer::GemInstaller.install_gems(gem_names)
+        @additional_gem_mutex.synchronize { @additional_gems_installed = true }
+      end
     end
 
     def text_for_uri(uri)
@@ -152,6 +167,8 @@ module RubyLanguageServer
     end
 
     def update_document_content(uri, text)
+      # return [] unless diagnostics_ready?
+
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
@@ -172,10 +189,12 @@ module RubyLanguageServer
       context_at_location(uri, position).last
     end
 
-    def possible_definitions_for(name, scope, uri)
+    def possible_definitions(uri, position)
+      name = word_at_location(uri, position)
       return {} if name == ''
 
       name = 'initialize' if name == 'new'
+      scope = scopes_at(uri, position).first
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?
 

@@ -25,6 +25,7 @@ describe RubyLanguageServer::ProjectManager do
     let(:pm) { RubyLanguageServer::ProjectManager.new('foo') }
 
     it 'should have text' do
+      pm.instance_variable_set('@additional_gems_installed', true)
       pm.update_document_content('uri', rails_file_text)
       tags = pm.tags_for_uri('uri')
       bar_tag = tags.detect { |tag| tag[:name] == 'bar' }
