@@ -23,7 +23,7 @@ module RubyLanguageServer
         return
       end
       @text = new_text
-      # @tags = nil
+      @tags = nil
     end
 
     SYMBOL_KIND = {
@@ -52,6 +52,8 @@ module RubyLanguageServer
       # return @tags if !!@tags&.first
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return @tags = {} if text.nil? || text == ''
+
+      return @tags unless @tags.nil?
 
       RubyLanguageServer.logger.debug("Getting tags for #{uri}")
       ripper_tags = RipperTags::Parser.extract(text)
