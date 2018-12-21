@@ -27,9 +27,29 @@ describe RubyLanguageServer::ScopeParser do
           end
         end
 
+        module Zar
+          class << self
+            def zoo(par)
+              paf = par
+            end
+          end
+
+          def self.zor(par)
+            pax = par
+          end
+        end
+
       end
       SOURCE
       @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
+    end
+
+    describe 'class << self' do
+      let(:zar) { @parser.root_scope.self_and_descendants.detect { |child| child.full_name == 'Foo::Zar' } }
+
+      it "should add methods" do
+        assert_equal(["zoo", "zor"], zar.children.map(&:name).sort)
+      end
     end
 
     it 'should have a root scope' do
@@ -47,27 +67,26 @@ describe RubyLanguageServer::ScopeParser do
     it 'module should span the whole file' do
       m = @parser.root_scope.children.first
       assert_equal(2, m.top_line)
-      assert_equal(12, m.bottom_line)
+      assert_equal(20, m.bottom_line)
     end
 
     it 'should have two classes' do
       m = @parser.root_scope.children.first
       children = m.children
-      assert_equal(2, children.size)
-      c1 = children.first
-      assert_equal('Bar', c1.name)
-      assert_equal('Foo::Bar', c1.full_name)
-      c2 = children.last
-      assert_equal('Nar', c2.name)
-      assert_equal('Foo::Nar', c2.full_name)
+      assert_equal(3, children.size)
+      bar = m.children.detect { |child| child.full_name == 'Foo::Bar' }
+      assert_equal('Bar', bar.name)
+      assert_equal('Foo::Bar', bar.full_name)
+      nar = m.children.detect { |child| child.full_name == 'Foo::Nar' }
+      assert_equal('Nar', nar.name)
+      assert_equal('Foo::Nar', nar.full_name)
     end
 
     it 'should see Nar subclasses Bar' do
       m = @parser.root_scope.children.first
-      children = m.children
-      c2 = children.last
-      assert_equal('Nar', c2.name)
-      assert_equal('Foo::Bar', c2.superclass_name)
+      nar = m.children.detect { |child| child.full_name == 'Foo::Nar' }
+      assert_equal('Nar', nar.name)
+      assert_equal('Foo::Bar', nar.superclass_name)
     end
 
     it 'should have a function Foo::Bar#baz' do
@@ -80,20 +99,20 @@ describe RubyLanguageServer::ScopeParser do
 
     it 'should have a couple of ivars for Bar' do
       m = @parser.root_scope.children.first
-      bar = m.children.first
+      bar = m.children.detect { |child| child.full_name == 'Foo::Bar' }
       assert_equal(2, bar.variables.size)
     end
 
     it 'should have a 3 methods for Nar' do
       m = @parser.root_scope.children.first
-      bar = m.children.last
-      assert_equal(3, bar.children.size)
-      assert_equal(['top', 'top=', 'naz'], bar.children.map(&:name))
+      nar = m.children.detect { |child| child.full_name == 'Foo::Nar' }
+      assert_equal(3, nar.children.size)
+      assert_equal(['top', 'top=', 'naz'], nar.children.map(&:name))
     end
 
     it 'should have a couple of ivars for Nar' do
       m = @parser.root_scope.children.first
-      bar = m.children.last
+      bar = m.children.detect { |child| child.full_name == 'Foo::Bar' }
       assert_equal(2, bar.variables.size)
     end
   end
@@ -105,17 +124,17 @@ describe RubyLanguageServer::ScopeParser do
   end
 
   describe 'initialize' do
-    it "should deal with nil" do
+    it 'should deal with nil' do
       RubyLanguageServer::ScopeParser.new(nil)
     end
 
-    it "should deal with empty" do
+    it 'should deal with empty' do
       RubyLanguageServer::ScopeParser.new('')
     end
   end
 
   describe 'Rakefile' do
-    let(:rake_source) {
+    let(:rake_source) do
       <<-RAKE
       desc 'Run guard'
       task guard: [] do
@@ -123,7 +142,7 @@ describe RubyLanguageServer::ScopeParser do
         `guard`
       end
       RAKE
-    }
+    end
     let(:scope_parser) { RubyLanguageServer::ScopeParser.new(rake_source) }
 
     it 'should find a block with a variable' do

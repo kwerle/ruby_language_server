@@ -1,0 +1,6 @@
+# Note to self:
+# modifying this file before running ruby_language_server tests will make several tests fail.
+
+# inherit_gem:
+#   rubocop-rails_config:
+#     - config/rails.yml

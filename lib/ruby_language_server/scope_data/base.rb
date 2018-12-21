@@ -16,8 +16,8 @@ module RubyLanguageServer
         TYPE_METHOD => '#',
         TYPE_BLOCK => '>',
         TYPE_ROOT => '',
-        TYPE_VARIABLE => '^',
-      }
+        TYPE_VARIABLE => '^'
+      }.freeze
     end
   end
 end

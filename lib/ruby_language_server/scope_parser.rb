@@ -7,8 +7,8 @@ module RubyLanguageServer
   # It builds scopes that amount to heirarchical arrays with information about what
   # classes, methods, variables, etc - are in each scope.
   class SEXPProcessor
-    attr :sexp
-    attr :lines
+    attr_reader :sexp
+    attr_reader :lines
     attr_reader :current_scope
 
     def initialize(sexp, lines = 1)
@@ -19,7 +19,7 @@ module RubyLanguageServer
     def root_scope
       return @root_scope unless @root_scope.nil?
 
-      @root_scope = new_root_scope()
+      @root_scope = new_root_scope
       @current_scope = @root_scope
       process(@sexp)
       @root_scope
@@ -36,7 +36,7 @@ module RubyLanguageServer
       when Symbol
         method_name = "on_#{root}"
         if respond_to? method_name
-          self.send(method_name, args, rest)
+          send(method_name, args, rest)
         else
           RubyLanguageServer.logger.debug("We don't have a #{method_name} with #{args}")
           process(args)
@@ -50,6 +50,10 @@ module RubyLanguageServer
         RubyLanguageServer.logger.warn("We don't respond to the likes of #{root} of class #{root.class}")
         # byebug
       end
+    end
+
+    def on_sclass(_args, rest)
+      process(rest)
     end
 
     def on_program(args, _rest)
@@ -100,6 +104,12 @@ module RubyLanguageServer
       add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
     end
 
+    # def self.something(par)...
+    # [:var_ref, [:@kw, "self", [28, 14]]], [[:@period, ".", [28, 18]], [:@ident, "something", [28, 19]], [:paren, [:params, [[:@ident, "par", [28, 23]]], nil, nil, nil, nil, nil, nil]], [:bodystmt, [[:assign, [:var_field, [:@ident, "pax", [29, 12]]], [:var_ref, [:@ident, "par", [29, 18]]]]], nil, nil, nil]]
+    def on_defs(args, rest)
+      on_def(rest[1], rest[2]) if args[1][1] == 'self' && rest[0][1] == '.'
+    end
+
     def on_params(args, _rest)
       # RubyLanguageServer.logger.info("on_params #{[args, rest]}")
       return if args.nil?
@@ -116,29 +126,29 @@ module RubyLanguageServer
       (_, name, (_line, _column)) = args
       case name
       when 'public', 'private', 'protected'
-        # FIXME access control...
+        # FIXME: access control...
         process(rest)
-      when "define_method", "alias_method",
-           "has_one", "has_many",
-           "belongs_to", "has_and_belongs_to_many",
-           "scope", "named_scope",
-           "public_class_method", "private_class_method",
+      when 'define_method', 'alias_method',
+           'has_one', 'has_many',
+           'belongs_to', 'has_and_belongs_to_many',
+           'scope', 'named_scope',
+           'public_class_method', 'private_class_method',
            # "public", "protected", "private",
            /^attr_(accessor|reader|writer)$/
         # on_method_add_arg([:fcall, name], args[0])
-      when "attr"
+      when 'attr'
         # [[:args_add_block, [[:symbol_literal, [:symbol, [:@ident, "top", [3, 14]]]]], false]]
         ((_, ((_, (_, (_, name, (line, column))))))) = rest
         add_ivar("@#{name}", line, column)
         push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column)
-        pop_scope()
+        pop_scope
         push_scope(ScopeData::Scope::TYPE_METHOD, "#{name}=", line, column)
-        pop_scope()
-      when "delegate"
+        pop_scope
+      when 'delegate'
         # on_delegate(*args[0][1..-1])
-      when "def_delegator", "def_instance_delegator"
+      when 'def_delegator', 'def_instance_delegator'
         # on_def_delegator(*args[0][1..-1])
-      when "def_delegators", "def_instance_delegators"
+      when 'def_delegators', 'def_instance_delegators'
         # on_def_delegators(*args[0][1..-1])
       end
     end
@@ -146,24 +156,24 @@ module RubyLanguageServer
     # The on_method_add_arg function is downright stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb
     def on_method_add_arg(call, args)
       call_name = call && call[0]
-      first_arg = args && :args == args[0] && args[1]
+      first_arg = args && args[0] == :args && args[1]
 
-      if :call == call_name && first_arg
+      if call_name == :call && first_arg
         if args.length == 2
           # augment call if a single argument was used
           call = call.dup
           call[3] = args[1]
         end
         call
-      elsif :fcall == call_name && first_arg
+      elsif call_name == :fcall && first_arg
         name, line = call[1]
         case name
-        when "alias_method"
+        when 'alias_method'
           [:alias, args[1][0], args[2][0], line] if args[1] && args[2]
-        when "define_method"
+        when 'define_method'
           [:def, args[1][0], line]
-        when "public_class_method", "private_class_method", "private", "public", "protected"
-          access = name.sub("_class_method", "")
+        when 'public_class_method', 'private_class_method', 'private', 'public', 'protected'
+          access = name.sub('_class_method', '')
 
           if args[1][1] == 'self'
             klass = 'self'
@@ -174,17 +184,16 @@ module RubyLanguageServer
           end
 
           [:def_with_access, klass, method_name, access, line]
-        when "scope", "named_scope"
+        when 'scope', 'named_scope'
           [:rails_def, :scope, args[1][0], line]
         when /^attr_(accessor|reader|writer)$/
-          gen_reader = $1 != 'writer'
-          gen_writer = $1 != 'reader'
-          args[1..-1].inject([]) do |gen, arg|
+          gen_reader = Regexp.last_match(1) != 'writer'
+          gen_writer = Regexp.last_match(1) != 'reader'
+          args[1..-1].each_with_object([]) do |arg, gen|
             gen << [:def, arg[0], line] if gen_reader
             gen << [:def, "#{arg[0]}=", line] if gen_writer
-            gen
           end
-        when "has_many", "has_and_belongs_to_many"
+        when 'has_many', 'has_and_belongs_to_many'
           a = args[1][0]
           kind = name.to_sym
           gen = []
@@ -199,7 +208,7 @@ module RubyLanguageServer
             end
           end
           gen
-        when "belongs_to", "has_one"
+        when 'belongs_to', 'has_one'
           a = args[1][0]
           unless a.is_a?(Enumerable) && !a.is_a?(String)
             kind = name.to_sym
@@ -208,8 +217,6 @@ module RubyLanguageServer
             end
           end
         end
-      else
-        # super
       end
     end
 
@@ -223,7 +230,7 @@ module RubyLanguageServer
     def add_ivar(name, line, column)
       scope = @current_scope
       ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
-      while (!ivar_scope_types.include?(scope.type) && !scope.parent.nil?)
+      while !ivar_scope_types.include?(scope.type) && !scope.parent.nil?
         scope = scope.parent
       end
       add_variable(name, line, column, scope)
@@ -233,7 +240,7 @@ module RubyLanguageServer
       (_, name, (line, column)) = args
       push_scope(type, name, line, column)
       process(rest)
-      pop_scope()
+      pop_scope
     end
 
     def push_scope(type, name, top_line, column)
@@ -248,9 +255,9 @@ module RubyLanguageServer
     # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
     def close_sibling_scopes(line)
       parent_scope = @current_scope.parent
-      unless (parent_scope.nil?)
+      unless parent_scope.nil?
         last_sibling = parent_scope.children.last
-        while !last_sibling.nil?
+        until last_sibling.nil?
           last_sibling.bottom_line = line - 1
           last_sibling = last_sibling.children.last
         end
@@ -262,7 +269,7 @@ module RubyLanguageServer
     end
 
     def new_root_scope
-      ScopeData::Scope.new().tap do |scope|
+      ScopeData::Scope.new.tap do |scope|
         scope.type = ScopeData::Scope::TYPE_ROOT
         scope.name = 'Object'
       end
