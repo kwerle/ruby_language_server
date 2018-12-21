@@ -124,17 +124,17 @@ describe RubyLanguageServer::ScopeParser do
   end
 
   describe 'initialize' do
-    it "should deal with nil" do
+    it 'should deal with nil' do
       RubyLanguageServer::ScopeParser.new(nil)
     end
 
-    it "should deal with empty" do
+    it 'should deal with empty' do
       RubyLanguageServer::ScopeParser.new('')
     end
   end
 
   describe 'Rakefile' do
-    let(:rake_source) {
+    let(:rake_source) do
       <<-RAKE
       desc 'Run guard'
       task guard: [] do
@@ -142,7 +142,7 @@ describe RubyLanguageServer::ScopeParser do
         `guard`
       end
       RAKE
-    }
+    end
     let(:scope_parser) { RubyLanguageServer::ScopeParser.new(rake_source) }
 
     it 'should find a block with a variable' do

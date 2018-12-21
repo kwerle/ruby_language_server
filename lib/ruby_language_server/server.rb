@@ -8,15 +8,18 @@ module RubyLanguageServer
     attr_accessor :io
 
     def on_initialize(params)
+      RubyLanguageServer.logger.error("on_initialize: #{params}")
       root_path = params['rootPath']
       @project_manager = ProjectManager.new(root_path)
-      # @file_tags = {}
+      gem_string = ENV.fetch('ADDITIONAL_GEMS') {}
+      gem_array = (gem_string.split(',').compact.map(&:strip).reject { |string| string == '' } if gem_string && !gem_string.empty?)
+      @project_manager.install_additional_gems(gem_array)
       {
         capabilities: {
           textDocumentSync: 1,
           hoverProvider: true,
           signatureHelpProvider: {
-            triggerCharacters: ['(', ','],
+            triggerCharacters: ['(', ',']
           },
           definitionProvider: true,
           referencesProvider: true,
@@ -27,14 +30,14 @@ module RubyLanguageServer
           xdependenciesProvider: true,
           completionProvider: {
             resolveProvider: true,
-            triggerCharacters: ['.', '::'],
+            triggerCharacters: ['.', '::']
           },
           codeActionProvider: true,
           renameProvider: true,
           executeCommandProvider: {
-            commands: [],
+            commands: []
           },
-          xpackagesProvider: true,
+          xpackagesProvider: true
         }
       }
     end
@@ -61,13 +64,15 @@ module RubyLanguageServer
     end
 
     def on_textDocument_definition(params)
-      RubyLanguageServer.logger.debug('on_textDocument_definition')
-      RubyLanguageServer.logger.debug(params)
+      RubyLanguageServer.logger.debug("on_textDocument_definition #{params}")
       uri = uri_from_params(params)
       position = postition_from_params(params)
-      end_match = @project_manager.word_at_location(uri, position)
-      scope = @project_manager.scopes_at(uri, position).first
-      @project_manager.possible_definitions_for(end_match, scope, uri)
+      @project_manager.possible_definitions(uri, position)
+    end
+
+    def send_diagnostics(uri, text)
+      hash = @project_manager.update_document_content(uri, text)
+      io.send_notification('textDocument/publishDiagnostics', uri: uri, diagnostics: hash)
     end
 
     def on_textDocument_didOpen(params)
@@ -75,11 +80,7 @@ module RubyLanguageServer
       uri = textDocument['uri']
       RubyLanguageServer.logger.debug("on_textDocument_didOpen #{uri}")
       text = textDocument['text']
-      # RubyLanguageServer.logger.debug(params.keys)
-      # RubyLanguageServer.logger.debug("uri: #{uri}")
-      # RubyLanguageServer.logger.debug("text: #{text}")
-      diagnostics = @project_manager.update_document_content(uri, text)
-      io.send_notification('textDocument/publishDiagnostics', {uri: uri, diagnostics: diagnostics})
+      send_diagnostics(uri, text)
     end
 
     def on_textDocument_didChange(params)
@@ -87,24 +88,20 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("on_textDocument_didChange #{uri}")
       content_changes = params['contentChanges']
       text = content_changes.first['text']
-      # RubyLanguageServer.logger.debug(params.keys)
-      # RubyLanguageServer.logger.debug("uri: #{uri}")
-      # RubyLanguageServer.logger.debug("contentChanges: #{content_changes}")
-      @project_manager.update_document_content(uri, text)
-
-      diagnostics = @project_manager.update_document_content(uri, text)
-      io.send_notification('textDocument/publishDiagnostics', uri: uri, diagnostics: diagnostics)
+      send_diagnostics(uri, text)
     end
 
     def on_textDocument_completion(params)
       RubyLanguageServer.logger.info("on_textDocument_completion #{params}")
       uri = uri_from_params(params)
       position = postition_from_params(params)
-      @project_manager.completion_at(uri, position)
+      completions = @project_manager.completion_at(uri, position)
+      # RubyLanguageServer.logger.debug("completions: #{completions}")
+      completions
     end
 
-    def on_shutdown(params)
-      # "EXIT"
+    def on_shutdown(_params)
+      RubyLanguageServer.logger.info('on_shutdown')
     end
 
     private
