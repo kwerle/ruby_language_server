@@ -65,8 +65,7 @@ module RubyLanguageServer
     end
 
     def on_textDocument_definition(params)
-      RubyLanguageServer.logger.debug('on_textDocument_definition')
-      RubyLanguageServer.logger.debug(params)
+      RubyLanguageServer.logger.debug("on_textDocument_definition #{params}")
       uri = uri_from_params(params)
       position = postition_from_params(params)
       @project_manager.possible_definitions(uri, position)
