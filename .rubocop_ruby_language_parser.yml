@@ -39,7 +39,9 @@ Naming/MethodName:
 
 # Offense count: 5
 Metrics/AbcSize:
-  Max: 67
+  Max: 56
+  Exclude:
+    - 'lib/ruby_language_server/scope_parser.rb'
 
 # Offense count: 7
 # Configuration parameters: CountComments, ExcludedMethods.
