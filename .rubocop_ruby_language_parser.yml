@@ -48,7 +48,9 @@ Metrics/AbcSize:
 # Configuration parameters: CountComments, ExcludedMethods.
 # ExcludedMethods: refine
 Metrics/BlockLength:
-  Max: 107
+  Max: 50
+  Exclude:
+    - 'spec/lib/ruby_language_server/scope_parser_spec.rb'
 
 # Offense count: 1
 # Configuration parameters: CountBlocks.
@@ -58,7 +60,9 @@ Metrics/BlockNesting:
 # Offense count: 1
 # Configuration parameters: CountComments.
 Metrics/ClassLength:
-  Max: 208
+  Max: 200
+  Exclude:
+    - 'lib/ruby_language_server/scope_parser.rb'
 
 # Offense count: 3
 Metrics/CyclomaticComplexity:

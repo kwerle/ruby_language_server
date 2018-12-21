@@ -52,6 +52,10 @@ module RubyLanguageServer
       end
     end
 
+    def on_sclass(_args, rest)
+      process(rest)
+    end
+
     def on_program(args, _rest)
       process(args)
     end
@@ -98,6 +102,12 @@ module RubyLanguageServer
 
     def on_def(args, rest)
       add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
+    end
+
+    # def self.something(par)...
+    # [:var_ref, [:@kw, "self", [28, 14]]], [[:@period, ".", [28, 18]], [:@ident, "something", [28, 19]], [:paren, [:params, [[:@ident, "par", [28, 23]]], nil, nil, nil, nil, nil, nil]], [:bodystmt, [[:assign, [:var_field, [:@ident, "pax", [29, 12]]], [:var_ref, [:@ident, "par", [29, 18]]]]], nil, nil, nil]]
+    def on_defs(args, rest)
+      on_def(rest[1], rest[2]) if args[1][1] == 'self' && rest[0][1] == '.'
     end
 
     def on_params(args, _rest)
