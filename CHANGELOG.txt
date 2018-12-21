@@ -1,5 +1,11 @@
 # Changelog
 
+#### 0.1.0 Fri Dec 21 15:19:00 PST 2018
+
+* Refactor server & project_manager
+* fix bugs with def self.method and class << self  (https://github.com/kwerle/ide-ruby/issues/19)
+* Add support for additional rubocop gems (https://github.com/kwerle/ide-ruby/issues/17)
+
 #### 0.0.9 Thu Oct 18 17:48:35 PDT 2018
 
 * Refactor & some RuboCop
@@ -8,7 +14,6 @@
 * * invalid snake_case warnings,
 * * NOT missing "rubocop failed to load" indicator
 * More work on completion stuff
-
 
 #### 0.0.8 Thu Jul 19 00:01:25 PDT 2018
 
