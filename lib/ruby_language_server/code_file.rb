@@ -14,6 +14,7 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
       @uri = uri
       @text = text
+      @refresh_tags = true
     end
 
     def text=(new_text)
@@ -23,7 +24,7 @@ module RubyLanguageServer
         return
       end
       @text = new_text
-      @tags = nil
+      @refresh_tags = true
     end
 
     SYMBOL_KIND = {
@@ -53,7 +54,7 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return @tags = {} if text.nil? || text == ''
 
-      return @tags unless @tags.nil?
+      return @tags unless @refresh_tags || @tags.nil?
 
       RubyLanguageServer.logger.debug("Getting tags for #{uri}")
       ripper_tags = RipperTags::Parser.extract(text)
@@ -82,6 +83,7 @@ module RubyLanguageServer
       end
       RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
       # RubyLanguageServer.logger.debug("tags caller #{caller * ','}")
+      @refresh_tags = false
       @tags
     end
 
@@ -92,7 +94,7 @@ module RubyLanguageServer
     end
 
     def root_scope
-      RubyLanguageServer.logger.debug('Asking about root_scope')
+      # RubyLanguageServer.logger.debug('Asking about root_scope')
       @root_scope ||= ScopeParser.new(text).root_scope
     end
   end

@@ -2,11 +2,13 @@
 
 require 'bundler/inline'
 
-# Deal with the various languageserver calls.
 module RubyLanguageServer
+  # Sole purpose is to install gems
   module GemInstaller
     class << self
       def install_gems(gem_names)
+        return if gem_names.nil? || gem_names.empty?
+
         gemfile do
           source 'https://rubygems.org'
           gem_names.each do |gem_name|

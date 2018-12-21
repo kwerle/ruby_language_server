@@ -11,10 +11,9 @@ module RubyLanguageServer
       RubyLanguageServer.logger.error("on_initialize: #{params}")
       root_path = params['rootPath']
       @project_manager = ProjectManager.new(root_path)
-      # gem_string = ENV.fetch('ADDITIONAL_GEMS') { 'rubocop-rails_config' }
-      gem_array = gem_string.split(',').compact.map(&:strip).reject { |string| string == '' }
+      gem_string = ENV.fetch('ADDITIONAL_GEMS') {}
+      gem_array = (gem_string.split(',').compact.map(&:strip).reject { |string| string == '' } if gem_string && !gem_string.empty?)
       @project_manager.install_additional_gems(gem_array)
-      # @file_tags = {}
       {
         capabilities: {
           textDocumentSync: 1,
@@ -96,11 +95,13 @@ module RubyLanguageServer
       RubyLanguageServer.logger.info("on_textDocument_completion #{params}")
       uri = uri_from_params(params)
       position = postition_from_params(params)
-      @project_manager.completion_at(uri, position)
+      completions = @project_manager.completion_at(uri, position)
+      # RubyLanguageServer.logger.debug("completions: #{completions}")
+      completions
     end
 
-    def on_shutdown(params)
-      # "EXIT"
+    def on_shutdown(_params)
+      RubyLanguageServer.logger.info('on_shutdown')
     end
 
     private

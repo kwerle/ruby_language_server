@@ -54,7 +54,7 @@ module RubyLanguageServer
     def root_scope_for(uri)
       code_file = code_file_for_uri(uri)
       RubyLanguageServer.logger.error('code_file.nil?!!!!!!!!!!!!!!') if code_file.nil?
-      return code_file.root_scope unless code_file.nil?
+      code_file&.root_scope
     end
 
     def all_scopes

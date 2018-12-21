@@ -33,6 +33,10 @@ module RubyLanguageServer
         @constants = []
       end
 
+      def to_s
+        "Scope: #{@name} #{@full_name} #{@top_line}:#{@bottom_line} depth: #{@depth}"
+      end
+
       # Return the deepest child scopes of this scope - and on up.
       # Not done recuresively because we don't really need to.
       # Normally called on a root scope.
