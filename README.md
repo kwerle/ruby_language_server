@@ -38,19 +38,6 @@ Clone.  I love git [HubFlow](https://datasift.github.io/gitflow/).
 Check out the [Makefile](Makefile).  You are going to want to do
 `make guard` and `make continuous_development`.
 
-```sh
-docker run -it -v $PWD:/tmp/src -w /tmp/src ruby_language_server bash -c 'bundle && guard'
-```
-
-(in zsh:)
-```sh
-while (true)
-do
-  docker build --rm -t local_ruby_language_server .
-  sleep 2
-done
-```
-
 * In Atom: install the ide-ruby.  
 * Settings > Packages > ide-ruby > Image Name > local_ruby_language_server
 * CMD-ALT-CTRL-l (that's an L) will reload the window
