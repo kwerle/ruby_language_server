@@ -15,7 +15,22 @@ module RubyLanguageServer
       # This is {uri: code_file} where content stuff is like
       @uri_code_file_hash = {}
       @update_mutext = Mutex.new
+
+      @additional_gems_installed = false
+      @additional_gem_mutex = Mutex.new
+
       scan_all_project_files
+    end
+
+    def diagnostics_ready?
+      @additional_gem_mutex.synchronize { @additional_gems_installed }
+    end
+
+    def install_additional_gems(gem_names)
+      Thread.new do
+        RubyLanguageServer::GemInstaller.install_gems(gem_names)
+        @additional_gem_mutex.synchronize { @additional_gems_installed = true }
+      end
     end
 
     def text_for_uri(uri)
@@ -39,7 +54,7 @@ module RubyLanguageServer
     def root_scope_for(uri)
       code_file = code_file_for_uri(uri)
       RubyLanguageServer.logger.error('code_file.nil?!!!!!!!!!!!!!!') if code_file.nil?
-      return code_file.root_scope unless code_file.nil?
+      code_file&.root_scope
     end
 
     def all_scopes
@@ -157,25 +172,30 @@ module RubyLanguageServer
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
-        code_file.diagnostics
+        code_file.diagnostics if diagnostics_ready?
       end
     end
 
     def context_at_location(uri, position)
       lines = text_for_uri(uri).split("\n")
       line = lines[position.line]
-      RubyLanguageServer.logger.error("LineContext.for(line, position.character): #{LineContext.for(line, position.character)}")
-      LineContext.for(line, position.character)
+      return [] if line.nil? || line.strip.length.zero?
+
+      contexts = LineContext.for(line, position.character)
+      RubyLanguageServer.logger.debug("LineContext.for(line, position.character): #{contexts}")
+      contexts
     end
 
     def word_at_location(uri, position)
       context_at_location(uri, position).last
     end
 
-    def possible_definitions_for(name, scope, uri)
+    def possible_definitions(uri, position)
+      name = word_at_location(uri, position)
       return {} if name == ''
 
       name = 'initialize' if name == 'new'
+      scope = scopes_at(uri, position).first
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?
 
@@ -191,6 +211,7 @@ module RubyLanguageServer
         end
         check_scope = check_scope.parent
       end
+      RubyLanguageServer.logger.debug("scope_definitions_for(#{name}, #{scope}, #{uri}: #{return_array.uniq})")
       return_array.uniq
     end
 
