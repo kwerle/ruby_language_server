@@ -167,22 +167,22 @@ module RubyLanguageServer
     end
 
     def update_document_content(uri, text)
-      return [] unless diagnostics_ready?
-
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
-        code_file.diagnostics
+        code_file.diagnostics if diagnostics_ready?
       end
     end
 
     def context_at_location(uri, position)
       lines = text_for_uri(uri).split("\n")
       line = lines[position.line]
-      RubyLanguageServer.logger.error("LineContext.for(line, position.character): #{LineContext.for(line, position.character)}")
-      LineContext.for(line, position.character)
+      return [] if line.nil? || line.strip.length.zero?
+      contexts = LineContext.for(line, position.character)
+      RubyLanguageServer.logger.debug("LineContext.for(line, position.character): #{contexts}")
+      contexts
     end
 
     def word_at_location(uri, position)
@@ -210,6 +210,7 @@ module RubyLanguageServer
         end
         check_scope = check_scope.parent
       end
+      RubyLanguageServer.logger.debug("scope_definitions_for(#{name}, #{scope}, #{uri}: #{return_array.uniq})")
       return_array.uniq
     end
 
