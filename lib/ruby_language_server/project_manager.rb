@@ -180,6 +180,7 @@ module RubyLanguageServer
       lines = text_for_uri(uri).split("\n")
       line = lines[position.line]
       return [] if line.nil? || line.strip.length.zero?
+
       contexts = LineContext.for(line, position.character)
       RubyLanguageServer.logger.debug("LineContext.for(line, position.character): #{contexts}")
       contexts
