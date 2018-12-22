@@ -172,7 +172,7 @@ module RubyLanguageServer
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
         code_file = code_file_for_uri(uri, text)
         code_file.text = text
-        code_file.diagnostics if diagnostics_ready?
+        diagnostics_ready? ? code_file.diagnostics : []
       end
     end
 

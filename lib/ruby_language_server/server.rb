@@ -8,7 +8,7 @@ module RubyLanguageServer
     attr_accessor :io
 
     def on_initialize(params)
-      RubyLanguageServer.logger.error("on_initialize: #{params}")
+      RubyLanguageServer.logger.info("on_initialize: #{params}")
       root_path = params['rootPath']
       @project_manager = ProjectManager.new(root_path)
       gem_string = ENV.fetch('ADDITIONAL_GEMS') {}
