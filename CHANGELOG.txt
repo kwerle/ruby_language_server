@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.1.1 Fri Dec 21 16:48:46 PST 2018
+
+* Fix a few little issues that came to light while updating ide-ruby
+
 #### 0.1.0 Fri Dec 21 15:19:00 PST 2018
 
 * Refactor server & project_manager
