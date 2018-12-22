@@ -19,7 +19,7 @@ module RubyLanguageServer
       super({}, config_store)
     rescue Exception => exception
       RubyLanguageServer.logger.error(exception)
-      @initialization_error = "There was an issue loading the rubocop configuration file: #{exception}"
+      @initialization_error = "There was an issue loading the rubocop configuration file: #{exception}.  Maybe you need to add some additional gems to the ide-ruby settings?"
     end
 
     # namespace DiagnosticSeverity {
