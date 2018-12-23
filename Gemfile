@@ -8,9 +8,7 @@ gem 'bundler'
 
 # No - do not put these in dev - they are needed for the app
 gem 'rubocop'
-gem 'rubocop-rspec' # Linter
-
-gem 'ripper-tags' # Tags - going away?
+gem 'rubocop-rspec' # Linter - no longer needed - use additional gems?
 
 gem 'amatch'      # in c
 gem 'fuzzy_match' # completion matching
