@@ -16,7 +16,6 @@ module RubyLanguageServer
       attr_accessor :constants       # constants declared in this scope
       attr_accessor :children        # child scopes
       attr_accessor :type            # Type of this scope (module, class, block)
-      attr_accessor :full_name       # Module::Class#method
       attr_accessor :name            # method
       attr_accessor :superclass_name # superclass name
 
@@ -35,6 +34,10 @@ module RubyLanguageServer
 
       def to_s
         "Scope: #{@name} #{@full_name} #{@top_line}:#{@bottom_line} depth: #{@depth}"
+      end
+
+      def full_name
+        @full_name || @name
       end
 
       # Return the deepest child scopes of this scope - and on up.

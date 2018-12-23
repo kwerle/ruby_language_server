@@ -56,32 +56,45 @@ module RubyLanguageServer
 
       return @tags unless @refresh_tags || @tags.nil?
 
-      RubyLanguageServer.logger.debug("Getting tags for #{uri}")
-      ripper_tags = RipperTags::Parser.extract(text)
-      RubyLanguageServer.logger.debug("ripper_tags: #{ripper_tags}")
-      # RubyLanguageServer.logger.error("ripper_tags: #{ripper_tags}")
-      # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      return @tags if @tags&.first && ripper_tags&.first.nil?
+      tags = []
+      root_scope.self_and_descendants.each do |scope|
+        next if scope.type == ScopeData::Base::TYPE_BLOCK
 
-      tags = ripper_tags.map do |reference|
-        name = reference[:name] || 'undefined?'
-        kind = SYMBOL_KIND[reference[:kind].to_sym] || 7
+        name = scope.name
+        kind = SYMBOL_KIND[scope.type] || 7
         kind = 9 if name == 'initialize' # Magical special case
-        return_hash = {
+        scope_hash = {
           name: name,
           kind: kind,
-          location: Location.hash(uri, reference[:line])
+          location: Location.hash(uri, scope.top_line)
         }
-        container_name = reference[:full_name].split(/(:{2}|\#|\.)/).compact[-3]
-        return_hash[:containerName] = container_name if container_name
-        return_hash
+        container_name = scope.parent&.name
+        scope_hash[:containerName] = container_name if container_name
+        tags << scope_hash
+
+        scope.variables.each do |variable|
+          name = variable.name
+          # We only care about counstants
+          next unless name =~ /^[A-Z]/
+
+          variable_hash = {
+            name: name,
+            kind: SYMBOL_KIND[:constant],
+            location: Location.hash(uri, variable.line),
+            container_name: scope.name
+          }
+          tags << variable_hash
+        end
       end
+      # byebug
+      tags.reject! { |tag| tag[:name].nil? }
+      # RubyLanguageServer.logger.debug("Raw tags for #{uri}: #{tags}")
       @tags = tags.reverse_each do |tag|
         child_tags = tags.select { |child_tag| child_tag[:containerName] == tag[:name] }
         max_line = child_tags.map { |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0
         tag[:location][:range][:end][:line] = [tag[:location][:range][:end][:line], max_line].max
       end
-      RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
+      # RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
       # RubyLanguageServer.logger.debug("tags caller #{caller * ','}")
       @refresh_tags = false
       @tags
@@ -94,7 +107,7 @@ module RubyLanguageServer
     end
 
     def root_scope
-      # RubyLanguageServer.logger.debug('Asking about root_scope')
+      # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
       @root_scope ||= ScopeParser.new(text).root_scope
     end
   end

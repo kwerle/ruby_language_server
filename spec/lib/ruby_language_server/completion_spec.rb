@@ -53,7 +53,7 @@ describe RubyLanguageServer::Completion do
       context = %w[bar ba]
       context_scope = all_scopes.detect { |scope| scope.full_name == 'Foo::Nar#naz' }
       completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, all_scopes)
-      assert_equal(['baz', 'Bar', 'Nar', '@biz', 'bogus', '@bottom'], completions.map(&:first))
+      assert_equal(['baz', 'Bar', 'Nar', '@biz', '@bottom'], completions.map(&:first))
     end
   end
 end

@@ -29,7 +29,7 @@ module RubyLanguageServer
       return if sexp.nil?
 
       root, args, *rest = sexp
-      # RubyLanguageServer.logger.info("Doing #{[root, args, rest]}")
+      # RubyLanguageServer.logger.error("Doing #{[root, args, rest]}")
       case root
       when Array
         sexp.each { |child| process(child) }
@@ -48,7 +48,6 @@ module RubyLanguageServer
         process(args)
       else
         RubyLanguageServer.logger.warn("We don't respond to the likes of #{root} of class #{root.class}")
-        # byebug
       end
     end
 
@@ -89,8 +88,12 @@ module RubyLanguageServer
       # add_scope(args, rest, ScopeData::Scope::TYPE_BLOCK)
     end
 
-    def on_do_block(_, rest)
+    def on_do_block(args, rest)
+      ((_, ((_, (_, (_, _name, (line, column))))))) = args
+      push_scope(ScopeData::Scope::TYPE_BLOCK, nil, line, column, false)
+      process(args)
       process(rest)
+      pop_scope
     end
 
     # Used only to describe subclasses?
@@ -98,6 +101,11 @@ module RubyLanguageServer
       # [:@const, "Bar", [13, 20]]
       (_, name) = args
       @current_scope.set_superclass_name(name)
+    end
+
+    def on_assign(args, rest)
+      process(args)
+      process(rest)
     end
 
     def on_def(args, rest)
@@ -229,9 +237,11 @@ module RubyLanguageServer
 
     def add_ivar(name, line, column)
       scope = @current_scope
-      ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
-      while !ivar_scope_types.include?(scope.type) && !scope.parent.nil?
-        scope = scope.parent
+      unless scope == root_scope
+        ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
+        while !ivar_scope_types.include?(scope.type) && !scope.parent.nil?
+          scope = scope.parent
+        end
       end
       add_variable(name, line, column, scope)
     end
@@ -243,11 +253,26 @@ module RubyLanguageServer
       pop_scope
     end
 
-    def push_scope(type, name, top_line, column)
-      close_sibling_scopes(top_line)
-      new_scope = ScopeData::Scope.new(@current_scope, type, name, top_line, column)
+    def type_is_class_or_module(type)
+      [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE].include?(type)
+    end
+
+    def push_scope(type, name, top_line, column, close_siblings = true)
+      close_sibling_scopes(top_line) if close_siblings
+      # The default root scope is Object.  Which is fine if we're adding methods.
+      # But if we're adding a class, we don't care that it's in Object.
+      new_scope =
+        if (type_is_class_or_module(type) && (@current_scope == root_scope))
+          ScopeData::Scope.new(nil, type, name, top_line, column)
+        else
+          ScopeData::Scope.new(@current_scope, type, name, top_line, column)
+        end
       new_scope.bottom_line = @lines
-      @current_scope.children << new_scope
+      if new_scope.parent.nil? # was it a class or module at the root
+        root_scope.children << new_scope
+      else
+        @current_scope.children << new_scope
+      end
       @current_scope = new_scope
     end
 
@@ -265,13 +290,13 @@ module RubyLanguageServer
     end
 
     def pop_scope
-      @current_scope = @current_scope.parent
+      @current_scope = @current_scope.parent || root_scope # in case we are leaving a root class/module
     end
 
     def new_root_scope
       ScopeData::Scope.new.tap do |scope|
         scope.type = ScopeData::Scope::TYPE_ROOT
-        scope.name = 'Object'
+        scope.name = nil
       end
     end
   end
