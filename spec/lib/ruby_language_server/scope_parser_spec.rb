@@ -160,6 +160,12 @@ describe RubyLanguageServer::ScopeParser do
         foo = 1
         `guard`
       end
+      task :second do
+      end
+      task 'third' do
+      end
+      task "fourth" do
+      end
       RAKE
     end
     let(:scope_parser) { RubyLanguageServer::ScopeParser.new(rake_source) }

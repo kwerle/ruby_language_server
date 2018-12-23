@@ -1,0 +1,9 @@
+There are various ruby and rails DSLs that are so common it makes sense to add
+support for them.  Things like
+attr_reader :foo
+it 'should do something' do ...
+describe 'some thing' do ...
+task something: ... do ...
+
+Eventually maybe it will make sense to add these things using gems.  For now,
+just dump it in.

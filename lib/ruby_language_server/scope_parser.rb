@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
 require 'ripper'
+require_relative 'scope_parser_commands/rake_commands'
+require_relative 'scope_parser_commands/rspec_commands'
 
 module RubyLanguageServer
   # This class is responsible for processing the generated sexp from the ScopeParser below.
   # It builds scopes that amount to heirarchical arrays with information about what
   # classes, methods, variables, etc - are in each scope.
   class SEXPProcessor
+    include ScopeParserCommands::RakeCommands
+    include ScopeParserCommands::RspecCommands
     attr_reader :sexp
     attr_reader :lines
     attr_reader :current_scope
@@ -29,7 +33,7 @@ module RubyLanguageServer
       return if sexp.nil?
 
       root, args, *rest = sexp
-      # RubyLanguageServer.logger.error("Doing #{[root, args, rest]}")
+      # RubyLanguageServer.logger.debug("Doing #{[root, args, rest]}")
       case root
       when Array
         sexp.each { |child| process(child) }
@@ -83,9 +87,15 @@ module RubyLanguageServer
       add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
     end
 
-    def on_method_add_block(_, rest)
+    def on_method_add_block(args, rest)
+      scope = @current_scope
+      process(args)
       process(rest)
       # add_scope(args, rest, ScopeData::Scope::TYPE_BLOCK)
+      unless @current_scope == scope
+        scope.bottom_line = [scope&.bottom_line, @current_scope.bottom_line].compact.max
+        pop_scope
+      end
     end
 
     def on_do_block(args, rest)
@@ -131,7 +141,15 @@ module RubyLanguageServer
     # The on_command function idea is stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb
     def on_command(args, rest)
       # [:@ident, "public", [6, 8]]
-      (_, name, (_line, _column)) = args
+      (_, name, (line, _column)) = args
+
+      method_name = "on_#{name}_command"
+      if respond_to? method_name
+        return send(method_name, line, args, rest)
+      else
+        RubyLanguageServer.logger.error("We don't have a #{method_name} with #{args}")
+      end
+
       case name
       when 'public', 'private', 'protected'
         # FIXME: access control...
@@ -276,7 +294,7 @@ module RubyLanguageServer
       @current_scope = new_scope
     end
 
-    # This is a very poor man's "end" handler.
+    # This is a very poor man's "end" handler because there is no end handler.
     # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
     def close_sibling_scopes(line)
       parent_scope = @current_scope.parent
