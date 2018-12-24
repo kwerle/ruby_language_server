@@ -3,6 +3,8 @@
 require 'ripper'
 require_relative 'scope_parser_commands/rake_commands'
 require_relative 'scope_parser_commands/rspec_commands'
+require_relative 'scope_parser_commands/ruby_commands'
+require_relative 'scope_parser_commands/rails_commands'
 
 module RubyLanguageServer
   # This class is responsible for processing the generated sexp from the ScopeParser below.
@@ -11,6 +13,8 @@ module RubyLanguageServer
   class SEXPProcessor
     include ScopeParserCommands::RakeCommands
     include ScopeParserCommands::RspecCommands
+    include ScopeParserCommands::RailsCommands
+    include ScopeParserCommands::RubyCommands
     attr_reader :sexp
     attr_reader :lines
     attr_reader :current_scope
