@@ -158,22 +158,6 @@ module RubyLanguageServer
       when 'public', 'private', 'protected'
         # FIXME: access control...
         process(rest)
-      when 'define_method', 'alias_method',
-           'has_one', 'has_many',
-           'belongs_to', 'has_and_belongs_to_many',
-           'scope', 'named_scope',
-           'public_class_method', 'private_class_method',
-           # "public", "protected", "private",
-           /^attr_(accessor|reader|writer)$/
-        # on_method_add_arg([:fcall, name], args[0])
-      when 'attr'
-        # [[:args_add_block, [[:symbol_literal, [:symbol, [:@ident, "top", [3, 14]]]]], false]]
-        ((_, ((_, (_, (_, name, (line, column))))))) = rest
-        add_ivar("@#{name}", line, column)
-        push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column)
-        pop_scope
-        push_scope(ScopeData::Scope::TYPE_METHOD, "#{name}=", line, column)
-        pop_scope
       when 'delegate'
         # on_delegate(*args[0][1..-1])
       when 'def_delegator', 'def_instance_delegator'
