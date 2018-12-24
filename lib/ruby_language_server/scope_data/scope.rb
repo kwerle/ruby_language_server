@@ -72,7 +72,11 @@ module RubyLanguageServer
 
       # Self and all descendents flattened into array
       def self_and_descendants
-        [self, children.map(&:self_and_descendants)].flatten
+        [self] + descendants
+      end
+
+      def descendants
+        children.map(&:self_and_descendants).flatten
       end
 
       # [self, parent, parent.parent...]
