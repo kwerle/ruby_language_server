@@ -86,7 +86,7 @@ module RubyLanguageServer
             name: name,
             kind: SYMBOL_KIND[:constant],
             location: Location.hash(uri, variable.line),
-            container_name: scope.name
+            containerName: scope.name
           }
           tags << variable_hash
         end
@@ -94,6 +94,8 @@ module RubyLanguageServer
       # byebug
       tags.reject! { |tag| tag[:name].nil? }
       # RubyLanguageServer.logger.debug("Raw tags for #{uri}: #{tags}")
+      # If you don't reverse the list then atom? won't be able to find the
+      # container and containers will get duplicated.
       @tags = tags.reverse_each do |tag|
         child_tags = tags.select { |child_tag| child_tag[:containerName] == tag[:name] }
         max_line = child_tags.map { |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0

@@ -13,6 +13,23 @@ describe RubyLanguageServer::CodeFile do
     end
 
     describe 'tags' do
+      let(:source) do
+        <<-SOURCE
+        class Foo
+          def self.foo_class_method
+          end
+          def initialize()
+          end
+          def foo_method
+            @foo_ivar = 2
+          end
+          FOO_CONSTANT = 1
+        end
+        SOURCE
+      end
+
+      let(:tags) { code_file(source).tags }
+
       def code_file(text)
         RubyLanguageServer::CodeFile.new('uri', text)
       end
@@ -32,32 +49,30 @@ describe RubyLanguageServer::CodeFile do
       end
 
       it 'should find functions' do
-        tags = code_file("def foo\nend\n").tags
-        assert_equal('foo', tags.last[:name])
-        assert_equal(6, tags.last[:kind])
+        tag = tags.detect { |t| t[:name] == 'foo_method' }
+        assert_equal(6, tag[:kind])
       end
 
       it 'should find constants in modules' do
-        tags = code_file("module Parent\nFOO=1\nend\n").tags
-        assert_equal('FOO', tags.last[:name])
-        assert_equal(14, tags.last[:kind])
+        tag = tags.detect { |t| t[:name] == 'FOO_CONSTANT' }
+        assert_equal('FOO_CONSTANT', tag[:name])
+        assert_equal(14, tag[:kind])
+        assert_equal('Foo', tag[:containerName])
       end
 
-      it 'should not find variables' do
-        tags = code_file("@foo=1\n").tags
-        assert_equal(0, tags.length)
+      it 'should not find instance variables' do
+        tag = tags.detect { |t| t[:name] == 'foo_ivar' }
+        assert_nil(tag)
       end
 
       it 'should do the right thing with self.methods' do
-        tags = code_file("def self.foo\nend\n").tags
-        assert_equal('foo', tags.last[:name])
-        assert_equal(6, tags.last[:kind])
+        tag = tags.detect { |t| t[:name] == 'foo_class_method' }
+        assert_equal(6, tag[:kind])
       end
 
       it 'should do the right thing with initialize' do
-        tags = code_file("def initialize\nend\n").tags
-        assert_equal('initialize', tags.last[:name])
-        assert_equal(9, tags.last[:kind])
+        tag = tags.detect { |t| t[:name] == 'initialize' }
+        assert_equal(9, tag[:kind])
       end
     end
   end
