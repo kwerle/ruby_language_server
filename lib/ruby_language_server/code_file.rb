@@ -49,6 +49,14 @@ module RubyLanguageServer
       array: 18
     }.freeze
 
+    # Find the ancestor of this scope with a name and return that.  Or nil.
+    def ancestor_scope_name(scope)
+      return_scope = scope
+      while (return_scope = return_scope.parent)
+        return return_scope.name unless return_scope.name.nil?
+      end
+    end
+
     def tags
       # return @tags if !!@tags&.first
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
@@ -68,7 +76,7 @@ module RubyLanguageServer
           kind: kind,
           location: Location.hash(uri, scope.top_line)
         }
-        container_name = scope.parent&.name
+        container_name = ancestor_scope_name(scope)
         scope_hash[:containerName] = container_name if container_name
         tags << scope_hash
 

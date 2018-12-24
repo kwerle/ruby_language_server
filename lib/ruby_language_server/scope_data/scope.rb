@@ -32,8 +32,20 @@ module RubyLanguageServer
         @constants = []
       end
 
-      def to_s
-        "Scope: #{@name} #{@full_name} #{@top_line}:#{@bottom_line} depth: #{@depth}"
+      def inspect
+        "Scope: #{@name} (#{@full_name}) #{@top_line}-#{@bottom_line} children: #{@children} vars: #{@variables}"
+      end
+
+      def pretty_print(pp) # rubocop:disable Naming/UncommunicativeMethodParamName
+        {
+          Scope: {
+            type: type,
+            name: name,
+            lines: [@top_line, @bottom_line],
+            children: children,
+            variables: variables
+          }
+        }.pretty_print(pp)
       end
 
       def full_name

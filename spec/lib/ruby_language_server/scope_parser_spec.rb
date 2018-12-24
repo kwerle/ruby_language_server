@@ -151,27 +151,4 @@ describe RubyLanguageServer::ScopeParser do
       assert_equal('item', scope_parser.root_scope.self_and_descendants.last.variables.first.name)
     end
   end
-
-  describe 'Rakefile' do
-    let(:rake_source) do
-      <<-RAKE
-      desc 'Run guard'
-      task guard: [] do
-        foo = 1
-        `guard`
-      end
-      task :second do
-      end
-      task 'third' do
-      end
-      task "fourth" do
-      end
-      RAKE
-    end
-    let(:scope_parser) { RubyLanguageServer::ScopeParser.new(rake_source) }
-
-    it 'should find a block with a variable' do
-      assert_equal('foo', scope_parser.root_scope.self_and_descendants.last.variables.first.name)
-    end
-  end
 end

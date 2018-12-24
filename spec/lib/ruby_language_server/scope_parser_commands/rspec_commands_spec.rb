@@ -3,7 +3,7 @@
 require_relative '../../../test_helper'
 require 'minitest/autorun'
 
-describe RubyLanguageServer::ScopeParser do
+describe RubyLanguageServer::ScopeParserCommands::RspecCommands do
   before do
     @code_file_lines = <<-SOURCE
     describe Some::Class do
@@ -29,9 +29,8 @@ describe RubyLanguageServer::ScopeParser do
 
   describe 'blocks' do
     it 'should have a few' do
-      byebug
-      assert_equal('11', @parser.root_scope.children.first.name)
-      assert_equal(11, @parser.root_scope.children.length)
+      assert_equal('Some::Class', @parser.root_scope.children.first.name)
+      assert_equal(['Some::Class', 'some thing', 'inner thing', 'is happy', 'is not sad'], @parser.root_scope.self_and_descendants.map(&:name).compact)
     end
   end
 end
