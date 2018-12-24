@@ -52,6 +52,12 @@ module RubyLanguageServer
         @full_name || @name
       end
 
+      def has_variable_or_constant?(variable) # rubocop:disable Naming/PredicateName
+        test_array = variable.constant? ? constants : variables
+        matching_variable = test_array.detect { |test_variable| (test_variable.name == variable.name) }
+        !matching_variable.nil?
+      end
+
       # Return the deepest child scopes of this scope - and on up.
       # Not done recuresively because we don't really need to.
       # Normally called on a root scope.

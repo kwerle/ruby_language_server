@@ -238,7 +238,7 @@ module RubyLanguageServer
 
     def add_variable(name, line, column, scope = @current_scope)
       new_variable = ScopeData::Variable.new(scope, name, line, column)
-      scope.variables << new_variable
+      scope.variables << new_variable unless scope.has_variable_or_constant?(new_variable)
     end
 
     def add_ivar(name, line, column)

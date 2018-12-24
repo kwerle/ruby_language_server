@@ -4,10 +4,6 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::LineContext do
-  # before do
-  #   @to = RubyLanguageServer::LineContext
-  # end
-
   let(:line_context) { RubyLanguageServer::LineContext }
 
   describe 'basic variables' do
@@ -46,8 +42,13 @@ describe RubyLanguageServer::LineContext do
       assert_equal(['Some:'], line_context.for(line, 5))
       assert_equal(%w[Some Module], line_context.for(line, 6))
     end
+  end
 
-    it 'should the method' do
+  describe 'instance variables' do
+    let(:line) { '@foo = 1' }
+
+    it "should include the '@' sign" do
+      assert_equal(['@foo'], line_context.for(line, 0))
     end
   end
 end

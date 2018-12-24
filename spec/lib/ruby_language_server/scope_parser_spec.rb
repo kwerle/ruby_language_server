@@ -15,12 +15,15 @@ describe RubyLanguageServer::ScopeParser do
           public def baz(bing, zing)
             zang = 1
             @biz = bing
+            @biz = bang
           end
 
         end
 
         class Nar < Bar
           attr :top
+
+          private
 
           def naz(ning)
             @niz = ning
