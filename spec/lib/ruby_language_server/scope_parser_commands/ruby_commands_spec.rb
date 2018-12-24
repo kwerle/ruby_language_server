@@ -9,6 +9,10 @@ describe RubyLanguageServer::ScopeParserCommands::RubyCommands do
       class ModelClass
         attr_reader :something_else, :something_else2
         attr :read_write
+
+        # These are fcalls.  I'm not yet doing this.
+        define_method(:add_one) { |arg| arg + 1 }
+        define_method(:add_another, method(:add_one))
       end
     SOURCE
 

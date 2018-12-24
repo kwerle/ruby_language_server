@@ -151,7 +151,7 @@ module RubyLanguageServer
       if respond_to? method_name
         return send(method_name, line, args, rest)
       else
-        RubyLanguageServer.logger.error("We don't have a #{method_name} with #{args}")
+        RubyLanguageServer.logger.debug("We don't have a #{method_name} with #{args}")
       end
 
       case name
@@ -182,9 +182,9 @@ module RubyLanguageServer
       elsif call_name == :fcall && first_arg
         name, line = call[1]
         case name
-        when 'alias_method'
+        when 'alias_method' # this is an fcall
           [:alias, args[1][0], args[2][0], line] if args[1] && args[2]
-        when 'define_method'
+        when 'define_method' # this is an fcall
           [:def, args[1][0], line]
         when 'public_class_method', 'private_class_method', 'private', 'public', 'protected'
           access = name.sub('_class_method', '')
@@ -198,38 +198,38 @@ module RubyLanguageServer
           end
 
           [:def_with_access, klass, method_name, access, line]
-        when 'scope', 'named_scope'
-          [:rails_def, :scope, args[1][0], line]
-        when /^attr_(accessor|reader|writer)$/
-          gen_reader = Regexp.last_match(1) != 'writer'
-          gen_writer = Regexp.last_match(1) != 'reader'
-          args[1..-1].each_with_object([]) do |arg, gen|
-            gen << [:def, arg[0], line] if gen_reader
-            gen << [:def, "#{arg[0]}=", line] if gen_writer
-          end
-        when 'has_many', 'has_and_belongs_to_many'
-          a = args[1][0]
-          kind = name.to_sym
-          gen = []
-          unless a.is_a?(Enumerable) && !a.is_a?(String)
-            a = a.to_s
-            gen << [:rails_def, kind, a, line]
-            gen << [:rails_def, kind, "#{a}=", line]
-            if (sing = a.chomp('s')) != a
-              # poor man's singularize
-              gen << [:rails_def, kind, "#{sing}_ids", line]
-              gen << [:rails_def, kind, "#{sing}_ids=", line]
-            end
-          end
-          gen
-        when 'belongs_to', 'has_one'
-          a = args[1][0]
-          unless a.is_a?(Enumerable) && !a.is_a?(String)
-            kind = name.to_sym
-            %W[#{a} #{a}= build_#{a} create_#{a} create_#{a}!].inject([]) do |all, ident|
-              all << [:rails_def, kind, ident, line]
-            end
-          end
+          # when 'scope', 'named_scope'
+          #   [:rails_def, :scope, args[1][0], line]
+          # when /^attr_(accessor|reader|writer)$/
+          #   gen_reader = Regexp.last_match(1) != 'writer'
+          #   gen_writer = Regexp.last_match(1) != 'reader'
+          #   args[1..-1].each_with_object([]) do |arg, gen|
+          #     gen << [:def, arg[0], line] if gen_reader
+          #     gen << [:def, "#{arg[0]}=", line] if gen_writer
+          #   end
+          # when 'has_many', 'has_and_belongs_to_many'
+          #   a = args[1][0]
+          #   kind = name.to_sym
+          #   gen = []
+          #   unless a.is_a?(Enumerable) && !a.is_a?(String)
+          #     a = a.to_s
+          #     gen << [:rails_def, kind, a, line]
+          #     gen << [:rails_def, kind, "#{a}=", line]
+          #     if (sing = a.chomp('s')) != a
+          #       # poor man's singularize
+          #       gen << [:rails_def, kind, "#{sing}_ids", line]
+          #       gen << [:rails_def, kind, "#{sing}_ids=", line]
+          #     end
+          #   end
+          #   gen
+          # when 'belongs_to', 'has_one'
+          #   a = args[1][0]
+          #   unless a.is_a?(Enumerable) && !a.is_a?(String)
+          #     kind = name.to_sym
+          #     %W[#{a} #{a}= build_#{a} create_#{a} create_#{a}!].inject([]) do |all, ident|
+          #       all << [:rails_def, kind, ident, line]
+          #     end
+          #   end
         end
       end
     end
