@@ -4,17 +4,18 @@ module RubyLanguageServer
   module ScopeParserCommands
     module RspecCommands
       def on_describe_command(line, args, rest)
-        rspec_block_command(line, args, rest)
+        rspec_block_command('describe', line, args, rest)
       end
 
       def on_it_command(line, args, rest)
-        rspec_block_command(line, args, rest)
+        rspec_block_command('it', line, args, rest)
       end
 
       private
 
-      def rspec_block_command(line, args, rest)
-        name = rest.flatten.select { |part| part.instance_of?(String) }.join('::')
+      def rspec_block_command(prefix, line, args, rest)
+        name = "#{prefix} "
+        name += rest.flatten.select { |part| part.instance_of?(String) }.join('::')
         push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, false)
         process(args)
         process(rest)

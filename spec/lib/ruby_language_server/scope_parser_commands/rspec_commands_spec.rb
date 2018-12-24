@@ -29,8 +29,8 @@ describe RubyLanguageServer::ScopeParserCommands::RspecCommands do
 
   describe 'blocks' do
     it 'should have a few' do
-      assert_equal('Some::Class', @parser.root_scope.children.first.name)
-      assert_equal(['Some::Class', 'some thing', 'inner thing', 'is happy', 'is not sad'], @parser.root_scope.self_and_descendants.map(&:name).compact)
+      assert_equal('describe Some::Class', @parser.root_scope.children.first.name)
+      assert_equal(['describe Some::Class', 'describe some thing', 'describe inner thing', 'it is happy', 'it is not sad'], @parser.root_scope.self_and_descendants.map(&:name).compact)
     end
   end
 end
