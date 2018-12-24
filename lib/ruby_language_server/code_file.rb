@@ -14,7 +14,7 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
       @uri = uri
       @text = text
-      @refresh_tags = true
+      @refresh_root_scope = true
     end
 
     def text=(new_text)
@@ -24,7 +24,7 @@ module RubyLanguageServer
         return
       end
       @text = new_text
-      @refresh_tags = true
+      @refresh_root_scope = true
     end
 
     SYMBOL_KIND = {
@@ -58,11 +58,8 @@ module RubyLanguageServer
     end
 
     def tags
-      # return @tags if !!@tags&.first
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return @tags = {} if text.nil? || text == ''
-
-      return @tags unless @refresh_tags || @tags.nil?
 
       tags = []
       root_scope.self_and_descendants.each do |scope|
@@ -104,7 +101,6 @@ module RubyLanguageServer
       end
       # RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
       # RubyLanguageServer.logger.debug("tags caller #{caller * ','}")
-      @refresh_tags = false
       @tags
     end
 
@@ -116,7 +112,16 @@ module RubyLanguageServer
 
     def root_scope
       # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
-      @root_scope ||= ScopeParser.new(text).root_scope
+      if @refresh_root_scope
+        new_root_scope = ScopeParser.new(text).root_scope
+        @root_scope ||= new_root_scope # In case we had NONE
+        return @root_scope if new_root_scope.children.empty?
+
+        @root_scope = new_root_scope
+        @refresh_root_scope = false
+        @tags = nil
+      end
+      @root_scope
     end
   end
 end
