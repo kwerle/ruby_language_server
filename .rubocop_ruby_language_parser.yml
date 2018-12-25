@@ -51,6 +51,7 @@ Metrics/BlockLength:
   Max: 50
   Exclude:
     - 'spec/lib/ruby_language_server/scope_parser_spec.rb'
+    - 'spec/lib/ruby_language_server/code_file_spec.rb'
 
 # Offense count: 1
 # Configuration parameters: CountBlocks.

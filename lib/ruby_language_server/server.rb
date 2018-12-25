@@ -60,7 +60,9 @@ module RubyLanguageServer
       uri = uri_from_params(params)
 
       # {"kind":"module","line":4,"language":"Ruby","path":"(eval)","pattern":"module RubyLanguageServer","full_name":"RubyLanguageServer","name":"RubyLanguageServer"}
-      @project_manager.tags_for_uri(uri)
+      symbols = @project_manager.tags_for_uri(uri)
+      RubyLanguageServer.logger.debug("symbols #{symbols}")
+      symbols
     end
 
     def on_textDocument_definition(params)

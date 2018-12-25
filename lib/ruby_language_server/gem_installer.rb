@@ -7,6 +7,8 @@ module RubyLanguageServer
   module GemInstaller
     class << self
       def install_gems(gem_names)
+        gem_names&.compact!
+        gem_names&.reject! { |name| name.strip == '' }
         return if gem_names.nil? || gem_names.empty?
 
         RubyLanguageServer.logger.info("Trying to install gems #{gem_names}")

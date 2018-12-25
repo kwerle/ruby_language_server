@@ -24,16 +24,16 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
-  describe 'update_tags' do
+  describe 'has_one' do
     let(:rails_file_text) do
-      <<~EOF
+      <<~CODE_FILE
         class Foo < ActiveRecord::Base
           has_one :bar
         end
-      EOF
+      CODE_FILE
     end
 
-    it 'should have text' do
+    it 'should show up as a method' do
       pm.instance_variable_set('@additional_gems_installed', true)
       pm.update_document_content('uri', rails_file_text)
       tags = pm.tags_for_uri('uri')
