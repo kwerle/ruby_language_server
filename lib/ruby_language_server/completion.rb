@@ -55,10 +55,10 @@ module RubyLanguageServer
         else
           context_word = context_word.split(/_/).map(&:capitalize).join('')
           scope = scope_with_name(context_word, scopes)
-          RubyLanguageServer.logger.debug("scope_with_name: #{scope&.name}")
+          RubyLanguageServer.logger.debug("scope_with_name: #{scope}")
         end
         scope ||= context_scope
-        RubyLanguageServer.logger.debug("scope: #{scope&.name}")
+        RubyLanguageServer.logger.debug("scope: #{scope}")
         scope_completions(context.last, scope.self_and_ancestors)
       end
 

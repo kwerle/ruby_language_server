@@ -14,7 +14,7 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
       @uri = uri
       @text = text
-      @refresh_tags = true
+      @refresh_root_scope = true
     end
 
     def text=(new_text)
@@ -24,7 +24,7 @@ module RubyLanguageServer
         return
       end
       @text = new_text
-      @refresh_tags = true
+      @refresh_root_scope = true
     end
 
     SYMBOL_KIND = {
@@ -49,41 +49,60 @@ module RubyLanguageServer
       array: 18
     }.freeze
 
+    # Find the ancestor of this scope with a name and return that.  Or nil.
+    def ancestor_scope_name(scope)
+      return_scope = scope
+      while (return_scope = return_scope.parent)
+        return return_scope.name unless return_scope.name.nil?
+      end
+    end
+
     def tags
-      # return @tags if !!@tags&.first
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return @tags = {} if text.nil? || text == ''
 
-      return @tags unless @refresh_tags || @tags.nil?
+      tags = []
+      root_scope.self_and_descendants.each do |scope|
+        next if scope.type == ScopeData::Base::TYPE_BLOCK
 
-      RubyLanguageServer.logger.debug("Getting tags for #{uri}")
-      ripper_tags = RipperTags::Parser.extract(text)
-      RubyLanguageServer.logger.debug("ripper_tags: #{ripper_tags}")
-      # RubyLanguageServer.logger.error("ripper_tags: #{ripper_tags}")
-      # Don't freak out and nuke the outline just because we're in the middle of typing a line and you can't parse the file.
-      return @tags if @tags&.first && ripper_tags&.first.nil?
-
-      tags = ripper_tags.map do |reference|
-        name = reference[:name] || 'undefined?'
-        kind = SYMBOL_KIND[reference[:kind].to_sym] || 7
+        name = scope.name
+        kind = SYMBOL_KIND[scope.type] || 7
         kind = 9 if name == 'initialize' # Magical special case
-        return_hash = {
+        scope_hash = {
           name: name,
           kind: kind,
-          location: Location.hash(uri, reference[:line])
+          location: Location.hash(uri, scope.top_line)
         }
-        container_name = reference[:full_name].split(/(:{2}|\#|\.)/).compact[-3]
-        return_hash[:containerName] = container_name if container_name
-        return_hash
+        container_name = ancestor_scope_name(scope)
+        scope_hash[:containerName] = container_name if container_name
+        tags << scope_hash
+
+        scope.variables.each do |variable|
+          name = variable.name
+          # We only care about counstants
+          next unless name =~ /^[A-Z]/
+
+          variable_hash = {
+            name: name,
+            kind: SYMBOL_KIND[:constant],
+            location: Location.hash(uri, variable.line),
+            containerName: scope.name
+          }
+          tags << variable_hash
+        end
       end
+      # byebug
+      tags.reject! { |tag| tag[:name].nil? }
+      # RubyLanguageServer.logger.debug("Raw tags for #{uri}: #{tags}")
+      # If you don't reverse the list then atom? won't be able to find the
+      # container and containers will get duplicated.
       @tags = tags.reverse_each do |tag|
         child_tags = tags.select { |child_tag| child_tag[:containerName] == tag[:name] }
         max_line = child_tags.map { |child_tag| child_tag[:location][:range][:end][:line].to_i }.max || 0
         tag[:location][:range][:end][:line] = [tag[:location][:range][:end][:line], max_line].max
       end
-      RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
+      # RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
       # RubyLanguageServer.logger.debug("tags caller #{caller * ','}")
-      @refresh_tags = false
       @tags
     end
 
@@ -94,8 +113,17 @@ module RubyLanguageServer
     end
 
     def root_scope
-      # RubyLanguageServer.logger.debug('Asking about root_scope')
-      @root_scope ||= ScopeParser.new(text).root_scope
+      # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
+      if @refresh_root_scope
+        new_root_scope = ScopeParser.new(text).root_scope
+        @root_scope ||= new_root_scope # In case we had NONE
+        return @root_scope if new_root_scope.children.empty?
+
+        @root_scope = new_root_scope
+        @refresh_root_scope = false
+        @tags = nil
+      end
+      @root_scope
     end
   end
 end

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'ripper-tags'
 require 'fuzzy_match'
 require 'amatch' # note that you have to require this... fuzzy_match won't require it for you
 FuzzyMatch.engine = :amatch # This should be in a config somewhere
@@ -71,7 +70,7 @@ module RubyLanguageServer
       relative_position = position.dup
       relative_position.character = relative_position.character # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
-      RubyLanguageServer.logger.error("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
+      RubyLanguageServer.logger.debug("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
       context_scope = scopes_at(uri, position).first || root_scope_for(uri)
       context = context_at_location(uri, relative_position)
       return {} if context.nil? || context == ''

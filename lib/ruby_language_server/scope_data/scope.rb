@@ -16,7 +16,6 @@ module RubyLanguageServer
       attr_accessor :constants       # constants declared in this scope
       attr_accessor :children        # child scopes
       attr_accessor :type            # Type of this scope (module, class, block)
-      attr_accessor :full_name       # Module::Class#method
       attr_accessor :name            # method
       attr_accessor :superclass_name # superclass name
 
@@ -33,8 +32,30 @@ module RubyLanguageServer
         @constants = []
       end
 
-      def to_s
-        "Scope: #{@name} #{@full_name} #{@top_line}:#{@bottom_line} depth: #{@depth}"
+      def inspect
+        "Scope: #{@name} (#{@full_name}) #{@top_line}-#{@bottom_line} children: #{@children} vars: #{@variables}"
+      end
+
+      def pretty_print(pp) # rubocop:disable Naming/UncommunicativeMethodParamName
+        {
+          Scope: {
+            type: type,
+            name: name,
+            lines: [@top_line, @bottom_line],
+            children: children,
+            variables: variables
+          }
+        }.pretty_print(pp)
+      end
+
+      def full_name
+        @full_name || @name
+      end
+
+      def has_variable_or_constant?(variable) # rubocop:disable Naming/PredicateName
+        test_array = variable.constant? ? constants : variables
+        matching_variable = test_array.detect { |test_variable| (test_variable.name == variable.name) }
+        !matching_variable.nil?
       end
 
       # Return the deepest child scopes of this scope - and on up.
@@ -57,7 +78,11 @@ module RubyLanguageServer
 
       # Self and all descendents flattened into array
       def self_and_descendants
-        [self, children.map(&:self_and_descendants)].flatten
+        [self] + descendants
+      end
+
+      def descendants
+        children.map(&:self_and_descendants).flatten
       end
 
       # [self, parent, parent.parent...]

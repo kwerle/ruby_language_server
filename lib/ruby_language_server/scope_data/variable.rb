@@ -16,6 +16,10 @@ module RubyLanguageServer
         @full_name = [scope.full_name, @name].join(JoinHash[TYPE_VARIABLE])
         @type = type
       end
+
+      def constant?
+        !@name&.match(/^[A-Z]/).nil?
+      end
     end
   end
 end
