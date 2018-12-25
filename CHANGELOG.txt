@@ -1,5 +1,13 @@
 # Changelog
 
+#### 0.2.0 Mon Dec 24 18:19:55 PST 2018
+
+* Support for rake files
+* Support for rspec files
+* Removed ripper tags & refactoring
+* Better handling of parameter variables
+* Probably better performance (not measured, but reasonably sure)
+
 #### 0.1.1 Fri Dec 21 16:48:46 PST 2018
 
 * Fix a few little issues that came to light while updating ide-ruby
