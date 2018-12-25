@@ -61,7 +61,7 @@ module RubyLanguageServer
 
       # {"kind":"module","line":4,"language":"Ruby","path":"(eval)","pattern":"module RubyLanguageServer","full_name":"RubyLanguageServer","name":"RubyLanguageServer"}
       symbols = @project_manager.tags_for_uri(uri)
-      RubyLanguageServer.logger.error("symbols #{symbols}")
+      RubyLanguageServer.logger.debug("symbols #{symbols}")
       symbols
     end
 
