@@ -97,7 +97,7 @@ describe RubyLanguageServer::ScopeParser do
       bar = m.children.first
       baz_function = bar.children.first
       assert_equal('baz', baz_function.name)
-      assert_equal(3, baz_function.variables.size)
+      assert_equal(%w[bing zang zing], baz_function.variables.map(&:name).sort)
     end
 
     it 'should have a couple of ivars for Bar' do
@@ -141,7 +141,8 @@ describe RubyLanguageServer::ScopeParser do
       <<-RAKE
       class SomeClass
         def some_method
-          items.each do |item|
+          # Array of [[object, [key, value]], [object2, [key2, value2]]]
+          items.each do |item, (key, value)|
             # should see item as a variable
           end
         end

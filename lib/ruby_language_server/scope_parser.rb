@@ -37,11 +37,12 @@ module RubyLanguageServer
       return if sexp.nil?
 
       root, args, *rest = sexp
-      # RubyLanguageServer.logger.debug("Doing #{[root, args, rest]}")
+      # RubyLanguageServer.logger.error("Doing #{[root, args, rest]}")
       case root
       when Array
         sexp.each { |child| process(child) }
       when Symbol
+        root = root.to_s.gsub(/^@+/, '')
         method_name = "on_#{root}"
         if respond_to? method_name
           send(method_name, args, rest)
@@ -60,6 +61,12 @@ module RubyLanguageServer
     end
 
     def on_sclass(_args, rest)
+      process(rest)
+    end
+
+    # foo = bar -- bar is in the vcall.  Pretty sure we don't want to remember this.
+    def on_vcall(_args, rest)
+      # Seriously - discard args.  Maybe process rest?
       process(rest)
     end
 
@@ -132,14 +139,14 @@ module RubyLanguageServer
       on_def(rest[1], rest[2]) if args[1][1] == 'self' && rest[0][1] == '.'
     end
 
-    def on_params(args, _rest)
-      # RubyLanguageServer.logger.info("on_params #{[args, rest]}")
-      return if args.nil?
+    # ident is something that gets processed at parameters to a function or block
+    def on_ident(name, ((line, column)))
+      add_variable(name, line, column)
+    end
 
-      # [[:@ident, "bing", [3, 16]], [:@ident, "zing", [3, 22]]]
-      args.each do |_, name, (line, column)|
-        add_variable(name, line, column)
-      end
+    def on_params(args, rest)
+      process(args)
+      process(rest)
     end
 
     # The on_command function idea is stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb

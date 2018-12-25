@@ -18,7 +18,7 @@ module RubyLanguageServer
       end
 
       def constant?
-        !name.match(/^[A-Z]/).nil?
+        !@name&.match(/^[A-Z]/).nil?
       end
     end
   end
