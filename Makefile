@@ -21,3 +21,7 @@ console: build
 
 shell: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) sh
+
+# Just to make sure it works.
+server: build
+	docker run -it $(LOCAL_LINK) $(PROJECT_NAME)
