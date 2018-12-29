@@ -33,7 +33,10 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
+  # Normally the system will have these - but not if it's a stripped down docker image
   spec.add_dependency 'bundler'
+  spec.add_dependency 'json'
+  spec.add_dependency 'etc'
 
   # No - do not put these in dev - they are needed for the app
   spec.add_dependency 'rubocop'
