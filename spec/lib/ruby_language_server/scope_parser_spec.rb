@@ -50,8 +50,8 @@ describe RubyLanguageServer::ScopeParser do
     describe 'class << self' do
       let(:zar) { @parser.root_scope.self_and_descendants.detect { |child| child.full_name == 'Foo::Zar' } }
 
-      it "should add methods" do
-        assert_equal(["zoo", "zor"], zar.children.map(&:name).sort)
+      it 'should add methods' do
+        assert_equal(%w[zoo zor], zar.children.map(&:name).sort)
       end
     end
 
