@@ -16,5 +16,12 @@ continuous_development: build
 	  sleep 2 ; \
 	done
 
+console: build
+	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) bin/console
+
 shell: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) sh
+
+# Just to make sure it works.
+server: build
+	docker run -it $(LOCAL_LINK) $(PROJECT_NAME)

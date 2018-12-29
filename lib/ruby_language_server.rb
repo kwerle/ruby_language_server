@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'ruby_language_server/logger' # do this first!
+require_relative 'ruby_language_server/version'
 require_relative 'ruby_language_server/gem_installer'
 require_relative 'ruby_language_server/io'
 require_relative 'ruby_language_server/location'

@@ -8,15 +8,16 @@ LABEL maintainer="kurt@CircleW.org"
 # Needed for byebug and some other gems
 RUN apk update
 RUN apk add make
-# RUN apk add gcc
 RUN apk add g++
 
 WORKDIR /app
 
 COPY Gemfile .
+COPY ruby_language_server.gemspec .
+COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
 RUN bundle install
 
 COPY . ./
 
-CMD ["ruby", "/app/bin/ruby_language_server"]
+CMD ["ruby", "/app/exe/ruby_language_server"]
