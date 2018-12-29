@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['kurt@CircleW.org']
 
   spec.summary       = 'Provide a language server implementation for ruby in ruby.'
-  spec.description   = 'TxODO: Write a longer description or delete this line.'
+  spec.description   = 'See https://microsoft.github.io/language-server-protocol/ "A Language Server is meant to provide the language-specific smarts and communicate with development tools over a protocol that enables inter-process communication."'
   spec.homepage      = 'https://github.com/kwerle/ruby_language_server'
   spec.license       = 'MIT'
 
