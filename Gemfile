@@ -2,8 +2,6 @@
 
 source 'https://rubygems.org'
 
-gem 'rcodetools' # Uhhh...
-
 gem 'bundler'
 
 # No - do not put these in dev - they are needed for the app
