@@ -4,6 +4,7 @@ PATH
     ruby_language_server (0.2.0)
       amatch
       bundler
+      etc
       fuzzy_match
       json
       rubocop
@@ -18,6 +19,7 @@ GEM
     ast (2.4.0)
     byebug (10.0.2)
     coderay (1.1.2)
+    etc (1.0.1)
     ffi (1.9.25)
     formatador (0.2.5)
     fuzzy_match (2.1.0)
