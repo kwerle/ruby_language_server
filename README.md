@@ -6,7 +6,7 @@ The goal of this project is to provide a [language server](https://code.visualst
 
 # Status
 
-Beta.  It does some stuff.  Mostly stable.  Used day-to-day.
+Beta.  It does some stuff.  Pretty stable.  Used day-to-day.
 
 Help wanted.
 
