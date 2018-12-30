@@ -25,3 +25,11 @@ shell: build
 # Just to make sure it works.
 server: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME)
+
+gem: build
+	rm -f $(PROJECT_NAME)*.gem
+	docker run $(LOCAL_LINK) $(PROJECT_NAME) gem build $(PROJECT_NAME)
+
+# Requires rubygems be installed on host
+gem_release: gem
+	gem push $(PROJECT_NAME)*.gem

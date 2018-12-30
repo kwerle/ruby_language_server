@@ -19,9 +19,9 @@ Help wanted.
 
 # Editor Integrations
 
-* You probably want to use one of the developed integrations:
-  * Atom - https://github.com/kwerle/ide-ruby
-  * Theia - https://github.com/kwerle/theia_ruby_language_server
+You probably want to use one of the developed integrations:
+* Atom - https://github.com/kwerle/ide-ruby
+* Theia - https://github.com/kwerle/theia_ruby_language_server
 
 # Running
 
@@ -32,7 +32,7 @@ Help wanted.
 Clone.  I love git [HubFlow](https://datasift.github.io/gitflow/).
 
 Check out the [Makefile](Makefile).  You are going to want to do
-`make guard` and `make continuous_development`.
+`make guard` in one window and `make continuous_development` in another.
 
 * In Atom: install the ide-ruby.  
 * Settings > Packages > ide-ruby > Image Name > local_ruby_language_server
