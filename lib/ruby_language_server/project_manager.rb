@@ -18,7 +18,9 @@ module RubyLanguageServer
       @additional_gems_installed = false
       @additional_gem_mutex = Mutex.new
 
-      scan_all_project_files
+      project_root = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] #|| '/project'
+      scan_all_project_files(project_root)
+      install_and_scan_gems(project_root)
     end
 
     def diagnostics_ready?
@@ -152,8 +154,10 @@ module RubyLanguageServer
     #   data?: any
     # }
 
-    def scan_all_project_files
-      project_ruby_files = Dir.glob('/project/**/*.rb')
+    def scan_all_project_files(project_root)
+      return if project_root.nil? || project_root == ''
+
+      project_ruby_files = Dir.glob("#{project_root}/**/*.rb")
       RubyLanguageServer.logger.debug("scan_all_project_files: #{project_ruby_files * ','}")
       Thread.new do
         project_ruby_files.each do |container_path|
@@ -162,6 +166,25 @@ module RubyLanguageServer
           host_uri = @root_uri + relative_path
           update_document_content(host_uri, text)
         end
+      end
+    end
+
+    def install_and_scan_gems(project_root)
+      return if project_root.nil? || project_root == ''
+
+      # bundle	install   [--binstubs[=DIRECTORY]]   [--clean]	[--deployment] [--force] [--frozen] [--full-index] [--gemfile=GEMFILE] [--jobs=NUMBER] [--local] [--no-cache] [--no-prune] [--path   PATH] [--quiet] [--retry=NUMBER] [--shebang] [--standalone[=GROUP[ GROUP...]]]  [--sys-tem]   [--trust-policy=POLICY]	[--with=GROUP[	 GROUP...]]   [--with- out=GROUP[GROUP...]]
+
+      filename = "#{project_root}/Gemfile"
+      return unless File.file?(filename)
+
+      Thread.new do
+        # I tried to use the bundler gem APIs to install but could not figure
+        # out the details.  Need to take another shot.  FIXME
+        # Additionally, could not mkdir or create files in project root.
+        # Permission issues.  FIXME
+        results = `bundle install --standalone --path='/project_gems/'`
+        RubyLanguageServer.logger.error("install_and_scan_gems: #{results}")
+        scan_all_project_files('/project_gems')
       end
     end
 
