@@ -55,6 +55,8 @@ module RubyLanguageServer
         RubyLanguageServer.logger.debug("We don't do Strings like #{root} with #{args}")
       when NilClass
         process(args)
+      when FalseClass
+        process(args)
       else
         RubyLanguageServer.logger.warn("We don't respond to the likes of #{root} of class #{root.class}")
       end
@@ -91,11 +93,20 @@ module RubyLanguageServer
     end
 
     def on_module(args, rest)
-      add_scope(args.last, rest, ScopeData::Scope::TYPE_MODULE)
+      scope = add_scope(args.last, rest, ScopeData::Scope::TYPE_MODULE)
+      assign_subclass(scope, rest)
     end
 
     def on_class(args, rest)
-      add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
+      scope = add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
+      assign_subclass(scope, rest)
+    end
+
+    def assign_subclass(scope, sexp)
+      return unless !sexp[0].nil? && sexp[0][0] == :var_ref
+
+      (_, (_, name)) = sexp[0]
+      scope.set_superclass_name(name)
     end
 
     def on_method_add_block(args, rest)
@@ -117,11 +128,20 @@ module RubyLanguageServer
       pop_scope
     end
 
-    # Used only to describe subclasses?
-    def on_var_ref(args, _)
+    def on_block_var(args, rest)
+      (_, ((_, name, (line, column)))) = args
+      add_variable(name, line, column)
+      # blocks don't declare their first line in the parser
+      current_scope.top_line ||= line
+      process(args)
+      process(rest)
+    end
+
+    # Used only to describe subclasses? -- nope
+    def on_var_ref(_args, _rest)
       # [:@const, "Bar", [13, 20]]
-      (_, name) = args
-      @current_scope.set_superclass_name(name)
+      # (_, name) = args
+      # @current_scope.set_superclass_name(name)
     end
 
     def on_assign(args, rest)
@@ -261,9 +281,10 @@ module RubyLanguageServer
 
     def add_scope(args, rest, type)
       (_, name, (line, column)) = args
-      push_scope(type, name, line, column)
+      scope = push_scope(type, name, line, column)
       process(rest)
       pop_scope
+      scope
     end
 
     def type_is_class_or_module(type)
@@ -292,14 +313,8 @@ module RubyLanguageServer
     # This is a very poor man's "end" handler because there is no end handler.
     # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
     def close_sibling_scopes(line)
-      parent_scope = @current_scope.parent
-      unless parent_scope.nil?
-        last_sibling = parent_scope.children.last
-        until last_sibling.nil?
-          last_sibling.bottom_line = line - 1
-          last_sibling = last_sibling.children.last
-        end
-      end
+      parent_scope = @current_scope
+      parent_scope&.descendants&.each { |scope| scope.bottom_line = [scope.bottom_line, line - 1].compact.min }
     end
 
     def pop_scope
@@ -327,7 +342,7 @@ module RubyLanguageServer
       rescue TypeError => exception
         RubyLanguageServer.logger.error("Exception in sexp: #{exception} for text: #{text}")
       end
-      processor = SEXPProcessor.new(sexp, text.length)
+      processor = SEXPProcessor.new(sexp, text.split("\n").length)
       @root_scope = processor.root_scope
     end
   end

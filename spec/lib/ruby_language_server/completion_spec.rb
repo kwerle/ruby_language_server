@@ -57,7 +57,7 @@ describe RubyLanguageServer::Completion do
       context = %w[bar ba]
       context_scope = nar_naz_scope
       completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, all_scopes)
-      assert_equal(["baz", "@biz", "@bottom"], completions.map(&:first))
+      assert_equal(['baz', '@biz', '@bottom'], completions.map(&:first))
     end
   end
 
