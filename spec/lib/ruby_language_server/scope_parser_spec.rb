@@ -136,6 +136,23 @@ describe RubyLanguageServer::ScopeParser do
     end
   end
 
+  describe 'block with compound variable' do
+    let(:block_source) do
+      <<-BLOCK
+      sum_or_average.each do |(date, c), value|
+      end
+      BLOCK
+    end
+    let(:scope_parser) { RubyLanguageServer::ScopeParser.new(block_source) }
+
+    it "should parse the names" do
+      block_scope = scope_parser.root_scope.children.first
+      assert_equal(1, block_scope.top_line)
+      assert_equal(2, block_scope.bottom_line)
+      assert_equal(%w[date c value], block_scope.variables.map(&:name))
+    end
+  end
+
   describe 'block' do
     let(:block_source) do
       <<-RAKE
