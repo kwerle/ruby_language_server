@@ -125,5 +125,14 @@ module RubyLanguageServer
       end
       @root_scope
     end
+
+    # Returns the context of what is being typed in the given line
+    def context_at_location(position)
+      lines = text.split("\n")
+      line = lines[position.line]
+      return [] if line.nil? || line.strip.length.zero?
+
+      LineContext.for(line, position.character)
+    end
   end
 end

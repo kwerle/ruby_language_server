@@ -16,7 +16,7 @@ COPY Gemfile .
 COPY ruby_language_server.gemspec .
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
-RUN bundle install
+RUN bundle install -j 4
 
 COPY . ./
 
