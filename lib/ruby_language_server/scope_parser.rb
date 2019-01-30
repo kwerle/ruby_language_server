@@ -130,10 +130,6 @@ module RubyLanguageServer
     end
 
     def on_block_var(args, rest)
-      (_, ((_, name, (line, column)))) = args
-      add_variable(name, line, column)
-      # blocks don't declare their first line in the parser
-      current_scope.top_line ||= line
       process(args)
       process(rest)
     end
@@ -157,7 +153,14 @@ module RubyLanguageServer
     # def self.something(par)...
     # [:var_ref, [:@kw, "self", [28, 14]]], [[:@period, ".", [28, 18]], [:@ident, "something", [28, 19]], [:paren, [:params, [[:@ident, "par", [28, 23]]], nil, nil, nil, nil, nil, nil]], [:bodystmt, [[:assign, [:var_field, [:@ident, "pax", [29, 12]]], [:var_ref, [:@ident, "par", [29, 18]]]]], nil, nil, nil]]
     def on_defs(args, rest)
-      on_def(rest[1], rest[2]) if args[1][1] == 'self' && rest[0][1] == '.'
+      on_def(rest[1], rest[2..-1]) if args[1][1] == 'self' && rest[0][1] == '.'
+    end
+
+    # Multiple left hand side
+    # (foo, bar) = somethingg...
+    def on_mlhs(args, rest)
+      process(args)
+      process(rest)
     end
 
     # ident is something that gets processed at parameters to a function or block
@@ -266,6 +269,8 @@ module RubyLanguageServer
 
     def add_variable(name, line, column, scope = @current_scope)
       new_variable = ScopeData::Variable.new(scope, name, line, column)
+      # blocks don't declare their first line in the parser
+      scope.top_line ||= line
       scope.variables << new_variable unless scope.has_variable_or_constant?(new_variable)
     end
 
