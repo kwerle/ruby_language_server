@@ -22,6 +22,7 @@ module RubyLanguageServer
     def initialize(sexp, lines = 1)
       @sexp = sexp
       @lines = lines
+      @root_scope = nil
     end
 
     def root_scope
