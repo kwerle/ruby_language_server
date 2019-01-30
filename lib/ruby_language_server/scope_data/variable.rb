@@ -14,12 +14,7 @@ module RubyLanguageServer
         @column = column
         @full_name = [scope.full_name, @name].join(JoinHash[TYPE_VARIABLE])
         @type = type
-        # rubocop:disable Style/GuardClause
-        unless @name.instance_of? String
-          RubyLanguageServer.logger.error("@name is not a string! #{self}, #{scope.inspect}")
-          @name = @name.to_s
-        end
-        # rubocop:enable Style/GuardClause
+        raise "bogus variable #{inspect}" unless @name.instance_of? String
       end
 
       def constant?

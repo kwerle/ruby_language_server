@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.2.3 Wed Jan 30 11:46:09 PST 2019
+
+* Fixed a few bugs having to do with block variables
+* More tests
+
 #### 0.2.1 Wed Jan 30 11:46:09 PST 2019
 
 * Convert to Gem
