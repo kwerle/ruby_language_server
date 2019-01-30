@@ -24,7 +24,7 @@ describe RubyLanguageServer::ScopeData::Scope do
         def naz(ning)
           bar = Bar.new
           @niz = ning
-          fake_array.each do |iterator_variable|
+          fake_array.each do |iterator_variable, foo|
             p iterator_variable
           end
         end
