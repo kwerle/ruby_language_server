@@ -24,7 +24,11 @@ module RubyLanguageServer
         @name = name
         @top_line = top_line
         @depth = parent.nil? ? 0 : parent.depth + 1
-        @full_name = [parent ? parent.full_name : nil, @name].compact.join(JoinHash[type]) unless type == TYPE_ROOT
+        if type == TYPE_ROOT
+          @full_name = nil
+        else
+          @full_name = [parent ? parent.full_name : nil, @name].compact.join(JoinHash[type])
+        end
         @children = []
         @variables = []
         @constants = []
