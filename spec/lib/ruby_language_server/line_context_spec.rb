@@ -34,6 +34,18 @@ describe RubyLanguageServer::LineContext do
     end
   end
 
+  describe '&. separator' do
+    let(:line) { 'this&.that::SOMETHING' }
+
+    it 'should do the right things' do
+      assert_equal(['this'], line_context.for(line, 4))
+      # assert_equal(['this', ''], line_context.for(line, 5))
+      assert_equal(%w[this that], line_context.for(line, 6))
+      assert_equal(%w[this that], line_context.for(line, 7))
+      assert_equal(%w[this that SOMETHING], line_context.for(line, 17))
+    end
+  end
+
   describe 'Module relative with methods' do
     let(:line) { 'Some::Module.instance.method = Max::Mod.another_instance.something' }
 

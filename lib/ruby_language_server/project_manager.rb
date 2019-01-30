@@ -175,14 +175,10 @@ module RubyLanguageServer
       end
     end
 
+    # Returns the context of what is being typed in the given line
     def context_at_location(uri, position)
-      lines = text_for_uri(uri).split("\n")
-      line = lines[position.line]
-      return [] if line.nil? || line.strip.length.zero?
-
-      contexts = LineContext.for(line, position.character)
-      RubyLanguageServer.logger.debug("LineContext.for(line, position.character): #{contexts}")
-      contexts
+      code_file = code_file_for_uri(uri)
+      code_file&.context_at_location(position)
     end
 
     def word_at_location(uri, position)

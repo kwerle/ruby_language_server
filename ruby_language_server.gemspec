@@ -35,8 +35,8 @@ Gem::Specification.new do |spec|
 
   # Normally the system will have these - but not if it's a stripped down docker image
   spec.add_dependency 'bundler'
-  spec.add_dependency 'json'
   spec.add_dependency 'etc'
+  spec.add_dependency 'json'
 
   # No - do not put these in dev - they are needed for the app
   spec.add_dependency 'rubocop'
