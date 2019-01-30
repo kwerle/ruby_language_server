@@ -19,6 +19,9 @@ continuous_development: build
 console: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) bin/console
 
+test: build
+	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop -c .rubocop_ruby_language_parser.yml
+
 shell: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) sh
 
