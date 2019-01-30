@@ -1,5 +1,15 @@
 # Changelog
 
+#### 0.2.1 Wed Jan 30 11:46:09 PST 2019
+
+* Convert to Gem
+* Bunch of refactoring
+* More test (fixed stuff)
+* Better block (and other) line start/end setting
+* Better block variable handling
+* Fixed subclass assignment (not that it matters, yet)
+* Added support for object&.method
+
 #### 0.2.0 Mon Dec 24 18:19:55 PST 2018
 
 * Support for rake files

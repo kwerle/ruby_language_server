@@ -3,8 +3,7 @@
 module RubyLanguageServer
   module ScopeData
     # The Scope class is basically a container with context.
-    # It is used to track top & bottom line, variables in this scope, contanst, and children - which could be functions, classes, blocks, etc.  Anything that adds scope.
-    # Remember, this is scope for a file.  It seems reasonabble that this will get used less in the future when we know more about classes.
+    # It is used to track top & bottom line, variables in this scope, constants, and children - which could be functions, classes, blocks, etc.  Anything that adds scope.
     class Scope < Base
       include Enumerable
 
@@ -15,7 +14,6 @@ module RubyLanguageServer
       attr_accessor :variables       # variables declared in this scope
       attr_accessor :constants       # constants declared in this scope
       attr_accessor :children        # child scopes
-      attr_accessor :type            # Type of this scope (module, class, block)
       attr_accessor :name            # method
       attr_accessor :superclass_name # superclass name
 
@@ -26,14 +24,18 @@ module RubyLanguageServer
         @name = name
         @top_line = top_line
         @depth = parent.nil? ? 0 : parent.depth + 1
-        @full_name = [parent ? parent.full_name : nil, @name].compact.join(JoinHash[type]) unless type == TYPE_ROOT
+        if type == TYPE_ROOT
+          @full_name = nil
+        else
+          @full_name = [parent ? parent.full_name : nil, @name].compact.join(JoinHash[type])
+        end
         @children = []
         @variables = []
         @constants = []
       end
 
       def inspect
-        "Scope: #{@name} (#{@full_name}) #{@top_line}-#{@bottom_line} children: #{@children} vars: #{@variables}"
+        "Scope: #{@name} (#{@full_name} - #{@type}) #{@top_line}-#{@bottom_line} children: #{@children} vars: #{@variables}"
       end
 
       def pretty_print(pp) # rubocop:disable Naming/UncommunicativeMethodParamName
@@ -87,9 +89,7 @@ module RubyLanguageServer
 
       # [self, parent, parent.parent...]
       def self_and_ancestors
-        return [self, parent.self_and_ancestors].flatten unless parent.nil?
-
-        [self]
+        [self, parent&.self_and_ancestors].flatten.compact
       end
 
       def set_superclass_name(partial)

@@ -2,21 +2,22 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:2.5-alpine
+FROM ruby:2.6-alpine
 LABEL maintainer="kurt@CircleW.org"
 
 # Needed for byebug and some other gems
 RUN apk update
 RUN apk add make
-# RUN apk add gcc
 RUN apk add g++
 
 WORKDIR /app
 
 COPY Gemfile .
+COPY ruby_language_server.gemspec .
+COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
-RUN bundle install
+RUN bundle install -j 4
 
 COPY . ./
 
-CMD ["ruby", "/app/bin/ruby_language_server"]
+CMD ["ruby", "/app/exe/ruby_language_server"]

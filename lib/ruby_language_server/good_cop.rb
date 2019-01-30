@@ -6,9 +6,9 @@ module RubyLanguageServer
   class GoodCop < RuboCop::Runner
     CONFIG_PATH = '/project/.rubocop.yml'
     FALLBACK_PATH = '/app/.rubocop.yml'
-    @initialization_error = nil
 
     def initialize
+      @initialization_error = nil
       config_store = RuboCop::ConfigStore.new
       config_store.options_config =
         if File.exist?(CONFIG_PATH)

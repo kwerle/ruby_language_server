@@ -18,6 +18,12 @@ module RubyLanguageServer
         TYPE_ROOT => '',
         TYPE_VARIABLE => '^'
       }.freeze
+
+      attr_accessor :type # Type of this scope (module, class, block)
+
+      def method?
+        type == TYPE_METHOD
+      end
     end
   end
 end

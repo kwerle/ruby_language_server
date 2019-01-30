@@ -31,7 +31,7 @@ describe RubyLanguageServer::CodeFile do
         RubyLanguageServer::CodeFile.new('uri', text)
       end
 
-      it "should find classes" do
+      it 'should find classes' do
         code_file = code_file("class Foo\nend\n")
         assert_equal(1, code_file.tags.length)
         assert_equal('Foo', code_file.tags.last[:name])

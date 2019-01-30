@@ -29,8 +29,9 @@ module RubyLanguageServer
       line_start = line[0..(position + match.length - 1)]
       RubyLanguageServer.logger.debug("line_start: #{line_start}")
       # Match as much as we can to the end of the line - which is now the end of the word
-      end_match = line_start.partition(/(@{0,2}[:\.\w]+)$/)[1]
-      matches = end_match.split('.', -1)
+      end_match = line_start.partition(/(@{0,2}[:&\.\w]+)$/)[1]
+      matches = end_match.split('&.', -1)
+      matches = matches.map { |m| m.length.positive? ? m.split('.', -1) : m }.flatten
       matches = matches.map { |m| m.length.positive? ? m.split('::', -1) : m }.flatten
       RubyLanguageServer.logger.debug("matches: #{matches}")
       matches

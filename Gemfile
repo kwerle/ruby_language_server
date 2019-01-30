@@ -2,24 +2,7 @@
 
 source 'https://rubygems.org'
 
-gem 'rcodetools' # Uhhh...
+git_source(:github) { |repo_name| "https://github.com/#{repo_name}" }
 
-gem 'bundler'
-
-# No - do not put these in dev - they are needed for the app
-gem 'rubocop'
-gem 'rubocop-rspec' # Linter - no longer needed - use additional gems?
-
-gem 'amatch'      # in c
-gem 'fuzzy_match' # completion matching
-
-group :development do
-  gem 'guard'
-  gem 'guard-minitest'
-  gem 'guard-rubocop'
-  gem 'minitest'
-  gem 'minitest-color'
-  gem 'pry'
-  gem 'pry-byebug'
-  gem 'rake' # required by guard :-(
-end
+# Specify your gem's dependencies in ruby_language_server.gemspec
+gemspec
