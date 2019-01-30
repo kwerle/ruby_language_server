@@ -42,6 +42,10 @@ module RubyLanguageServer
       }
     end
 
+    def on_initialized(_hash)
+      RubyLanguageServer.logger.error("RubyLanguageServer::VERSION #{RubyLanguageServer::VERSION}")
+    end
+
     def on_workspace_didChangeWatchedFiles(params)
       RubyLanguageServer.logger.debug('on_workspace_didChangeWatchedFiles')
       RubyLanguageServer.logger.debug(params)

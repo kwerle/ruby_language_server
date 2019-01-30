@@ -65,10 +65,10 @@ module RubyLanguageServer
       def scope_completions(word, scopes)
         words = {}
         scopes.each_with_object(words) do |scope, words_hash|
-          scope.children.each do |function|
-            words_hash[function.name] ||= {
+          scope.children.select(&:'method?').each do |method_scope|
+            words_hash[method_scope.name] ||= {
               depth: scope.depth,
-              type: function.type
+              type: method_scope.type
             }
           end
           scope.variables.each do |variable|
@@ -78,7 +78,7 @@ module RubyLanguageServer
             }
           end
         end
-        # words = words.sort_by{|word, hash| hash[:depth] }.to_h
+        words = words.sort_by { |_word, hash| hash[:depth] }.to_h
         good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
         words = good_words.map { |w| [w, words[w]] }.to_h
       end

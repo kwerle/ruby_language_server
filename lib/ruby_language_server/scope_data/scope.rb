@@ -3,8 +3,7 @@
 module RubyLanguageServer
   module ScopeData
     # The Scope class is basically a container with context.
-    # It is used to track top & bottom line, variables in this scope, contanst, and children - which could be functions, classes, blocks, etc.  Anything that adds scope.
-    # Remember, this is scope for a file.  It seems reasonabble that this will get used less in the future when we know more about classes.
+    # It is used to track top & bottom line, variables in this scope, constants, and children - which could be functions, classes, blocks, etc.  Anything that adds scope.
     class Scope < Base
       include Enumerable
 
@@ -15,7 +14,6 @@ module RubyLanguageServer
       attr_accessor :variables       # variables declared in this scope
       attr_accessor :constants       # constants declared in this scope
       attr_accessor :children        # child scopes
-      attr_accessor :type            # Type of this scope (module, class, block)
       attr_accessor :name            # method
       attr_accessor :superclass_name # superclass name
 
@@ -33,7 +31,7 @@ module RubyLanguageServer
       end
 
       def inspect
-        "Scope: #{@name} (#{@full_name}) #{@top_line}-#{@bottom_line} children: #{@children} vars: #{@variables}"
+        "Scope: #{@name} (#{@full_name} - #{@type}) #{@top_line}-#{@bottom_line} children: #{@children} vars: #{@variables}"
       end
 
       def pretty_print(pp) # rubocop:disable Naming/UncommunicativeMethodParamName
