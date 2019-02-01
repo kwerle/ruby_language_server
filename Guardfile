@@ -29,7 +29,7 @@ guard :minitest, all_after_pass: true do
   watch(%r{^spec/spec_helper\.rb$})  { 'spec' }
 end
 
-guard :rubocop, cli: ['-c', '.rubocop_ruby_language_parser.yml'] do
+guard :rubocop, cli: [] do
   watch('.rubocop_ruby_language_parser.yml')
   watch(/.+\.rb$/)
   watch(%r{(?:.+/)?\.rubocop(?:_todo)?\.yml$}) { |m| File.dirname(m[0]) }

@@ -4,6 +4,10 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::GoodCop do
+  before :each do
+    RubyLanguageServer::ProjectManager.new('/foo') # GoodCop looks to the ProjectManager to get the project root path
+  end
+
   let(:good_cop) { RubyLanguageServer::GoodCop.new }
 
   describe 'basics' do

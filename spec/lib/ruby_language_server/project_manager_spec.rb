@@ -7,11 +7,20 @@ describe RubyLanguageServer::ProjectManager do
   before do
   end
 
-  let(:pm) { RubyLanguageServer::ProjectManager.new('foo') }
+  let(:pm) { RubyLanguageServer::ProjectManager.new('/foo') }
 
   describe 'ProjectManager' do
     it 'must init' do
       refute_nil(pm)
+    end
+  end
+
+  describe '#root_path' do
+    it 'should set root path once' do
+      refute_nil(pm)
+      assert_equal('/foo', RubyLanguageServer::ProjectManager.root_path)
+      RubyLanguageServer::ProjectManager.new('/bar')
+      assert_equal('/foo', RubyLanguageServer::ProjectManager.root_path)
     end
   end
 
