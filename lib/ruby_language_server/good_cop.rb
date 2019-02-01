@@ -10,12 +10,8 @@ module RubyLanguageServer
     def initialize
       @initialization_error = nil
       config_store = RuboCop::ConfigStore.new
-      config_store.options_config =
-        if File.exist?(CONFIG_PATH)
-          CONFIG_PATH
-        else
-          FALLBACK_PATH
-        end
+
+      config_store.options_config = config_path
       super({}, config_store)
     rescue Exception => exception
       RubyLanguageServer.logger.error(exception)
@@ -79,7 +75,7 @@ module RubyLanguageServer
       when 'refactor', 'convention'
         3
       else
-        RubyLanguageServer.logger.warn("Could not map severity for #{severity} - returning 2")
+        RubyLanguageServer.logger.error("Could not map severity for #{severity} - returning 2")
         2
       end
     end
@@ -120,6 +116,15 @@ module RubyLanguageServer
           message: @initialization_error
         }
       ]
+    end
+
+    def config_path
+      my_path = __FILE__
+      pathname = Pathname.new(my_path)
+      my_directory = pathname.dirname
+      fallback_pathname = my_directory + '../resources/fallback_rubocop.yml'
+      possible_config_paths = [RubyLanguageServer::ProjectManager.root_path, fallback_pathname.to_s]
+      possible_config_paths.detect { |path| File.exist?(path) }
     end
   end
 end

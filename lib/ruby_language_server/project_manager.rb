@@ -8,9 +8,26 @@ module RubyLanguageServer
   class ProjectManager
     attr_reader :uri_code_file_hash
 
-    def initialize(uri)
-      @root_path = uri
-      @root_uri = "file://#{@root_path}"
+    # GoodCop wants to know where to find its config.  So here we are.
+    ROOT_PATH_MUTEX = Mutex.new
+    @_root_path = nil
+
+    class << self
+      def root_path=(path)
+        ROOT_PATH_MUTEX.synchronize do
+          @_root_path = path
+        end
+      end
+
+      def root_path
+        @_root_path
+      end
+    end
+
+    def initialize(path)
+      # Should probably lock for read, but I'm feeling crazy!
+      self.class.root_path = path if self.class.root_path.nil?
+      @root_uri = "file://#{path}"
       # This is {uri: code_file} where content stuff is like
       @uri_code_file_hash = {}
       @update_mutext = Mutex.new
