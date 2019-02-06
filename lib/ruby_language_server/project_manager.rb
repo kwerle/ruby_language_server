@@ -20,7 +20,7 @@ module RubyLanguageServer
       end
 
       def root_path
-        # I'm torn about  this.  Should this be set in the server?  Or is this right.
+        # I'm torn about  this.  Should this be set in the Server?  Or is this right.
         # Rather than worry too much, I'll just do this here and change it later if it feels wrong.
         path = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] || @_root_path
         return path if path.nil?
