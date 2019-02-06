@@ -18,9 +18,15 @@ describe RubyLanguageServer::ProjectManager do
   describe '#root_path' do
     it 'should set root path once' do
       refute_nil(pm)
-      assert_equal('/foo', RubyLanguageServer::ProjectManager.root_path)
+      assert_equal('/foo/', RubyLanguageServer::ProjectManager.root_path)
       RubyLanguageServer::ProjectManager.new('/bar')
-      assert_equal('/foo', RubyLanguageServer::ProjectManager.root_path)
+      assert_equal('/foo/', RubyLanguageServer::ProjectManager.root_path)
+    end
+
+    it 'should use the environment variable if set' do
+      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = '/proj/'
+      assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
+      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = nil
     end
   end
 

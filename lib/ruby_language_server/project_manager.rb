@@ -20,7 +20,12 @@ module RubyLanguageServer
       end
 
       def root_path
-        @_root_path
+        # I'm torn about  this.  Should this be set in the Server?  Or is this right.
+        # Rather than worry too much, I'll just do this here and change it later if it feels wrong.
+        path = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] || @_root_path
+        return path if path.nil?
+
+        path.end_with?(File::SEPARATOR) ? path : "#{path}#{File::SEPARATOR}"
       end
     end
 
@@ -170,12 +175,11 @@ module RubyLanguageServer
     # }
 
     def scan_all_project_files
-      project_ruby_files = Dir.glob('/project/**/*.rb')
-      RubyLanguageServer.logger.debug("scan_all_project_files: #{project_ruby_files * ','}")
+      project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
         project_ruby_files.each do |container_path|
           text = File.read(container_path)
-          relative_path = container_path.delete_prefix('/project/')
+          relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = @root_uri + relative_path
           update_document_content(host_uri, text)
         end
