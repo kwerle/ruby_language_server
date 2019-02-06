@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.2.6 Wed Feb  6 12:50:52 PST 2019
+
+* Fixed a couple of issues with projecy root
+* Main upshot: .rubocop.yml file will be found again
+
 #### 0.2.3 Wed Jan 30 11:46:09 PST 2019
 
 * Fixed a few bugs having to do with block variables
