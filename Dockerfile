@@ -12,6 +12,9 @@ RUN apk add g++
 
 WORKDIR /app
 
+# We expect the target project to be mounted here:
+ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT /project/
+
 COPY Gemfile .
 COPY ruby_language_server.gemspec .
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
