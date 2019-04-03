@@ -96,9 +96,13 @@ module RubyLanguageServer
     private
 
     def offenses(text, filename)
-      processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename)
+      processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename_relative_to_project(filename))
       offenses = inspect_file(processed_source)
       offenses.compact.flatten
+    end
+
+    def filename_relative_to_project(filename)
+      filename.gsub(RubyLanguageServer::ProjectManager.root_uri, ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] || '/project/')
     end
 
     def initialization_offenses

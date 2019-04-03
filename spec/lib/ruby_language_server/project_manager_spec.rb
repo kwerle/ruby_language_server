@@ -7,7 +7,7 @@ describe RubyLanguageServer::ProjectManager do
   before do
   end
 
-  let(:pm) { RubyLanguageServer::ProjectManager.new('/foo') }
+  let(:pm) { RubyLanguageServer::ProjectManager.new('/foo', 'file:///foo/') }
 
   describe 'ProjectManager' do
     it 'must init' do
@@ -27,6 +27,13 @@ describe RubyLanguageServer::ProjectManager do
       ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = '/proj/'
       assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
       ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = nil
+    end
+  end
+
+  describe '#root_uri' do
+    it 'should store a root uri' do
+      refute_nil(pm)
+      assert_equal('file:///foo/', RubyLanguageServer::ProjectManager.root_uri)
     end
   end
 
