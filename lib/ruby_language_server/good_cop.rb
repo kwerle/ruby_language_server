@@ -96,9 +96,15 @@ module RubyLanguageServer
     private
 
     def offenses(text, filename)
-      processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename_relative_to_project(filename))
-      offenses = inspect_file(processed_source)
-      offenses.compact.flatten
+      filename = filename_relative_to_project(filename)
+
+      if excluded_file?(filename)
+        []
+      else
+        processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename)
+        offenses = inspect_file(processed_source)
+        offenses.compact.flatten
+      end
     end
 
     def filename_relative_to_project(filename)
@@ -126,6 +132,11 @@ module RubyLanguageServer
       project_path = RubyLanguageServer::ProjectManager.root_path + '.rubocop.yml'
       possible_config_paths = [project_path, fallback_pathname.to_s]
       possible_config_paths.detect { |path| File.exist?(path) }
+    end
+
+    def excluded_file?(filename)
+      file_config = @config_store.for(filename)
+      file_config.file_to_exclude?(filename)
     end
   end
 end
