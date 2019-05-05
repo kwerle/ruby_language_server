@@ -5,7 +5,7 @@ require 'minitest/autorun'
 
 describe RubyLanguageServer::GoodCop do
   before :each do
-    RubyLanguageServer::ProjectManager.new('/foo') # GoodCop looks to the ProjectManager to get the project root path
+    RubyLanguageServer::ProjectManager.new('/foo', 'file:///remote') # GoodCop looks to the ProjectManager to get the project root path
   end
 
   let(:good_cop) { RubyLanguageServer::GoodCop.new }
@@ -13,6 +13,13 @@ describe RubyLanguageServer::GoodCop do
   describe 'basics' do
     it 'should init without config' do
       refute_nil(good_cop)
+    end
+
+    it 'should know how to convert filenames to project-relative paths' do
+      assert_equal(good_cop.send(:filename_relative_to_project, 'test.rb'), 'test.rb')
+      assert_equal(good_cop.send(:filename_relative_to_project, 'file:///remote/test.rb'), '/project/test.rb')
+      assert_equal(good_cop.send(:filename_relative_to_project, 'file:///remote/path/test.rb'), '/project/path/test.rb')
+      assert_equal(good_cop.send(:filename_relative_to_project, '/local/path/test.rb'), '/local/path/test.rb')
     end
   end
 

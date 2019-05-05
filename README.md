@@ -52,4 +52,5 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 
 # Contributors
 
+* [Sebastian Delmont](sd@notso.net)
 * *Your name here!*

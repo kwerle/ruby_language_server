@@ -27,11 +27,26 @@ module RubyLanguageServer
 
         path.end_with?(File::SEPARATOR) ? path : "#{path}#{File::SEPARATOR}"
       end
+
+      def root_uri=(uri)
+        ROOT_PATH_MUTEX.synchronize do
+          if uri
+            uri = "#{uri}/" unless uri.end_with?('/')
+            @_root_uri = uri
+          end
+        end
+      end
+
+      def root_uri
+        @_root_uri || "file://#{root_path}"
+      end
     end
 
-    def initialize(path)
+    def initialize(path, uri = nil)
       # Should probably lock for read, but I'm feeling crazy!
       self.class.root_path = path if self.class.root_path.nil?
+      self.class.root_uri = uri if uri
+
       @root_uri = "file://#{path}"
       # This is {uri: code_file} where content stuff is like
       @uri_code_file_hash = {}
