@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.2.7 Sun May  5 15:36:21 PDT 2019
+
+* #34 - fix rubocop exclude paths.  Thanks to Sebastian Delmont!
+
 #### 0.2.6 Wed Feb  6 12:50:52 PST 2019
 
 * Fixed a couple of issues with projecy root

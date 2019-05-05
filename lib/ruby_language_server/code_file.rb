@@ -8,7 +8,7 @@ module RubyLanguageServer
   class CodeFile
     attr_reader :uri
     attr_reader :text
-    attr_reader :lint_found
+    attr_accessor :diagnostics
 
     def initialize(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
@@ -104,12 +104,6 @@ module RubyLanguageServer
       # RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
       # RubyLanguageServer.logger.debug("tags caller #{caller * ','}")
       @tags
-    end
-
-    def diagnostics
-      # Maybe we should be sharing this GoodCop across instances
-      @good_cop ||= GoodCop.new
-      @good_cop.diagnostics(@text, @uri)
     end
 
     def root_scope

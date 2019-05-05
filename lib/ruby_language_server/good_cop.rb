@@ -9,8 +9,8 @@ module RubyLanguageServer
       config_store = RuboCop::ConfigStore.new
       config_store.options_config = config_path
       super({}, config_store)
-    rescue Exception => exception
-      RubyLanguageServer.logger.error(exception)
+    rescue Exception => e
+      RubyLanguageServer.logger.error(e)
       @initialization_error = "There was an issue loading the rubocop configuration file: #{exception}.  Maybe you need to add some additional gems to the ide-ruby settings?"
     end
 
@@ -96,9 +96,13 @@ module RubyLanguageServer
     private
 
     def offenses(text, filename)
-      processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename)
-      offenses = inspect_file(processed_source)
-      offenses.compact.flatten
+      if excluded_file?(filename)
+        []
+      else
+        processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename)
+        offenses = inspect_file(processed_source)
+        offenses.compact.flatten
+      end
     end
 
     def initialization_offenses
@@ -122,6 +126,11 @@ module RubyLanguageServer
       project_path = RubyLanguageServer::ProjectManager.root_path + '.rubocop.yml'
       possible_config_paths = [project_path, fallback_pathname.to_s]
       possible_config_paths.detect { |path| File.exist?(path) }
+    end
+
+    def excluded_file?(filename)
+      file_config = @config_store.for(filename)
+      file_config.file_to_exclude?(filename)
     end
   end
 end

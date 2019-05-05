@@ -10,7 +10,8 @@ module RubyLanguageServer
     def on_initialize(params)
       RubyLanguageServer.logger.info("on_initialize: #{params}")
       root_path = params['rootPath']
-      @project_manager = ProjectManager.new(root_path)
+      root_uri = params['rootUri']
+      @project_manager = ProjectManager.new(root_path, root_uri)
       gem_string = ENV.fetch('ADDITIONAL_GEMS') {}
       gem_array = (gem_string.split(',').compact.map(&:strip).reject { |string| string == '' } if gem_string && !gem_string.empty?)
       @project_manager.install_additional_gems(gem_array)

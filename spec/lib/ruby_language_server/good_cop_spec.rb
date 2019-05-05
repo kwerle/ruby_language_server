@@ -5,7 +5,7 @@ require 'minitest/autorun'
 
 describe RubyLanguageServer::GoodCop do
   before :each do
-    RubyLanguageServer::ProjectManager.new('/foo') # GoodCop looks to the ProjectManager to get the project root path
+    RubyLanguageServer::ProjectManager.new('/foo', 'file:///remote') # GoodCop looks to the ProjectManager to get the project root path
   end
 
   let(:good_cop) { RubyLanguageServer::GoodCop.new }
