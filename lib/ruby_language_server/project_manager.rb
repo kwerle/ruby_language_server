@@ -27,11 +27,26 @@ module RubyLanguageServer
 
         path.end_with?(File::SEPARATOR) ? path : "#{path}#{File::SEPARATOR}"
       end
+
+      def root_uri=(uri)
+        ROOT_PATH_MUTEX.synchronize do
+          if uri
+            uri = "#{uri}/" unless uri.end_with?('/')
+            @_root_uri = uri
+          end
+        end
+      end
+
+      def root_uri
+        @_root_uri || "file://#{root_path}"
+      end
     end
 
-    def initialize(path)
+    def initialize(path, uri = nil)
       # Should probably lock for read, but I'm feeling crazy!
       self.class.root_path = path if self.class.root_path.nil?
+      self.class.root_uri = uri if uri
+
       @root_uri = "file://#{path}"
       # This is {uri: code_file} where content stuff is like
       @uri_code_file_hash = {}
@@ -57,12 +72,6 @@ module RubyLanguageServer
     def text_for_uri(uri)
       code_file = code_file_for_uri(uri)
       code_file&.text || ''
-    end
-
-    def code_file_for_uri(uri, text = nil)
-      code_file = @uri_code_file_hash[uri]
-      code_file = @uri_code_file_hash[uri] = CodeFile.new(uri, text) if code_file.nil?
-      code_file
     end
 
     def tags_for_uri(uri)
@@ -186,14 +195,24 @@ module RubyLanguageServer
       end
     end
 
+    # returns diagnostic info (if possible)
     def update_document_content(uri, text)
       @update_mutext.synchronize do
         RubyLanguageServer.logger.debug("update_document_content: #{uri}")
         # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
-        code_file = code_file_for_uri(uri, text)
+        code_file = code_file_for_uri(uri)
+        return code_file.diagnostics if code_file.text == text
+
         code_file.text = text
-        diagnostics_ready? ? code_file.diagnostics : []
+        diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
       end
+    end
+
+    def updated_diagnostics_for_codefile(code_file)
+      # Maybe we should be sharing this GoodCop across instances
+      @good_cop ||= GoodCop.new
+      project_relative_filename = filename_relative_to_project(code_file.uri)
+      code_file.diagnostics = @good_cop.diagnostics(code_file.text, project_relative_filename)
     end
 
     # Returns the context of what is being typed in the given line
@@ -243,6 +262,18 @@ module RubyLanguageServer
         end
       end
       return_array
+    end
+
+    private
+
+    def code_file_for_uri(uri)
+      code_file = @uri_code_file_hash[uri]
+      code_file = @uri_code_file_hash[uri] = CodeFile.new(uri, nil) if code_file.nil?
+      code_file
+    end
+
+    def filename_relative_to_project(filename)
+      filename.gsub(self.class.root_uri, self.class.root_path)
     end
   end
 end

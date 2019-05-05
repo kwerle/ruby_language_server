@@ -345,8 +345,8 @@ module RubyLanguageServer
       text ||= '' # empty is the same as nil - but it doesn't crash
       begin
         sexp = self.class.sexp(text)
-      rescue TypeError => exception
-        RubyLanguageServer.logger.error("Exception in sexp: #{exception} for text: #{text}")
+      rescue TypeError => e
+        RubyLanguageServer.logger.error("Exception in sexp: #{e} for text: #{text}")
       end
       processor = SEXPProcessor.new(sexp, text.split("\n").length)
       @root_scope = processor.root_scope
