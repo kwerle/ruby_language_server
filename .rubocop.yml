@@ -7,7 +7,7 @@
 # versions of RuboCop, may require this file to be generated again.
 
 AllCops:
-  TargetRubyVersion: 2.5
+  TargetRubyVersion: 2.6
 
 Layout/SpaceInsideHashLiteralBraces:
   Enabled: false
@@ -48,10 +48,7 @@ Metrics/AbcSize:
 Metrics/BlockLength:
   Max: 50
   Exclude:
-    - 'spec/lib/ruby_language_server/scope_parser_spec.rb'
-    - 'spec/lib/ruby_language_server/code_file_spec.rb'
-    - 'spec/lib/ruby_language_server/completion_spec.rb'
-    - 'spec/lib/ruby_language_server/scope_data/scope_spec.rb'
+    - 'spec/**/*.rb'
 
 # Configuration parameters: CountBlocks.
 Metrics/BlockNesting:
@@ -95,12 +92,7 @@ Naming/VariableName:
     - 'lib/ruby_language_server/server.rb'
 
 # Cop supports --auto-correct.
-Performance/RangeInclude:
-  Exclude:
-    - 'lib/ruby_language_server/scope_data/scope.rb'
-
-# Cop supports --auto-correct.
-Performance/UnneededSort:
+Style/UnneededSort:
   Exclude:
     - 'lib/ruby_language_server/scope_data/scope.rb'
 

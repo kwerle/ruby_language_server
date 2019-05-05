@@ -74,8 +74,8 @@ module RubyLanguageServer
       while content.length < length + 2
         begin
           content += get_content(length + 2, io) # Why + 2?  CRLF?
-        rescue Exception => exception
-          RubyLanguageServer.logger.error exception
+        rescue Exception => e
+          RubyLanguageServer.logger.error e
           # We have almost certainly been disconnected from the server
           exit!(1)
         end

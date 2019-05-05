@@ -7,7 +7,7 @@ describe RubyLanguageServer::ProjectManager do
   before do
   end
 
-  let(:pm) { RubyLanguageServer::ProjectManager.new('/foo', 'file:///foo/') }
+  let(:pm) { RubyLanguageServer::ProjectManager.new('/proj', 'file:///foo/') }
 
   describe 'ProjectManager' do
     it 'must init' do
@@ -17,10 +17,11 @@ describe RubyLanguageServer::ProjectManager do
 
   describe '#root_path' do
     it 'should set root path once' do
-      refute_nil(pm)
-      assert_equal('/foo/', RubyLanguageServer::ProjectManager.root_path)
+      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = nil
+      refute_nil(pm) # Need this to initialize ProjectManager before querying it
+      assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
       RubyLanguageServer::ProjectManager.new('/bar')
-      assert_equal('/foo/', RubyLanguageServer::ProjectManager.root_path)
+      assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
     end
 
     it 'should use the environment variable if set' do
@@ -43,6 +44,19 @@ describe RubyLanguageServer::ProjectManager do
       pm.install_additional_gems(nil)
       pm.install_additional_gems([])
       pm.install_additional_gems([''])
+    end
+  end
+
+  describe '.updated_diagnostics_for_codefile' do
+    it 'should call good cop diagnostics' do
+      file_content = "# Nothing to see here\n"
+      good_mock = MiniTest::Mock.new
+      good_mock.expect(:diagnostics, [], [file_content, '/project/boo.rb'])
+      RubyLanguageServer::GoodCop.stub(:new, good_mock) do
+        cf = RubyLanguageServer::CodeFile.new('file:///foo/boo.rb', file_content)
+        pm.updated_diagnostics_for_codefile(cf)
+      end
+      good_mock.verify
     end
   end
 

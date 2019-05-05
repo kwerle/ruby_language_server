@@ -14,13 +14,6 @@ describe RubyLanguageServer::GoodCop do
     it 'should init without config' do
       refute_nil(good_cop)
     end
-
-    it 'should know how to convert filenames to project-relative paths' do
-      assert_equal(good_cop.send(:filename_relative_to_project, 'test.rb'), 'test.rb')
-      assert_equal(good_cop.send(:filename_relative_to_project, 'file:///remote/test.rb'), '/project/test.rb')
-      assert_equal(good_cop.send(:filename_relative_to_project, 'file:///remote/path/test.rb'), '/project/path/test.rb')
-      assert_equal(good_cop.send(:filename_relative_to_project, '/local/path/test.rb'), '/local/path/test.rb')
-    end
   end
 
   describe 'offenses' do
