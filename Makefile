@@ -20,7 +20,7 @@ console: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) bin/console
 
 test: build
-	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop -c .rubocop_ruby_language_parser.yml
+	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop
 
 shell: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) sh
