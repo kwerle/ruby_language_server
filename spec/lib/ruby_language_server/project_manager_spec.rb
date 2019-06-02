@@ -15,19 +15,28 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  def with_project_environment_root(temp_root)
+    original_root = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT']
+    ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = temp_root
+    yield
+  ensure
+    ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = original_root
+  end
+
   describe '#root_path' do
     it 'should set root path once' do
-      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = nil
-      refute_nil(pm) # Need this to initialize ProjectManager before querying it
-      assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
-      RubyLanguageServer::ProjectManager.new('/bar')
-      assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
+      with_project_environment_root(nil) do
+        refute_nil(pm) # Need this to initialize ProjectManager before querying it
+        assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
+        RubyLanguageServer::ProjectManager.new('/bar')
+        assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
+      end
     end
 
     it 'should use the environment variable if set' do
-      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = '/proj/'
-      assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
-      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = nil
+      with_project_environment_root('/proj/') do
+        assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
+      end
     end
   end
 

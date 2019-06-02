@@ -5,7 +5,7 @@ build:
 	docker build -t $(PROJECT_NAME) .
 
 guard: build
-	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'bundle && guard'
+	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) bundle exec guard
 
 continuous_development: build
 	echo "You are going to want to set the ide-ruby 'Image Name' to local_ruby_language_server"
@@ -20,7 +20,7 @@ console: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) bin/console
 
 test: build
-	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop -c .rubocop_ruby_language_parser.yml
+	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop
 
 shell: build
 	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) sh
