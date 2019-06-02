@@ -5,6 +5,8 @@
 FROM ruby:2.6-alpine
 LABEL maintainer="kurt@CircleW.org"
 
+RUN gem update bundler
+
 # Needed for byebug and some other gems
 RUN apk update
 RUN apk add make
