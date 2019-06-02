@@ -15,16 +15,15 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  def with_project_environment_root(temp_root)
+    original_root = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT']
+    ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = temp_root
+    yield
+  ensure
+    ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = original_root
+  end
+
   describe '#root_path' do
-
-    def with_project_environment_root(temp_root)
-      original_root = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT']
-      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = temp_root
-      yield
-    ensure
-      ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = original_root
-    end
-
     it 'should set root path once' do
       with_project_environment_root(nil) do
         refute_nil(pm) # Need this to initialize ProjectManager before querying it

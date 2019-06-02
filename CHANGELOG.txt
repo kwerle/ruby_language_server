@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.2.8 Sun Jun  2 16:17:04 PDT 2019
+
+* #37 - Bundler::LockfileError: You must use Bundler 2 or greater.  Thanks to Dmytro Konstantinov for the heads up
+
 #### 0.2.7 Sun May  5 15:36:21 PDT 2019
 
 * #34 - fix rubocop exclude paths.  Thanks to Sebastian Delmont!
