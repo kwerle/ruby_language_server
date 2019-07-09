@@ -2,7 +2,7 @@
 
 #### 0.2.9 Mon Jul  8 21:19:39 PDT 2019
 
-* #37 - Bundler::LockfileError: You must use Bundler 2 or greater.  Thanks to Dmytro Konstantinov for the heads up
+* #40 - Failing to install/use Additional Gems via ide-ruby
 
 #### 0.2.8 Sun Jun  2 16:17:04 PDT 2019
 
