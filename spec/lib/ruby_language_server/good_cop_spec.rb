@@ -10,6 +10,15 @@ describe RubyLanguageServer::GoodCop do
 
   let(:good_cop) { RubyLanguageServer::GoodCop.new }
 
+  describe 'crashing' do
+    it "must survive init failures" do
+      raise_exception = -> { raise 'exception!' }
+      RuboCop::ConfigStore.stub(:new, raise_exception) do
+        RubyLanguageServer::GoodCop.new
+      end
+    end
+  end
+
   describe 'basics' do
     it 'should init without config' do
       refute_nil(good_cop)
