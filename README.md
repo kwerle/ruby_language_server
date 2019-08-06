@@ -46,6 +46,13 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 * [mtsmfm/language_server-ruby](https://github.com/mtsmfm/language_server-ruby)
 * [castwide/solargraph](https://github.com/castwide/solargraph)
 
+# Release instructions to self
+
+* For for release
+* bump version in version.rb file and Gemfile.lock
+* change log
+* make gem_release
+
 # Authors
 
 * [Kurt Werle](kurt@CircleW.org)

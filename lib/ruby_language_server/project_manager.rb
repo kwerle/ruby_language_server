@@ -66,6 +66,8 @@ module RubyLanguageServer
       Thread.new do
         RubyLanguageServer::GemInstaller.install_gems(gem_names)
         @additional_gem_mutex.synchronize { @additional_gems_installed = true }
+      rescue StandardError => e
+        RubyLanguageServer.logger.error("Issue installing rubocop gems: #{e}")
       end
     end
 
