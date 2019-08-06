@@ -17,17 +17,17 @@ continuous_development: build
 	done
 
 console: build
-	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) bin/console
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) bin/console
 
 test: build
-	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop
 
 shell: build
-	docker run -it $(LOCAL_LINK) $(PROJECT_NAME) sh
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh
 
 # Just to make sure it works.
 server: build
-	docker run -it $(LOCAL_LINK) $(PROJECT_NAME)
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)
 
 gem: build
 	rm -f $(PROJECT_NAME)*.gem
