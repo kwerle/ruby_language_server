@@ -48,8 +48,9 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 
 # Release instructions to self
 
-* bump version in version file and Gemfile.lock
-* release notes
+* For for release
+* bump version in version.rb file and Gemfile.lock
+* change log
 * make gem_release
 
 # Authors
