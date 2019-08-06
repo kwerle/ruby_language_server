@@ -35,4 +35,4 @@ gem: build
 
 # Requires rubygems be installed on host
 gem_release: gem
-	docker run $(LOCAL_LINK) $(PROJECT_NAME) gem push $(PROJECT_NAME)*.gem
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) gem push $(PROJECT_NAME)*.gem
