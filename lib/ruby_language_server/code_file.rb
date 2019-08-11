@@ -81,7 +81,7 @@ module RubyLanguageServer
         scope.variables.each do |variable|
           name = variable.name
           # We only care about counstants
-          next unless name =~ /^[A-Z]/
+          next unless name.match?(/^[A-Z]/)
 
           variable_hash = {
             name: name,
