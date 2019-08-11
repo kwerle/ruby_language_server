@@ -9,7 +9,7 @@ module RubyLanguageServer
       belongs_to :parent, class_name: 'Scope', optional: true
       has_many :children, class_name: 'Scope', foreign_key: :parent_id
 
-      scope :for_line, -> (line) { where('top_line <= ? AND bottom_line >= ?', line, line).or(where(parent_id: nil)) }
+      scope :for_line, ->(line) { where('top_line <= ? AND bottom_line >= ?', line, line).or(where(parent_id: nil)) }
       # attr_accessor :top_line        # first line
       # attr_accessor :bottom_line     # last line
       # attr_accessor :parent          # parent scope
@@ -35,6 +35,7 @@ module RubyLanguageServer
 
       def depth
         return 0 if path.blank?
+
         scope_parts.count
       end
 
@@ -52,11 +53,11 @@ module RubyLanguageServer
       def self_and_descendants
         return Scope.all if root_scope?
 
-        Scope.where("path like ?", "#{path}%")
+        Scope.where('path like ?', "#{path}%")
       end
 
       def descendants
-        Scope.where("path like ?", "#{path}_%")
+        Scope.where('path like ?', "#{path}_%")
       end
 
       # [self, parent, parent.parent...]

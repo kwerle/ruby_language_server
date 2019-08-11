@@ -5,7 +5,7 @@ module RubyLanguageServer
     class Variable < Base
       belongs_to :scope
 
-      scope :constants, -> { where('name like ?', "#{'A'..'Z'}%") }
+      scope :constants, -> { where('name like ?', "'A'..'Z'%") }
 
       # attr_accessor :line            # line
       # attr_accessor :column          # column
@@ -15,11 +15,11 @@ module RubyLanguageServer
       def self.build(scope, name, line = 1, column = 1, type = TYPE_VARIABLE)
         path = [scope.full_name, name].join(JoinHash[TYPE_VARIABLE])
         create!(
-           line: line,
-           column: column,
-           name: name,
-           path: path,
-           variable_type: type
+          line: line,
+          column: column,
+          name: name,
+          path: path,
+          variable_type: type
         )
         # @name = name
         # @line = line

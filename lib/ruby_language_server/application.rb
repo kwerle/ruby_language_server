@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'active_record'
 
 require_relative 'logger' # do this first!
@@ -19,9 +21,7 @@ require_relative 'completion'
 
 module RubyLanguageServer
   class Application
-    def initialize
-
-    end
+    def initialize; end
 
     def start
       server = RubyLanguageServer::Server.new

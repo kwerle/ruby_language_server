@@ -305,22 +305,9 @@ module RubyLanguageServer
 
     def push_scope(type, name, top_line, column, close_siblings = true)
       close_sibling_scopes(top_line) if close_siblings
-      # The default root scope is Object.  Which is fine if we're adding methods.
-      # But if we're adding a class, we don't care that it's in Object.
-      new_scope =
-        if (type_is_class_or_module(type) && (@current_scope == root_scope))
-          # ScopeData::Scope.build(nil, type, name, top_line, column)
-          ScopeData::Scope.build(@current_scope, type, name, top_line, column)
-        else
-          ScopeData::Scope.build(@current_scope, type, name, top_line, column)
-        end
+      new_scope = ScopeData::Scope.build(@current_scope, type, name, top_line, column)
       new_scope.bottom_line = @lines
       new_scope.save!
-      # if new_scope.parent.nil? # was it a class or module at the root
-      #   root_scope.children << new_scope
-      # else
-      #   @current_scope.children << new_scope
-      # end
       @current_scope = new_scope
     end
 
@@ -337,7 +324,6 @@ module RubyLanguageServer
     def pop_scope
       @current_scope = @current_scope.parent || root_scope # in case we are leaving a root class/module
     end
-
   end
 
   # This class builds on Ripper's sexp processor to add ruby and rails magic.
