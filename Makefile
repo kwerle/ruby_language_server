@@ -5,7 +5,9 @@ build:
 	docker build -t $(PROJECT_NAME) .
 
 guard: build
+	echo > active_record.log
 	docker run -it $(LOCAL_LINK) -e LOG_LEVEL=DEBUG $(PROJECT_NAME) bundle exec guard
+	echo > active_record.log
 
 continuous_development: build
 	echo "You are going to want to set the ide-ruby 'Image Name' to local_ruby_language_server"

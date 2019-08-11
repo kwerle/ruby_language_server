@@ -21,8 +21,6 @@ require_relative 'completion'
 
 module RubyLanguageServer
   class Application
-    def initialize; end
-
     def start
       server = RubyLanguageServer::Server.new
       RubyLanguageServer::IO.new(server)

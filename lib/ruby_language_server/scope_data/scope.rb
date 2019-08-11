@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'active_record'
+
 module RubyLanguageServer
   module ScopeData
     # The Scope class is basically a container with context.
