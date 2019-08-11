@@ -30,7 +30,7 @@ describe RubyLanguageServer::ScopeParserCommands::RakeCommands do
     it 'should find a block with a variable' do
       # The first child is the task, the second one is the block of the task.
       # This is not a great test.
-      assert_equal('foo', scope_parser.root_scope.self_and_descendants[2].variables.first.name)
+      assert_equal('foo', scope_parser.root_scope.self_and_descendants.where(name: RubyLanguageServer::ScopeData::Base::BLOCK_NAME).first.variables.first.name)
     end
 
     it 'should find namespaces and their tasks' do
@@ -38,7 +38,7 @@ describe RubyLanguageServer::ScopeParserCommands::RakeCommands do
       # This is not a great test.
       namespace_scope = scope_parser.root_scope.self_and_descendants.detect { |scope| scope.name == 'cadet' }
       refute_nil(namespace_scope)
-      assert_equal(['something:'], namespace_scope.descendants.map(&:name).compact)
+      assert_equal(["block", "something:", "block"], namespace_scope.descendants.map(&:name).compact)
     end
   end
 end

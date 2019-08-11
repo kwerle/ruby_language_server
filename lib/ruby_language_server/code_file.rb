@@ -63,10 +63,11 @@ module RubyLanguageServer
 
       tags = []
       root_scope.self_and_descendants.each do |scope|
-        next if scope.type == ScopeData::Base::TYPE_BLOCK
+        next if scope.class_type == ScopeData::Base::TYPE_BLOCK
+        next if scope.root_scope?
 
         name = scope.name
-        kind = SYMBOL_KIND[scope.type] || 7
+        kind = SYMBOL_KIND[scope.class_type.to_sym] || 7
         kind = 9 if name == 'initialize' # Magical special case
         scope_hash = {
           name: name,

@@ -28,7 +28,7 @@ module RubyLanguageServer
     def root_scope
       return @root_scope unless @root_scope.nil?
 
-      @root_scope = new_root_scope
+      @root_scope = ScopeData::Scope.where(path: nil, class_type: ScopeData::Scope::TYPE_ROOT).first_or_create!
       @current_scope = @root_scope
       process(@sexp)
       @root_scope
@@ -117,13 +117,14 @@ module RubyLanguageServer
       # add_scope(args, rest, ScopeData::Scope::TYPE_BLOCK)
       unless @current_scope == scope
         scope.bottom_line = [scope&.bottom_line, @current_scope.bottom_line].compact.max
+        scope.save!
         pop_scope
       end
     end
 
     def on_do_block(args, rest)
       ((_, ((_, (_, (_, _name, (line, column))))))) = args
-      push_scope(ScopeData::Scope::TYPE_BLOCK, nil, line, column, false)
+      push_scope(ScopeData::Scope::TYPE_BLOCK, 'block', line, column, false)
       process(args)
       process(rest)
       pop_scope
@@ -268,17 +269,22 @@ module RubyLanguageServer
     private
 
     def add_variable(name, line, column, scope = @current_scope)
-      new_variable = ScopeData::Variable.new(scope, name, line, column)
-      # blocks don't declare their first line in the parser
-      scope.top_line ||= line
-      scope.variables << new_variable unless scope.has_variable_or_constant?(new_variable)
+      scope.variables.where(name: name).first_or_create(line: line, column: column)
+      if scope.top_line.blank?
+        scope.top_line = line
+        scope.save!
+      end
+      # new_variable = ScopeData::Variable.build(scope, name, line, column)
+      # # blocks don't declare their first line in the parser
+      # scope.top_line ||= line
+      # scope.variables << new_variable unless scope.has_variable_or_constant?(new_variable)
     end
 
     def add_ivar(name, line, column)
       scope = @current_scope
       unless scope == root_scope
         ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
-        while !ivar_scope_types.include?(scope.type) && !scope.parent.nil?
+        while !ivar_scope_types.include?(scope.class_type) && !scope.parent.nil?
           scope = scope.parent
         end
       end
@@ -303,16 +309,18 @@ module RubyLanguageServer
       # But if we're adding a class, we don't care that it's in Object.
       new_scope =
         if (type_is_class_or_module(type) && (@current_scope == root_scope))
-          ScopeData::Scope.new(nil, type, name, top_line, column)
+          # ScopeData::Scope.build(nil, type, name, top_line, column)
+          ScopeData::Scope.build(@current_scope, type, name, top_line, column)
         else
-          ScopeData::Scope.new(@current_scope, type, name, top_line, column)
+          ScopeData::Scope.build(@current_scope, type, name, top_line, column)
         end
       new_scope.bottom_line = @lines
-      if new_scope.parent.nil? # was it a class or module at the root
-        root_scope.children << new_scope
-      else
-        @current_scope.children << new_scope
-      end
+      new_scope.save!
+      # if new_scope.parent.nil? # was it a class or module at the root
+      #   root_scope.children << new_scope
+      # else
+      #   @current_scope.children << new_scope
+      # end
       @current_scope = new_scope
     end
 
@@ -320,19 +328,16 @@ module RubyLanguageServer
     # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
     def close_sibling_scopes(line)
       parent_scope = @current_scope
-      parent_scope&.descendants&.each { |scope| scope.bottom_line = [scope.bottom_line, line - 1].compact.min }
+      parent_scope&.descendants&.each do |scope|
+        scope.bottom_line = [scope.bottom_line, line - 1].compact.min
+        scope.save!
+      end
     end
 
     def pop_scope
       @current_scope = @current_scope.parent || root_scope # in case we are leaving a root class/module
     end
 
-    def new_root_scope
-      ScopeData::Scope.new.tap do |scope|
-        scope.type = ScopeData::Scope::TYPE_ROOT
-        scope.name = nil
-      end
-    end
   end
 
   # This class builds on Ripper's sexp processor to add ruby and rails magic.

@@ -19,16 +19,18 @@ describe RubyLanguageServer::ScopeParserCommands::RubyCommands do
     @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
   end
 
+  let(:class_scope) { RubyLanguageServer::ScopeData::Scope.find_by_name('ModelClass') }
+
   describe 'attr_reader' do
     it 'should have appropriate functions' do
-      class_scope = @parser.root_scope.children.first
+      # class_scope = @parser.root_scope.children.first
       assert_equal(['something_else', 'something_else2', 'read_write', 'read_write='], class_scope.children.map(&:name))
     end
   end
 
   describe 'attr' do
     it 'should have appropriate functions' do
-      class_scope = @parser.root_scope.children.first
+      # class_scope = @parser.root_scope.children.first
       assert_equal(['something_else', 'something_else2', 'read_write', 'read_write='], class_scope.children.map(&:name))
     end
   end

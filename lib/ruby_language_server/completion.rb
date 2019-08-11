@@ -28,7 +28,7 @@ module RubyLanguageServer
         RubyLanguageServer.logger.debug("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
         completions =
           if context.length < 2
-            scope_completions(context.last, context_scope.self_and_ancestors)
+            scope_completions(context.last, scopes)
           else
             scope_completions_in_target_context(context, context_scope, scopes)
           end
@@ -59,7 +59,7 @@ module RubyLanguageServer
         end
         scope ||= context_scope
         RubyLanguageServer.logger.debug("scope: #{scope}")
-        scope_completions(context.last, scope.self_and_ancestors)
+        scope_completions(context.last, [scope] + scopes)
       end
 
       def scope_completions(word, scopes)
@@ -68,13 +68,13 @@ module RubyLanguageServer
           scope.children.select(&:'method?').each do |method_scope|
             words_hash[method_scope.name] ||= {
               depth: scope.depth,
-              type: method_scope.type
+              type: method_scope.class_type
             }
           end
           scope.variables.each do |variable|
             words_hash[variable.name] ||= {
               depth: scope.depth,
-              type: variable.type
+              type: variable.variable_type
             }
           end
         end

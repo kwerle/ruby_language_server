@@ -9,8 +9,7 @@ RUN gem update bundler
 
 # Needed for byebug and some other gems
 RUN apk update
-RUN apk add make
-RUN apk add g++
+RUN apk add make g++ sqlite-dev
 
 WORKDIR /app
 

@@ -104,11 +104,12 @@ module RubyLanguageServer
       relative_position.character = relative_position.character # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
       RubyLanguageServer.logger.debug("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
-      context_scope = scopes_at(uri, position).first || root_scope_for(uri)
+      position_scopes = scopes_at(uri, position).first || root_scope_for(uri)
+      context_scope = position_scopes.first
       context = context_at_location(uri, relative_position)
       return {} if context.nil? || context == ''
 
-      RubyLanguageServer::Completion.completion(context, context_scope, all_scopes)
+      RubyLanguageServer::Completion.completion(context, context_scope, position_scopes)
     end
 
     # interface CompletionItem {
