@@ -49,7 +49,6 @@ module RubyLanguageServer
 
       @root_uri = "file://#{path}"
       # This is {uri: code_file} where content stuff is like
-      @uri_code_file_hash = {}
       @update_mutext = Mutex.new
 
       @additional_gems_installed = false
@@ -90,13 +89,14 @@ module RubyLanguageServer
     end
 
     def all_scopes
-      @uri_code_file_hash.values.map(&:root_scope).map(&:self_and_descendants).flatten
+      RubyLanguageServer::ScopeData::Scope.all
     end
 
     # Return the list of scopes [deepest, parent, ..., Object]
     def scopes_at(uri, position)
-      root_scope = root_scope_for(uri)
-      root_scope.scopes_at(position)
+      code_file = code_file_for_uri(uri)
+      code_file.root_scope
+      code_file.scopes.for_line(position.line).select(&:path).sort_by { |scope| -(scope.path&.length) || 0 }
     end
 
     def completion_at(uri, position)
@@ -104,7 +104,7 @@ module RubyLanguageServer
       relative_position.character = relative_position.character # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
       RubyLanguageServer.logger.debug("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
-      position_scopes = scopes_at(uri, position).first || root_scope_for(uri)
+      position_scopes = scopes_at(uri, position) || [root_scope_for(uri)]
       context_scope = position_scopes.first
       context = context_at_location(uri, relative_position)
       return {} if context.nil? || context == ''
@@ -206,7 +206,7 @@ module RubyLanguageServer
         code_file = code_file_for_uri(uri)
         return code_file.diagnostics if code_file.text == text
 
-        code_file.text = text
+        code_file.update_text(text)
         diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
       end
     end
@@ -237,7 +237,7 @@ module RubyLanguageServer
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?
 
-      project_definitions_for(name, scope)
+      project_definitions_for(name)
     end
 
     def scope_definitions_for(name, scope, uri)
@@ -253,25 +253,18 @@ module RubyLanguageServer
       return_array.uniq
     end
 
-    def project_definitions_for(name, _scope)
-      return_array = @uri_code_file_hash.keys.each_with_object([]) do |uri, ary|
-        tags = tags_for_uri(uri)
-        RubyLanguageServer.logger.debug("tags_for_uri(#{uri}): #{tags_for_uri(uri)}")
-        next if tags.nil?
-
-        match_tags = tags.select { |tag| tag[:name] == name }
-        match_tags.each do |tag|
-          ary << Location.hash(uri, tag[:location][:range][:start][:line] + 1)
-        end
+    def project_definitions_for(name)
+      scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
+      variables = RubyLanguageServer::ScopeData::Variable.where(name: name)
+      (scopes + variables).map do |thing|
+        Location.hash(thing.code_file.uri, thing.top_line + 1)
       end
-      return_array
     end
 
     private
 
     def code_file_for_uri(uri)
-      code_file = @uri_code_file_hash[uri]
-      code_file = @uri_code_file_hash[uri] = CodeFile.build(uri, nil) if code_file.nil?
+      code_file = CodeFile.find_by_uri(uri) || CodeFile.build(uri, nil)
       code_file
     end
 

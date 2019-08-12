@@ -42,7 +42,7 @@ describe RubyLanguageServer::CodeFile do
       it 'should retain existing tags when text becomes unparsable' do
         code_file = code_file("def foo\nend\n")
         assert_equal('foo', code_file.tags.last[:name])
-        code_file.text = "def foo\n@foo ||\nend\n"
+        code_file.update_text "def foo\n@foo ||\nend\n"
         assert_equal('foo', code_file.tags.last[:name])
       end
 

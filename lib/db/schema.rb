@@ -31,5 +31,6 @@ ActiveRecord::Schema.define do
   create_table :code_files, force: true do |t|
     t.string  :uri
     t.boolean :refresh_root_scope, default: true
+    t.text    :text
   end
 end

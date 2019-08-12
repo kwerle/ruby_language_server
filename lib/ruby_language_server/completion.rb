@@ -25,7 +25,7 @@ module RubyLanguageServer
 
     class << self
       def completion(context, context_scope, scopes)
-        RubyLanguageServer.logger.debug("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
+        RubyLanguageServer.logger.debug("completion(#{context}, #{scopes.map(&:name)})")
         completions =
           if context.length < 2
             scope_completions(context.last, scopes)

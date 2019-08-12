@@ -4,14 +4,19 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::ProjectManager do
-  before do
+  let(:rails_file_text) do
+    <<~CODE_FILE
+      class Foo < ActiveRecord::Base
+        has_one :bar
+      end
+    CODE_FILE
   end
 
-  let(:pm) { RubyLanguageServer::ProjectManager.new('/proj', 'file:///foo/') }
+  let(:project_manager) { RubyLanguageServer::ProjectManager.new('/proj', 'file:///foo/') }
 
   describe 'ProjectManager' do
     it 'must init' do
-      refute_nil(pm)
+      refute_nil(project_manager)
     end
   end
 
@@ -26,7 +31,7 @@ describe RubyLanguageServer::ProjectManager do
   describe '#root_path' do
     it 'should set root path once' do
       with_project_environment_root(nil) do
-        refute_nil(pm) # Need this to initialize ProjectManager before querying it
+        refute_nil(project_manager) # Need this to initialize ProjectManager before querying it
         assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
         RubyLanguageServer::ProjectManager.new('/bar')
         assert_equal('/proj/', RubyLanguageServer::ProjectManager.root_path)
@@ -42,7 +47,7 @@ describe RubyLanguageServer::ProjectManager do
 
   describe '#root_uri' do
     it 'should store a root uri' do
-      refute_nil(pm)
+      refute_nil(project_manager)
       assert_equal('file:///foo/', RubyLanguageServer::ProjectManager.root_uri)
     end
   end
@@ -50,9 +55,9 @@ describe RubyLanguageServer::ProjectManager do
   describe '.install_additional_gems' do
     it 'should deal with nil and blank and space' do
       # There is no refute throws.  So let's just be happy.
-      pm.install_additional_gems(nil)
-      pm.install_additional_gems([])
-      pm.install_additional_gems([''])
+      project_manager.install_additional_gems(nil)
+      project_manager.install_additional_gems([])
+      project_manager.install_additional_gems([''])
     end
   end
 
@@ -63,27 +68,38 @@ describe RubyLanguageServer::ProjectManager do
       good_mock.expect(:diagnostics, [], [file_content, '/project/boo.rb'])
       RubyLanguageServer::GoodCop.stub(:new, good_mock) do
         cf = RubyLanguageServer::CodeFile.build('file:///foo/boo.rb', file_content)
-        pm.updated_diagnostics_for_codefile(cf)
+        project_manager.updated_diagnostics_for_codefile(cf)
       end
       good_mock.verify
     end
   end
 
   describe 'has_one' do
-    let(:rails_file_text) do
-      <<~CODE_FILE
-        class Foo < ActiveRecord::Base
-          has_one :bar
-        end
-      CODE_FILE
-    end
-
     it 'should show up as a method' do
-      pm.instance_variable_set('@additional_gems_installed', true)
-      pm.update_document_content('uri', rails_file_text)
-      tags = pm.tags_for_uri('uri')
+      project_manager.instance_variable_set('@additional_gems_installed', true)
+      project_manager.update_document_content('uri', rails_file_text)
+      tags = project_manager.tags_for_uri('uri')
       bar_tag = tags.detect { |tag| tag[:name] == 'bar' }
       assert_equal('Foo', bar_tag[:containerName])
+    end
+  end
+
+  describe '.project_definitions_for' do
+    it 'should give a reasonable list' do
+      project_manager.update_document_content('uri', rails_file_text)
+      project_manager.tags_for_uri('uri')
+      assert_equal([], project_manager.project_definitions_for('xxx'))
+      project_manager.project_definitions_for('Foo')
+      assert_equal(1, project_manager.project_definitions_for('Foo').count)
+    end
+  end
+
+  describe '.scopes_at' do
+    it 'should list them' do
+      project_manager.update_document_content('uri', rails_file_text)
+      scopes = project_manager.scopes_at('uri', OpenStruct.new(line: 1))
+      assert_equal(1, scopes.length)
+      assert_equal('Foo', scopes.first.name)
     end
   end
 end

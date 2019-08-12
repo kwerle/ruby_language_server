@@ -3,7 +3,7 @@
 # Set up a database that resides in RAM
 ActiveRecord::Base.establish_connection(
   adapter: 'sqlite3',
-  database: ':memory:'
+  database: 'file::memory:?cache=shared'
 )
 
 if ENV['LOG_LEVEL'] == 'DEBUG'

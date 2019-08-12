@@ -14,27 +14,27 @@ module RubyLanguageServer
     has_many :variables, class_name: 'RubyLanguageServer::ScopeData::Variable', dependent: :destroy
 
     # attr_reader :uri
-    attr_reader :text
+    # attr_reader :text
     attr_accessor :diagnostics
 
     def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
 
-      new_code_file = create!(uri: uri)
-      new_code_file.text = text
+      new_code_file = create!(uri: uri, text: text)
       new_code_file
     end
 
-    def text=(new_text)
-      RubyLanguageServer.logger.debug("text= for #{uri}")
-      if @text == new_text
-        RubyLanguageServer.logger.debug('IT WAS THE SAME!!!!!!!!!!!!')
-        return
-      end
-      @text = new_text
-      update_attribute(:refresh_root_scope, true)
-    end
-
+    # def text=(new_text)
+    #   RubyLanguageServer.logger.debug("text= for #{uri}")
+    #   if @text == new_text
+    #     RubyLanguageServer.logger.debug('IT WAS THE SAME!!!!!!!!!!!!')
+    #     return
+    #   end
+    #   @text = new_text
+    #   update_attribute(:refresh_root_scope, true)
+    #   root_scope
+    # end
+    #
     SYMBOL_KIND = {
       file: 1,
       'module': 5, # 2,
@@ -96,37 +96,7 @@ module RubyLanguageServer
           containerName: variable.scope.name
         }
       end
-      # root_scope.self_and_descendants.each do |scope|
-      #   next if scope.class_type == ScopeData::Base::TYPE_BLOCK
-      #   next if scope.root_scope?
-      #
-      #   name = scope.name
-      #   kind = SYMBOL_KIND[scope.class_type.to_sym] || 7
-      #   kind = 9 if name == 'initialize' # Magical special case
-      #   scope_hash = {
-      #     name: name,
-      #     kind: kind,
-      #     location: Location.hash(uri, scope.top_line)
-      #   }
-      #   container_name = ancestor_scope_name(scope)
-      #   scope_hash[:containerName] = container_name if container_name
-      #   tags << scope_hash
-      #
-      #   scope.variables.each do |variable|
-      #     name = variable.name
-      #     # We only care about counstants
-      #     next unless name.match?(/^[A-Z]/)
-      #
-      #     variable_hash = {
-      #       name: name,
-      #       kind: SYMBOL_KIND[:constant],
-      #       location: Location.hash(uri, variable.line),
-      #       containerName: scope.name
-      #     }
-      #     tags << variable_hash
-      #   end
-      # end
-      tags = tags.compact.reject { |tag| tag[:name].nil? }
+      tags = tags.compact.reject { |tag| tag[:name].nil? || tag[:name] == RubyLanguageServer::ScopeData::Scope::TYPE_BLOCK }
       # RubyLanguageServer.logger.debug("Raw tags for #{uri}: #{tags}")
       # If you don't reverse the list then atom? won't be able to find the
       # container and containers will get duplicated.
@@ -138,6 +108,12 @@ module RubyLanguageServer
       # RubyLanguageServer.logger.debug("Done with tags for #{uri}: #{@tags}")
       # RubyLanguageServer.logger.debug("tags caller #{caller * ','}")
       @tags
+    end
+
+    def update_text(new_text)
+      return true if new_text == text
+
+      update_attributes(text: new_text, refresh_root_scope: true)
     end
 
     def root_scope

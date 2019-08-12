@@ -35,6 +35,11 @@ module RubyLanguageServer
       def constant?
         !name&.match(/^[A-Z]/).nil?
       end
+
+      # Convenience for tags
+      def top_line
+        line
+      end
     end
   end
 end
