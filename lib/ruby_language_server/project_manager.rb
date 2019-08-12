@@ -194,6 +194,7 @@ module RubyLanguageServer
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = @root_uri + relative_path
           update_document_content(host_uri, text)
+          code_file_for_uri(host_uri).root_scope
         end
       end
     end

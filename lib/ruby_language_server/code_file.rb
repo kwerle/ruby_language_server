@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'active_record'
+
 require_relative 'scope_data/base'
 require_relative 'scope_data/scope'
 require_relative 'scope_data/variable'
