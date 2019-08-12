@@ -271,7 +271,7 @@ module RubyLanguageServer
 
     def code_file_for_uri(uri)
       code_file = @uri_code_file_hash[uri]
-      code_file = @uri_code_file_hash[uri] = CodeFile.new(uri, nil) if code_file.nil?
+      code_file = @uri_code_file_hash[uri] = CodeFile.build(uri, nil) if code_file.nil?
       code_file
     end
 

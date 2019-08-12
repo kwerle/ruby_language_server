@@ -62,7 +62,7 @@ describe RubyLanguageServer::ProjectManager do
       good_mock = MiniTest::Mock.new
       good_mock.expect(:diagnostics, [], [file_content, '/project/boo.rb'])
       RubyLanguageServer::GoodCop.stub(:new, good_mock) do
-        cf = RubyLanguageServer::CodeFile.new('file:///foo/boo.rb', file_content)
+        cf = RubyLanguageServer::CodeFile.build('file:///foo/boo.rb', file_content)
         pm.updated_diagnostics_for_codefile(cf)
       end
       good_mock.verify

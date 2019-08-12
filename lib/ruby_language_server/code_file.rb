@@ -5,16 +5,24 @@ require_relative 'scope_data/scope'
 require_relative 'scope_data/variable'
 
 module RubyLanguageServer
-  class CodeFile
-    attr_reader :uri
+  class CodeFile < ActiveRecord::Base
+    has_many :scopes, class_name: 'RubyLanguageServer::ScopeData::Scope', dependent: :destroy do
+      def root_scope
+        where(class_type: RubyLanguageServer::ScopeData::Scope::TYPE_ROOT).first
+      end
+    end
+    has_many :variables, class_name: 'RubyLanguageServer::ScopeData::Variable', dependent: :destroy
+
+    # attr_reader :uri
     attr_reader :text
     attr_accessor :diagnostics
 
-    def initialize(uri, text)
+    def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
-      @uri = uri
-      @text = text
-      @refresh_root_scope = true
+
+      new_code_file = create!(uri: uri)
+      new_code_file.text = text
+      new_code_file
     end
 
     def text=(new_text)
@@ -61,39 +69,62 @@ module RubyLanguageServer
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       return @tags = {} if text.nil? || text == ''
 
-      tags = []
-      root_scope.self_and_descendants.each do |scope|
+      root_scope # cause root scope to reset
+      tags = scopes.reload.map do |scope|
         next if scope.class_type == ScopeData::Base::TYPE_BLOCK
         next if scope.root_scope?
 
-        name = scope.name
         kind = SYMBOL_KIND[scope.class_type.to_sym] || 7
-        kind = 9 if name == 'initialize' # Magical special case
+        kind = 9 if scope.name == 'initialize' # Magical special case
         scope_hash = {
-          name: name,
+          name: scope.name,
           kind: kind,
           location: Location.hash(uri, scope.top_line)
         }
         container_name = ancestor_scope_name(scope)
-        scope_hash[:containerName] = container_name if container_name
-        tags << scope_hash
-
-        scope.variables.each do |variable|
-          name = variable.name
-          # We only care about counstants
-          next unless name.match?(/^[A-Z]/)
-
-          variable_hash = {
-            name: name,
-            kind: SYMBOL_KIND[:constant],
-            location: Location.hash(uri, variable.line),
-            containerName: scope.name
-          }
-          tags << variable_hash
-        end
+        scope_hash[:containerName] = container_name unless container_name.blank?
+        scope_hash
       end
-      # byebug
-      tags.reject! { |tag| tag[:name].nil? }
+      tags += variables.constants.reload.map do |variable|
+        name = variable.name
+        {
+          name: name,
+          kind: SYMBOL_KIND[:constant],
+          location: Location.hash(uri, variable.line),
+          containerName: variable.scope.name
+        }
+      end
+      # root_scope.self_and_descendants.each do |scope|
+      #   next if scope.class_type == ScopeData::Base::TYPE_BLOCK
+      #   next if scope.root_scope?
+      #
+      #   name = scope.name
+      #   kind = SYMBOL_KIND[scope.class_type.to_sym] || 7
+      #   kind = 9 if name == 'initialize' # Magical special case
+      #   scope_hash = {
+      #     name: name,
+      #     kind: kind,
+      #     location: Location.hash(uri, scope.top_line)
+      #   }
+      #   container_name = ancestor_scope_name(scope)
+      #   scope_hash[:containerName] = container_name if container_name
+      #   tags << scope_hash
+      #
+      #   scope.variables.each do |variable|
+      #     name = variable.name
+      #     # We only care about counstants
+      #     next unless name.match?(/^[A-Z]/)
+      #
+      #     variable_hash = {
+      #       name: name,
+      #       kind: SYMBOL_KIND[:constant],
+      #       location: Location.hash(uri, variable.line),
+      #       containerName: scope.name
+      #     }
+      #     tags << variable_hash
+      #   end
+      # end
+      tags = tags.compact.reject { |tag| tag[:name].nil? }
       # RubyLanguageServer.logger.debug("Raw tags for #{uri}: #{tags}")
       # If you don't reverse the list then atom? won't be able to find the
       # container and containers will get duplicated.
@@ -110,15 +141,19 @@ module RubyLanguageServer
     def root_scope
       # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
       if @refresh_root_scope
-        new_root_scope = ScopeParser.new(text).root_scope
-        @root_scope ||= new_root_scope # In case we had NONE
-        return @root_scope if new_root_scope.children.empty?
+        scopes.clear
+        variables.clear
+        RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
+          RubyLanguageServer::ScopeData::Scope.where(code_file_id: self).scoping do
+            new_root_scope = ScopeParser.new(text).root_scope
+            @root_scope ||= new_root_scope # In case we had NONE
+            return @root_scope if new_root_scope.children.empty?
 
-        @root_scope = new_root_scope
-        @refresh_root_scope = false
-        @tags = nil
+            @root_scope = new_root_scope
+          end
+        end
+        update_attribute(:refresh_root_scope, false)
       end
-      @root_scope
     end
 
     # Returns the context of what is being typed in the given line
