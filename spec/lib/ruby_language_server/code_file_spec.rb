@@ -43,7 +43,6 @@ describe RubyLanguageServer::CodeFile do
         code_file = code_file("def foo\nend\n")
         assert_equal('foo', code_file.tags.last[:name])
         code_file.text = "def foo\n@foo ||\nend\n"
-        byebug
         assert_equal('foo', code_file.tags.last[:name])
       end
 

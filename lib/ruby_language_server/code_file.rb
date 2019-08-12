@@ -32,7 +32,7 @@ module RubyLanguageServer
         return
       end
       @text = new_text
-      @refresh_root_scope = true
+      update_attribute(:refresh_root_scope, true)
     end
 
     SYMBOL_KIND = {
@@ -70,6 +70,8 @@ module RubyLanguageServer
       return @tags = {} if text.nil? || text == ''
 
       root_scope # cause root scope to reset
+      return @tags if scopes.reload.count <= 1 # just the root
+
       tags = scopes.reload.map do |scope|
         next if scope.class_type == ScopeData::Base::TYPE_BLOCK
         next if scope.root_scope?
@@ -139,21 +141,17 @@ module RubyLanguageServer
     end
 
     def root_scope
-      # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
-      if @refresh_root_scope
-        scopes.clear
-        variables.clear
-        RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
-          RubyLanguageServer::ScopeData::Scope.where(code_file_id: self).scoping do
-            new_root_scope = ScopeParser.new(text).root_scope
-            @root_scope ||= new_root_scope # In case we had NONE
-            return @root_scope if new_root_scope.children.empty?
+      return unless refresh_root_scope
 
-            @root_scope = new_root_scope
-          end
+      # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
+      scopes.clear
+      variables.clear
+      new_root_scope = RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
+        RubyLanguageServer::ScopeData::Scope.where(code_file_id: self).scoping do
+          ScopeParser.new(text).root_scope
         end
-        update_attribute(:refresh_root_scope, false)
       end
+      update_attribute(:refresh_root_scope, !new_root_scope.children.empty?)
     end
 
     # Returns the context of what is being typed in the given line
