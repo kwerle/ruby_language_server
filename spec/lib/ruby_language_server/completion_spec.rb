@@ -59,7 +59,7 @@ describe RubyLanguageServer::Completion do
       context_scope = nar_naz_scope
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
       completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, position_scopes)
-      assert_equal(["bar", "bogus"], completions.map(&:first))
+      assert_equal(%w[bar naz bogus], completions.map(&:first))
     end
   end
 

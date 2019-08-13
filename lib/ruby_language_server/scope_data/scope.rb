@@ -12,6 +12,7 @@ module RubyLanguageServer
       belongs_to :parent, class_name: 'Scope', optional: true
       has_many :children, class_name: 'Scope', foreign_key: :parent_id
 
+      scope :method_scopes, -> { where(class_type: TYPE_METHOD) }
       scope :for_line, ->(line) { where('top_line <= ? AND bottom_line >= ?', line, line).or(where(parent_id: nil)) }
       # attr_accessor :top_line        # first line
       # attr_accessor :bottom_line     # last line

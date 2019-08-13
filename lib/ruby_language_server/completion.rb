@@ -44,7 +44,7 @@ module RubyLanguageServer
       end
 
       def scope_with_name(name, scopes)
-        scopes.detect { |scope| scope.name == name }
+        scopes.where(name: name).first
       end
 
       def scope_completions_in_target_context(context, context_scope, scopes)
@@ -65,7 +65,7 @@ module RubyLanguageServer
       def scope_completions(word, scopes)
         words = {}
         scopes.each_with_object(words) do |scope, words_hash|
-          scope.children.select(&:'method?').each do |method_scope|
+          scope.children.method_scopes.each do |method_scope|
             words_hash[method_scope.name] ||= {
               depth: scope.depth,
               type: method_scope.class_type
