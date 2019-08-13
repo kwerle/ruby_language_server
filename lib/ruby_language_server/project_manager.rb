@@ -189,12 +189,15 @@ module RubyLanguageServer
     def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
-        project_ruby_files.each do |container_path|
-          text = File.read(container_path)
-          relative_path = container_path.delete_prefix(self.class.root_path)
-          host_uri = @root_uri + relative_path
-          update_document_content(host_uri, text)
-          code_file_for_uri(host_uri).root_scope
+        ActiveRecord::Base.connection_pool.connection do
+          RubyLanguageServer.logger.error("Threading up!")
+          project_ruby_files.each do |container_path|
+            text = File.read(container_path)
+            relative_path = container_path.delete_prefix(self.class.root_path)
+            host_uri = @root_uri + relative_path
+            update_document_content(host_uri, text)
+            code_file_for_uri(host_uri).root_scope
+          end
         end
       end
     end
