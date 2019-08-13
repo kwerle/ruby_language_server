@@ -132,13 +132,12 @@ module RubyLanguageServer
             variables.clear
             new_root = ScopeParser.new(text).root_scope
             raise ActiveRecord::Rollback unless new_root.present?
+
             new_root
           end
         end
       end
-      if new_root_scope.children.present?
-        update_attribute(:refresh_root_scope, true)
-      end
+      update_attribute(:refresh_root_scope, true) if new_root_scope.children.present?
     end
 
     # Returns the context of what is being typed in the given line

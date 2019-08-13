@@ -190,7 +190,7 @@ module RubyLanguageServer
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
         ActiveRecord::Base.connection_pool.connection do
-          RubyLanguageServer.logger.error("Threading up!")
+          RubyLanguageServer.logger.error('Threading up!')
           project_ruby_files.each do |container_path|
             text = File.read(container_path)
             relative_path = container_path.delete_prefix(self.class.root_path)
