@@ -6,7 +6,7 @@ build:
 
 guard: build
 	echo > active_record.log
-	docker run -it $(LOCAL_LINK) -e LOG_LEVEL=DEBUG $(PROJECT_NAME) bundle exec guard
+	docker run -it --rm $(LOCAL_LINK) -e LOG_LEVEL=DEBUG $(PROJECT_NAME) bundle exec guard
 	echo > active_record.log
 
 continuous_development: build
