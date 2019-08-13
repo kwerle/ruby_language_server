@@ -68,8 +68,11 @@ module RubyLanguageServer
     end
 
     def tags
+      # byebug
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
-      return @tags = {} if text.nil? || text == ''
+      @tags ||= [{}]
+      return @tags if text.nil?
+      return @tags = [{}] if text == ''
 
       root_scope # cause root scope to reset
       return @tags if scopes.reload.count <= 1 # just the root
@@ -121,15 +124,21 @@ module RubyLanguageServer
     def root_scope
       return unless refresh_root_scope
 
-      # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
-      scopes.clear
-      variables.clear
+      RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
       new_root_scope = RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
         RubyLanguageServer::ScopeData::Scope.where(code_file_id: self).scoping do
-          ScopeParser.new(text).root_scope
+          self.class.transaction do
+            scopes.clear
+            variables.clear
+            new_root = ScopeParser.new(text).root_scope
+            raise ActiveRecord::Rollback unless new_root.present?
+            new_root
+          end
         end
       end
-      update_attribute(:refresh_root_scope, !new_root_scope.children.empty?)
+      if new_root_scope.children.present?
+        update_attribute(:refresh_root_scope, true)
+      end
     end
 
     # Returns the context of what is being typed in the given line

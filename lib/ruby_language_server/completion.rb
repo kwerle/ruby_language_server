@@ -58,7 +58,7 @@ module RubyLanguageServer
         end
         scope ||= context_scope
         RubyLanguageServer.logger.debug("scope: #{scope}")
-        scope_completions(context.last, [scope] + scopes)
+        scope_completions(context.last, [scope] + scopes.includes(:variables))
       end
 
       def scope_completions(word, scopes)
