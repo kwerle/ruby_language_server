@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'byebug'
-
 ActiveRecord::Schema.define do
   def write(*args)
     RubyLanguageServer.logger.debug(args)

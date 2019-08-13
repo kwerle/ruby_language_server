@@ -8,7 +8,7 @@ module RubyLanguageServer
       belongs_to :code_file
       belongs_to :scope
 
-      scope :constants, -> { where("SUBSTR(name, 1, 1) between ('A') and ('Z')") }
+      scope :constant_variables, -> { where("SUBSTR(name, 1, 1) between ('A') and ('Z')") }
 
       # attr_accessor :line            # line
       # attr_accessor :column          # column

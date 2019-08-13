@@ -53,8 +53,6 @@ module RubyLanguageServer
 
       @additional_gems_installed = false
       @additional_gem_mutex = Mutex.new
-
-      scan_all_project_files
     end
 
     def diagnostics_ready?
@@ -95,7 +93,7 @@ module RubyLanguageServer
     # Return the list of scopes [deepest, parent, ..., Object]
     def scopes_at(uri, position)
       code_file = code_file_for_uri(uri)
-      code_file.root_scope
+      code_file.refresh_scopes_if_needed
       code_file.scopes.for_line(position.line).select(&:path).sort_by { |scope| -(scope.path&.length) || 0 }
     end
 
@@ -104,7 +102,7 @@ module RubyLanguageServer
       relative_position.character = relative_position.character # To get before the . or ::
       # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
       RubyLanguageServer.logger.debug("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
-      position_scopes = scopes_at(uri, position) || [root_scope_for(uri)]
+      position_scopes = scopes_at(uri, position) || RubyLanguageServer::ScopeData::Scope.where(id: root_scope_for(uri).id)
       context_scope = position_scopes.first
       context = context_at_location(uri, relative_position)
       return {} if context.nil? || context == ''
@@ -189,15 +187,16 @@ module RubyLanguageServer
     def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
-        ActiveRecord::Base.connection_pool.connection do
-          RubyLanguageServer.logger.error('Threading up!')
-          project_ruby_files.each do |container_path|
-            text = File.read(container_path)
-            relative_path = container_path.delete_prefix(self.class.root_path)
-            host_uri = @root_uri + relative_path
+        RubyLanguageServer.logger.error('Threading up!')
+        project_ruby_files.each do |container_path|
+          text = File.read(container_path)
+          relative_path = container_path.delete_prefix(self.class.root_path)
+          host_uri = @root_uri + relative_path
+          # ActiveRecord::Base.connection_pool.connection do
+            RubyLanguageServer.logger.error("Threading #{host_uri}")
             update_document_content(host_uri, text)
-            code_file_for_uri(host_uri).root_scope
-          end
+            code_file_for_uri(host_uri).refresh_scopes_if_needed
+          # end
         end
       end
     end
@@ -259,7 +258,7 @@ module RubyLanguageServer
 
     def project_definitions_for(name)
       scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
-      variables = RubyLanguageServer::ScopeData::Variable.where(name: name)
+      variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name: name)
       (scopes + variables).map do |thing|
         Location.hash(thing.code_file.uri, thing.top_line + 1)
       end

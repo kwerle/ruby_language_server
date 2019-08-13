@@ -15,8 +15,6 @@ module RubyLanguageServer
     end
     has_many :variables, class_name: 'RubyLanguageServer::ScopeData::Variable', dependent: :destroy
 
-    # attr_reader :uri
-    # attr_reader :text
     attr_accessor :diagnostics
 
     def self.build(uri, text)
@@ -63,18 +61,17 @@ module RubyLanguageServer
     def ancestor_scope_name(scope)
       return_scope = scope
       while (return_scope = return_scope.parent)
-        return return_scope.name unless return_scope.name.nil?
+        return return_scope.name unless return_scope.name.nil? || return_scope.block_scope?
       end
     end
 
     def tags
-      # byebug
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
       @tags ||= [{}]
       return @tags if text.nil?
       return @tags = [{}] if text == ''
 
-      root_scope # cause root scope to reset
+      refresh_scopes_if_needed # cause root scope to reset
       return @tags if scopes.reload.count <= 1 # just the root
 
       tags = scopes.reload.map do |scope|
@@ -92,7 +89,7 @@ module RubyLanguageServer
         scope_hash[:containerName] = container_name unless container_name.blank?
         scope_hash
       end
-      tags += variables.constants.reload.map do |variable|
+      tags += variables.constant_variables.reload.map do |variable|
         name = variable.name
         {
           name: name,
@@ -116,28 +113,31 @@ module RubyLanguageServer
     end
 
     def update_text(new_text)
+      RubyLanguageServer.logger.debug("update_text for #{uri}")
       return true if new_text == text
 
+      RubyLanguageServer.logger.debug('Changed!')
       update_attributes(text: new_text, refresh_root_scope: true)
     end
 
-    def root_scope
+    def refresh_scopes_if_needed
       return unless refresh_root_scope
 
       RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
-      new_root_scope = RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
+      RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
         RubyLanguageServer::ScopeData::Scope.where(code_file_id: self).scoping do
           self.class.transaction do
             scopes.clear
             variables.clear
             new_root = ScopeParser.new(text).root_scope
-            raise ActiveRecord::Rollback unless new_root.present?
+            RubyLanguageServer.logger.debug("new_root&.children #{new_root&.children.as_json}")
+            raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
 
+            update_attribute(:refresh_root_scope, false)
             new_root
           end
         end
       end
-      update_attribute(:refresh_root_scope, true) if new_root_scope.children.present?
     end
 
     # Returns the context of what is being typed in the given line

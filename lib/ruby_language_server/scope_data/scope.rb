@@ -89,6 +89,10 @@ module RubyLanguageServer
         class_type == TYPE_ROOT
       end
 
+      def block_scope?
+        class_type == TYPE_BLOCK
+      end
+
       private
 
       def scope_parts

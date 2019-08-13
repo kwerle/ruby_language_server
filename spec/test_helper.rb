@@ -9,6 +9,7 @@ module DatabaseClearing
     super
     RubyLanguageServer::ScopeData::Scope.destroy_all
     RubyLanguageServer::ScopeData::Variable.destroy_all
+    RubyLanguageServer::CodeFile.destroy_all
   end
 end
 

@@ -87,9 +87,8 @@ describe RubyLanguageServer::ProjectManager do
   describe '.project_definitions_for' do
     it 'should give a reasonable list' do
       project_manager.update_document_content('uri', rails_file_text)
-      project_manager.tags_for_uri('uri')
+      project_manager.tags_for_uri('uri') # forces load
       assert_equal([], project_manager.project_definitions_for('xxx'))
-      project_manager.project_definitions_for('Foo')
       assert_equal(1, project_manager.project_definitions_for('Foo').count)
     end
   end
