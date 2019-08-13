@@ -48,8 +48,7 @@ module RubyLanguageServer
       end
 
       def scope_completions_in_target_context(context, context_scope, scopes)
-        working_array = context.dup
-        context_word = working_array[-2]
+        context_word = context[-2]
         if context_word.match?(/^[A-Z]/)
           scope = scope_with_name(context_word, scopes)
         else
