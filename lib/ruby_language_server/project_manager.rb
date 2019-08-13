@@ -193,9 +193,9 @@ module RubyLanguageServer
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = @root_uri + relative_path
           # ActiveRecord::Base.connection_pool.connection do
-            RubyLanguageServer.logger.error("Threading #{host_uri}")
-            update_document_content(host_uri, text)
-            code_file_for_uri(host_uri).refresh_scopes_if_needed
+          RubyLanguageServer.logger.error("Threading #{host_uri}")
+          update_document_content(host_uri, text)
+          code_file_for_uri(host_uri).refresh_scopes_if_needed
           # end
         end
       end
