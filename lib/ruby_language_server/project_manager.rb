@@ -228,12 +228,12 @@ module RubyLanguageServer
     end
 
     def word_at_location(uri, position)
-      context_at_location(uri, position).last
+      context_at_location(uri, position)&.last
     end
 
     def possible_definitions(uri, position)
       name = word_at_location(uri, position)
-      return {} if name == ''
+      return {} if name.blank?
 
       name = 'initialize' if name == 'new'
       scope = scopes_at(uri, position).first
