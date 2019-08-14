@@ -94,7 +94,7 @@ module RubyLanguageServer
         {
           name: name,
           kind: SYMBOL_KIND[:constant],
-          location: Location.hash(uri, variable.line),
+          location: Location.hash(uri, variable.line - 1),
           containerName: variable.scope.name
         }
       end
@@ -130,7 +130,7 @@ module RubyLanguageServer
             scopes.clear
             variables.clear
             new_root = ScopeParser.new(text).root_scope
-            RubyLanguageServer.logger.debug("new_root&.children #{new_root&.children.as_json}")
+            RubyLanguageServer.logger.debug("new_root.children #{new_root.children.as_json}") if new_root&.children
             raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
 
             update_attribute(:refresh_root_scope, false)

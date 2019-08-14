@@ -189,6 +189,9 @@ module RubyLanguageServer
       Thread.new do
         RubyLanguageServer.logger.error('Threading up!')
         project_ruby_files.each do |container_path|
+          # Let's not preload spec/test or vendor - yet..
+          next if container_path.match?(/^(.?spec|test|vendor)/)
+
           text = File.read(container_path)
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = @root_uri + relative_path
@@ -248,7 +251,7 @@ module RubyLanguageServer
       return_array = []
       while check_scope
         scope.variables.each do |variable|
-          return_array << Location.hash(uri, variable.line) if variable.name == name
+          return_array << Location.hash(uri, variable.line - 1) if variable.name == name
         end
         check_scope = check_scope.parent
       end

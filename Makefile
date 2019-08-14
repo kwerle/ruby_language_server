@@ -10,6 +10,7 @@ guard: build
 	echo > active_record.log
 
 continuous_development: build
+	docker build -t local_ruby_language_server .
 	echo "You are going to want to set the ide-ruby 'Image Name' to local_ruby_language_server"
 	sleep 15
 	while (true) ; \
