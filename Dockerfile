@@ -15,6 +15,7 @@ WORKDIR /app
 
 # We expect the target project to be mounted here:
 ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT /project/
+# ENV LOG_LEVEL DEBUG
 
 COPY Gemfile .
 COPY ruby_language_server.gemspec .
