@@ -5,5 +5,5 @@ $LOAD_PATH << File.join(__dir__, '..', 'lib')
 
 require 'ruby_language_server'
 
-server = RubyLanguageServer::Server.new
-RubyLanguageServer::IO.new(server)
+application = RubyLanguageServer::Application.new
+application.start

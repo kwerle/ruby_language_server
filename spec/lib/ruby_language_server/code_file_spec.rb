@@ -6,7 +6,7 @@ require 'minitest/autorun'
 describe RubyLanguageServer::CodeFile do
   describe 'CodeFile' do
     it 'must init' do
-      RubyLanguageServer::CodeFile.new('uri', "class Foo\nend\n")
+      RubyLanguageServer::CodeFile.build('uri', "class Foo\nend\n")
     end
 
     describe 'tags' do
@@ -28,11 +28,12 @@ describe RubyLanguageServer::CodeFile do
       let(:tags) { code_file(source).tags }
 
       def code_file(text)
-        RubyLanguageServer::CodeFile.new('uri', text)
+        RubyLanguageServer::CodeFile.build('uri', text)
       end
 
       it 'should find classes' do
         code_file = code_file("class Foo\nend\n")
+        code_file.tags
         assert_equal(1, code_file.tags.length)
         assert_equal('Foo', code_file.tags.last[:name])
         assert_equal(5, code_file.tags.last[:kind])
@@ -41,7 +42,7 @@ describe RubyLanguageServer::CodeFile do
       it 'should retain existing tags when text becomes unparsable' do
         code_file = code_file("def foo\nend\n")
         assert_equal('foo', code_file.tags.last[:name])
-        code_file.text = "def foo\n@foo ||\nend\n"
+        code_file.update_text "def foo\n@foo ||\nend\n"
         assert_equal('foo', code_file.tags.last[:name])
       end
 

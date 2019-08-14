@@ -41,14 +41,15 @@ describe RubyLanguageServer::Completion do
 
   let(:Completion) { RubyLanguageServer::Completion }
   let(:all_scopes) { @scope_parser.root_scope.self_and_descendants }
-  let(:nar_naz_scope) { all_scopes.detect { |scope| scope.full_name == 'Foo::Nar#naz' } }
+  let(:nar_naz_scope) { all_scopes.find_by_path('Foo::Nar#naz') }
 
   describe 'no context' do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = ['bog']
-      context_scope = @scope_parser.root_scope
-      completions = RubyLanguageServer::Completion.scope_completions(context.last, context_scope.self_and_ancestors)
-      assert_equal(['bogus'], completions.map(&:first))
+      context_scope = all_scopes.find_by_path('Foo::Bar')
+      position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
+      completions = RubyLanguageServer::Completion.scope_completions(context.last, position_scopes)
+      assert_equal(["bogus", "@bottom"], completions.map(&:first))
     end
   end
 
@@ -56,8 +57,9 @@ describe RubyLanguageServer::Completion do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = %w[bar ba]
       context_scope = nar_naz_scope
-      completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, all_scopes)
-      assert_equal(['baz', '@biz', '@bottom'], completions.map(&:first))
+      position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
+      completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, position_scopes)
+      assert_equal(%w[bar naz bogus], completions.map(&:first))
     end
   end
 
@@ -65,7 +67,8 @@ describe RubyLanguageServer::Completion do
     it 'should not leak block variables to the parent scope' do
       context = ['iter']
       context_scope = nar_naz_scope
-      completions = RubyLanguageServer::Completion.scope_completions(context, context_scope.self_and_ancestors)
+      position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
+      completions = RubyLanguageServer::Completion.scope_completions(context, position_scopes)
       assert_equal([], completions.map(&:first))
     end
   end

@@ -9,13 +9,13 @@ RUN gem update bundler
 
 # Needed for byebug and some other gems
 RUN apk update
-RUN apk add make
-RUN apk add g++
+RUN apk add make g++ sqlite-dev
 
 WORKDIR /app
 
 # We expect the target project to be mounted here:
 ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT /project/
+# ENV LOG_LEVEL DEBUG
 
 COPY Gemfile .
 COPY ruby_language_server.gemspec .
