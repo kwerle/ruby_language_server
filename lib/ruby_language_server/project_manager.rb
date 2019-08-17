@@ -43,6 +43,7 @@ module RubyLanguageServer
     end
 
     def initialize(path, uri = nil)
+      RubyLanguageServer::CodeFile.all # Warm up active record
       # Should probably lock for read, but I'm feeling crazy!
       self.class.root_path = path if self.class.root_path.nil?
       self.class.root_uri = uri if uri
