@@ -43,15 +43,12 @@ module RubyLanguageServer
     end
 
     def initialize(path, uri = nil)
-      RubyLanguageServer::CodeFile.all # Warm up active record
       # Should probably lock for read, but I'm feeling crazy!
       self.class.root_path = path if self.class.root_path.nil?
       self.class.root_uri = uri if uri
 
       @root_uri = "file://#{path}"
       # This is {uri: code_file} where content stuff is like
-      @update_mutext = Mutex.new
-
       @additional_gems_installed = false
       @additional_gem_mutex = Mutex.new
     end
@@ -185,7 +182,7 @@ module RubyLanguageServer
     #   data?: any
     # }
 
-    def scan_all_project_files
+    def scan_all_project_files(mutex)
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
         RubyLanguageServer.logger.error('Threading up!')
@@ -196,26 +193,26 @@ module RubyLanguageServer
           text = File.read(container_path)
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = @root_uri + relative_path
-          # ActiveRecord::Base.connection_pool.connection do
-          RubyLanguageServer.logger.error("Threading #{host_uri}")
-          update_document_content(host_uri, text)
-          code_file_for_uri(host_uri).refresh_scopes_if_needed
-          # end
+          RubyLanguageServer.logger.debug "Locking scan for #{container_path}"
+          mutex.synchronize do
+            RubyLanguageServer.logger.debug("Threading #{host_uri}")
+            update_document_content(host_uri, text)
+            code_file_for_uri(host_uri).refresh_scopes_if_needed
+          end
+          RubyLanguageServer.logger.debug "Unlocking scan for #{container_path}"
         end
       end
     end
 
     # returns diagnostic info (if possible)
     def update_document_content(uri, text)
-      @update_mutext.synchronize do
-        RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-        # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
-        code_file = code_file_for_uri(uri)
-        return code_file.diagnostics if code_file.text == text
+      RubyLanguageServer.logger.debug("update_document_content: #{uri}")
+      # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
+      code_file = code_file_for_uri(uri)
+      return code_file.diagnostics if code_file.text == text
 
-        code_file.update_text(text)
-        diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
-      end
+      code_file.update_text(text)
+      diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
     end
 
     def updated_diagnostics_for_codefile(code_file)
