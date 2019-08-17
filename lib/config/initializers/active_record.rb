@@ -5,7 +5,7 @@ ActiveRecord::Base.establish_connection(
   database: 'file::memory:?cache=shared',
   # database: '/database',
   pool: 5, # does not seem to help
-  checkout_timeout: 30.seconds  # does not seem to help
+  checkout_timeout: 30.seconds # does not seem to help
 )
 
 if ENV['LOG_LEVEL'] == 'DEBUG'

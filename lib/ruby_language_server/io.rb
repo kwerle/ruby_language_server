@@ -58,11 +58,11 @@ module RubyLanguageServer
       params = request_json['params']
       method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
-        RubyLanguageServer.logger.debug "Locking io"
+        RubyLanguageServer.logger.debug 'Locking io'
         response = @mutex.synchronize do
           @server.send(method_name, params)
         end
-        RubyLanguageServer.logger.debug "UNLocking io"
+        RubyLanguageServer.logger.debug 'UNLocking io'
         exit(true) if response == 'EXIT'
         return id, response
       else
