@@ -3,14 +3,14 @@
 module RubyLanguageServer
   # Hash factories for the language server
   module Location
-    def self.hash(uri, start_line, start_character = 1, end_line = nil, end_character = nil)
+    def self.hash(uri, start_line, start_character = 0, end_line = nil, end_character = nil)
       {
         uri: uri,
         range: position_hash(start_line, start_character, end_line, end_character)
       }
     end
 
-    def self.position_hash(start_line, start_character = 1, end_line = nil, end_character = nil)
+    def self.position_hash(start_line, start_character = 0, end_line = nil, end_character = nil)
       end_line ||= start_line
       end_character ||= start_character
       {
