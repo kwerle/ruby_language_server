@@ -1,14 +1,20 @@
 # frozen_string_literal: true
 
+require 'active_record'
+
 module RubyLanguageServer
   module ScopeData
-    class Base
-      TYPE_MODULE = :module
-      TYPE_CLASS = :class
-      TYPE_METHOD = :method
-      TYPE_BLOCK = :block
-      TYPE_ROOT = :root
-      TYPE_VARIABLE = :variable
+    class Base < ActiveRecord::Base
+      self.abstract_class = true
+
+      TYPE_MODULE = 'module'
+      TYPE_CLASS = 'class'
+      TYPE_METHOD = 'method'
+      TYPE_BLOCK = 'block'
+      TYPE_ROOT = 'root'
+      TYPE_VARIABLE = 'variable'
+
+      BLOCK_NAME = 'block'
 
       JoinHash = {
         TYPE_MODULE => '::',

@@ -7,11 +7,17 @@ module RubyLanguageServer
   class Server
     attr_accessor :io
 
+    def initialize(mutex)
+      @mutex = mutex
+    end
+
     def on_initialize(params)
       RubyLanguageServer.logger.info("on_initialize: #{params}")
+      RubyLanguageServer::CodeFile.all # Just to warm up active_record.
       root_path = params['rootPath']
       root_uri = params['rootUri']
       @project_manager = ProjectManager.new(root_path, root_uri)
+      @project_manager.scan_all_project_files(@mutex)
       gem_string = ENV.fetch('ADDITIONAL_GEMS') {}
       gem_array = (gem_string.split(',').compact.map(&:strip).reject { |string| string == '' } if gem_string && !gem_string.empty?)
       @project_manager.install_additional_gems(gem_array)

@@ -1,5 +1,11 @@
 # Changelog
 
+#### 0.3.0 Tue Aug 20 17:23:38 PDT 2019
+
+* #33 - migrate to database
+** add sqlite
+** add ActiveRecord
+
 #### 0.2.10 Mon Aug  5 22:34:54 PDT 2019
 
 * #41 - Rubocop version mismatch

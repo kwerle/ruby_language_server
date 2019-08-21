@@ -25,10 +25,10 @@ module RubyLanguageServer
 
     class << self
       def completion(context, context_scope, scopes)
-        RubyLanguageServer.logger.debug("completion(#{context}, #{context_scope.self_and_ancestors.map(&:name)}, #{scopes.map(&:name)})")
+        RubyLanguageServer.logger.debug("completion(#{context}, #{scopes.map(&:name)})")
         completions =
           if context.length < 2
-            scope_completions(context.last, context_scope.self_and_ancestors)
+            scope_completions(context.last, scopes)
           else
             scope_completions_in_target_context(context, context_scope, scopes)
           end
@@ -44,12 +44,13 @@ module RubyLanguageServer
       end
 
       def scope_with_name(name, scopes)
+        return scopes.where(name: name).first if scopes.respond_to?(:where)
+
         scopes.detect { |scope| scope.name == name }
       end
 
       def scope_completions_in_target_context(context, context_scope, scopes)
-        working_array = context.dup
-        context_word = working_array[-2]
+        context_word = context[-2]
         if context_word.match?(/^[A-Z]/)
           scope = scope_with_name(context_word, scopes)
         else
@@ -59,22 +60,22 @@ module RubyLanguageServer
         end
         scope ||= context_scope
         RubyLanguageServer.logger.debug("scope: #{scope}")
-        scope_completions(context.last, scope.self_and_ancestors)
+        scope_completions(context.last, [scope] + scopes.includes(:variables))
       end
 
       def scope_completions(word, scopes)
         words = {}
         scopes.each_with_object(words) do |scope, words_hash|
-          scope.children.select(&:'method?').each do |method_scope|
+          scope.children.method_scopes.each do |method_scope|
             words_hash[method_scope.name] ||= {
               depth: scope.depth,
-              type: method_scope.type
+              type: method_scope.class_type
             }
           end
           scope.variables.each do |variable|
             words_hash[variable.name] ||= {
               depth: scope.depth,
-              type: variable.type
+              type: variable.variable_type
             }
           end
         end

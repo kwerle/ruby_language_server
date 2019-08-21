@@ -1,32 +1,40 @@
 # frozen_string_literal: true
 
+require 'active_record'
+
 require_relative 'scope_data/base'
 require_relative 'scope_data/scope'
 require_relative 'scope_data/variable'
 
 module RubyLanguageServer
-  class CodeFile
-    attr_reader :uri
-    attr_reader :text
+  class CodeFile < ActiveRecord::Base
+    has_many :scopes, class_name: 'RubyLanguageServer::ScopeData::Scope', dependent: :destroy do
+      def root_scope
+        where(class_type: RubyLanguageServer::ScopeData::Scope::TYPE_ROOT).first
+      end
+    end
+    has_many :variables, class_name: 'RubyLanguageServer::ScopeData::Variable', dependent: :destroy
+
     attr_accessor :diagnostics
 
-    def initialize(uri, text)
+    def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
-      @uri = uri
-      @text = text
-      @refresh_root_scope = true
+
+      new_code_file = create!(uri: uri, text: text)
+      new_code_file
     end
 
-    def text=(new_text)
-      RubyLanguageServer.logger.debug("text= for #{uri}")
-      if @text == new_text
-        RubyLanguageServer.logger.debug('IT WAS THE SAME!!!!!!!!!!!!')
-        return
-      end
-      @text = new_text
-      @refresh_root_scope = true
-    end
-
+    # def text=(new_text)
+    #   RubyLanguageServer.logger.debug("text= for #{uri}")
+    #   if @text == new_text
+    #     RubyLanguageServer.logger.debug('IT WAS THE SAME!!!!!!!!!!!!')
+    #     return
+    #   end
+    #   @text = new_text
+    #   update_attribute(:refresh_root_scope, true)
+    #   root_scope
+    # end
+    #
     SYMBOL_KIND = {
       file: 1,
       'module': 5, # 2,
@@ -53,46 +61,44 @@ module RubyLanguageServer
     def ancestor_scope_name(scope)
       return_scope = scope
       while (return_scope = return_scope.parent)
-        return return_scope.name unless return_scope.name.nil?
+        return return_scope.name unless return_scope.name.nil? || return_scope.block_scope?
       end
     end
 
     def tags
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
-      return @tags = {} if text.nil? || text == ''
+      @tags ||= [{}]
+      return @tags if text.nil?
+      return @tags = [{}] if text == ''
 
-      tags = []
-      root_scope.self_and_descendants.each do |scope|
-        next if scope.type == ScopeData::Base::TYPE_BLOCK
+      refresh_scopes_if_needed # cause root scope to reset
+      return @tags if scopes.reload.count <= 1 # just the root
 
-        name = scope.name
-        kind = SYMBOL_KIND[scope.type] || 7
-        kind = 9 if name == 'initialize' # Magical special case
+      tags = scopes.reload.map do |scope|
+        next if scope.class_type == ScopeData::Base::TYPE_BLOCK
+        next if scope.root_scope?
+
+        kind = SYMBOL_KIND[scope.class_type.to_sym] || 7
+        kind = 9 if scope.name == 'initialize' # Magical special case
         scope_hash = {
-          name: name,
+          name: scope.name,
           kind: kind,
           location: Location.hash(uri, scope.top_line)
         }
         container_name = ancestor_scope_name(scope)
-        scope_hash[:containerName] = container_name if container_name
-        tags << scope_hash
-
-        scope.variables.each do |variable|
-          name = variable.name
-          # We only care about counstants
-          next unless name =~ /^[A-Z]/
-
-          variable_hash = {
-            name: name,
-            kind: SYMBOL_KIND[:constant],
-            location: Location.hash(uri, variable.line),
-            containerName: scope.name
-          }
-          tags << variable_hash
-        end
+        scope_hash[:containerName] = container_name unless container_name.blank?
+        scope_hash
       end
-      # byebug
-      tags.reject! { |tag| tag[:name].nil? }
+      tags += variables.constant_variables.reload.map do |variable|
+        name = variable.name
+        {
+          name: name,
+          kind: SYMBOL_KIND[:constant],
+          location: Location.hash(uri, variable.line - 1),
+          containerName: variable.scope.name
+        }
+      end
+      tags = tags.compact.reject { |tag| tag[:name].nil? || tag[:name] == RubyLanguageServer::ScopeData::Scope::TYPE_BLOCK }
       # RubyLanguageServer.logger.debug("Raw tags for #{uri}: #{tags}")
       # If you don't reverse the list then atom? won't be able to find the
       # container and containers will get duplicated.
@@ -106,18 +112,32 @@ module RubyLanguageServer
       @tags
     end
 
-    def root_scope
-      # RubyLanguageServer.logger.error("Asking about root_scope with #{text}")
-      if @refresh_root_scope
-        new_root_scope = ScopeParser.new(text).root_scope
-        @root_scope ||= new_root_scope # In case we had NONE
-        return @root_scope if new_root_scope.children.empty?
+    def update_text(new_text)
+      RubyLanguageServer.logger.debug("update_text for #{uri}")
+      return true if new_text == text
 
-        @root_scope = new_root_scope
-        @refresh_root_scope = false
-        @tags = nil
+      RubyLanguageServer.logger.debug('Changed!')
+      update(text: new_text, refresh_root_scope: true)
+    end
+
+    def refresh_scopes_if_needed
+      return unless refresh_root_scope
+
+      RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
+      RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
+        RubyLanguageServer::ScopeData::Scope.where(code_file_id: self).scoping do
+          self.class.transaction do
+            scopes.clear
+            variables.clear
+            new_root = ScopeParser.new(text).root_scope
+            RubyLanguageServer.logger.debug("new_root.children #{new_root.children.as_json}") if new_root&.children
+            raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
+
+            update_attribute(:refresh_root_scope, false)
+            new_root
+          end
+        end
       end
-      @root_scope
     end
 
     # Returns the context of what is being typed in the given line

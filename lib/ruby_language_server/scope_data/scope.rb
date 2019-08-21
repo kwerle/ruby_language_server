@@ -1,103 +1,103 @@
 # frozen_string_literal: true
 
+require 'active_record'
+
 module RubyLanguageServer
   module ScopeData
     # The Scope class is basically a container with context.
     # It is used to track top & bottom line, variables in this scope, constants, and children - which could be functions, classes, blocks, etc.  Anything that adds scope.
     class Scope < Base
-      include Enumerable
+      has_many :variables, dependent: :destroy
+      belongs_to :code_file
+      belongs_to :parent, class_name: 'Scope', optional: true
+      has_many :children, class_name: 'Scope', foreign_key: :parent_id
 
-      attr_accessor :top_line        # first line
-      attr_accessor :bottom_line     # last line
-      attr_accessor :depth           # how many parent scopes
-      attr_accessor :parent          # parent scope
-      attr_accessor :variables       # variables declared in this scope
-      attr_accessor :constants       # constants declared in this scope
-      attr_accessor :children        # child scopes
-      attr_accessor :name            # method
-      attr_accessor :superclass_name # superclass name
+      scope :method_scopes, -> { where(class_type: TYPE_METHOD) }
+      scope :for_line, ->(line) { where('top_line <= ? AND bottom_line >= ?', line, line).or(where(parent_id: nil)) }
+      scope :by_path_length, -> { order('length(path) DESC') }
+      # attr_accessor :top_line        # first line
+      # attr_accessor :bottom_line     # last line
+      # attr_accessor :parent          # parent scope
+      # attr_accessor :constants       # constants declared in this scope
+      # attr_accessor :name            # method
+      # attr_accessor :superclass_name # superclass name
 
-      def initialize(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, _column = 1)
-        super()
-        @parent = parent
-        @type = type
-        @name = name
-        @top_line = top_line
-        @depth = parent.nil? ? 0 : parent.depth + 1
-        if type == TYPE_ROOT
-          @full_name = nil
-        else
-          @full_name = [parent ? parent.full_name : nil, @name].compact.join(JoinHash[type])
-        end
-        @children = []
-        @variables = []
-        @constants = []
-      end
-
-      def inspect
-        "Scope: #{@name} (#{@full_name} - #{@type}) #{@top_line}-#{@bottom_line} children: #{@children} vars: #{@variables}"
-      end
-
-      def pretty_print(pp) # rubocop:disable Naming/UncommunicativeMethodParamName
-        {
-          Scope: {
-            type: type,
-            name: name,
-            lines: [@top_line, @bottom_line],
-            children: children,
-            variables: variables
-          }
-        }.pretty_print(pp)
+      def self.build(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1)
+        full_name = [parent ? parent.full_name : nil, name].compact.join(JoinHash[type])
+        create!(
+          parent: parent,
+          top_line: top_line,
+          column: column,
+          name: name,
+          path: full_name,
+          class_type: type
+        )
       end
 
       def full_name
-        @full_name || @name
+        path # @full_name || @name
       end
 
-      def has_variable_or_constant?(variable) # rubocop:disable Naming/PredicateName
-        test_array = variable.constant? ? constants : variables
-        matching_variable = test_array.detect { |test_variable| (test_variable.name == variable.name) }
-        !matching_variable.nil?
+      def depth
+        return 0 if path.blank?
+
+        scope_parts.count
       end
 
       # Return the deepest child scopes of this scope - and on up.
       # Not done recuresively because we don't really need to.
       # Normally called on a root scope.
-      def scopes_at(position)
-        line = position.line
-        matching_scopes = select do |scope|
-          scope.top_line && scope.bottom_line && (scope.top_line..scope.bottom_line).cover?(line)
-        end
-        return [] if matching_scopes == []
-
-        deepest_scope = matching_scopes.max_by(&:depth)
-        deepest_scope.self_and_ancestors
-      end
-
-      def each
-        self_and_descendants.each { |member| yield member }
-      end
+      # def scopes_at(position)
+      #   line = position.line
+      #   matching_scopes = self_and_descendants.where('top_line <= ?', line).where('bottom_line >= ?', line)
+      #   deepest_scope = matching_scopes.max_by(&:depth)
+      #   deepest_scope&.self_and_ancestors || []
+      # end
 
       # Self and all descendents flattened into array
       def self_and_descendants
-        [self] + descendants
+        return Scope.all if root_scope?
+
+        Scope.where('path like ?', "#{path}%")
       end
 
       def descendants
-        children.map(&:self_and_descendants).flatten
+        Scope.where('path like ?', "#{path}_%")
       end
 
       # [self, parent, parent.parent...]
-      def self_and_ancestors
-        [self, parent&.self_and_ancestors].flatten.compact
-      end
+      # def self_and_ancestors
+      #   return [self] if path.blank?
+      #   remaining_path = path.dup
+      #   ancestor_paths = scope_parts.inject([]) do |ary, scope_part|
+      #     ary << remaining_path
+      #     remaining_path =
+      #     ary
+      #   end
+      #   [self, parent&.self_and_ancestors].flatten.compact
+      # end
 
       def set_superclass_name(partial)
         if partial.start_with?('::')
-          @superclass_name = partial.gsub(/^::/, '')
+          self.superclass_name = partial.gsub(/^::/, '')
         else
-          @superclass_name = [parent ? parent.full_name : nil, partial].compact.join(JoinHash[type])
+          self.superclass_name = [parent ? parent.full_name : nil, partial].compact.join(JoinHash[class_type])
         end
+        save!
+      end
+
+      def root_scope?
+        class_type == TYPE_ROOT
+      end
+
+      def block_scope?
+        class_type == TYPE_BLOCK
+      end
+
+      private
+
+      def scope_parts
+        path&.split(/#{JoinHash.values.reject(&:blank?).uniq.join('|')}/)
       end
     end
   end
