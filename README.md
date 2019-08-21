@@ -50,7 +50,7 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 
 * For for release
 * bump version in version.rb file and Gemfile.lock
-* change log
+* [CHANGELOG.txt](CHANGELOG.txt)
 * make gem_release
 
 # Authors
