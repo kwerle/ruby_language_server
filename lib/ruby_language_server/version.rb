@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module RubyLanguageServer
-  VERSION = '0.2.10'
+  VERSION = '0.3.0'
 end
