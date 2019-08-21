@@ -92,7 +92,7 @@ module RubyLanguageServer
     def scopes_at(uri, position)
       code_file = code_file_for_uri(uri)
       code_file.refresh_scopes_if_needed
-      code_file.scopes.for_line(position.line).select(&:path).sort_by { |scope| -(scope.path&.length) || 0 }
+      code_file.scopes.for_line(position.line).where.not(path: nil).by_path_length
     end
 
     def completion_at(uri, position)
