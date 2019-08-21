@@ -49,8 +49,6 @@ module RubyLanguageServer
 
       @root_uri = "file://#{path}"
       # This is {uri: code_file} where content stuff is like
-      @update_mutext = Mutex.new
-
       @additional_gems_installed = false
       @additional_gem_mutex = Mutex.new
     end
@@ -94,7 +92,7 @@ module RubyLanguageServer
     def scopes_at(uri, position)
       code_file = code_file_for_uri(uri)
       code_file.refresh_scopes_if_needed
-      code_file.scopes.for_line(position.line).select(&:path).sort_by { |scope| -(scope.path&.length) || 0 }
+      code_file.scopes.for_line(position.line).where.not(path: nil).by_path_length
     end
 
     def completion_at(uri, position)
@@ -184,7 +182,7 @@ module RubyLanguageServer
     #   data?: any
     # }
 
-    def scan_all_project_files
+    def scan_all_project_files(mutex)
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
         RubyLanguageServer.logger.error('Threading up!')
@@ -195,26 +193,26 @@ module RubyLanguageServer
           text = File.read(container_path)
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = @root_uri + relative_path
-          # ActiveRecord::Base.connection_pool.connection do
-          RubyLanguageServer.logger.error("Threading #{host_uri}")
-          update_document_content(host_uri, text)
-          code_file_for_uri(host_uri).refresh_scopes_if_needed
-          # end
+          RubyLanguageServer.logger.debug "Locking scan for #{container_path}"
+          mutex.synchronize do
+            RubyLanguageServer.logger.debug("Threading #{host_uri}")
+            update_document_content(host_uri, text)
+            code_file_for_uri(host_uri).refresh_scopes_if_needed
+          end
+          RubyLanguageServer.logger.debug "Unlocking scan for #{container_path}"
         end
       end
     end
 
     # returns diagnostic info (if possible)
     def update_document_content(uri, text)
-      @update_mutext.synchronize do
-        RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-        # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
-        code_file = code_file_for_uri(uri)
-        return code_file.diagnostics if code_file.text == text
+      RubyLanguageServer.logger.debug("update_document_content: #{uri}")
+      # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
+      code_file = code_file_for_uri(uri)
+      return code_file.diagnostics if code_file.text == text
 
-        code_file.update_text(text)
-        diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
-      end
+      code_file.update_text(text)
+      diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
     end
 
     def updated_diagnostics_for_codefile(code_file)
@@ -251,7 +249,7 @@ module RubyLanguageServer
       return_array = []
       while check_scope
         scope.variables.each do |variable|
-          return_array << Location.hash(uri, variable.line - 1) if variable.name == name
+          return_array << Location.hash(uri.delete_prefix(self.class.root_uri), variable.line - 1) if variable.name == name
         end
         check_scope = check_scope.parent
       end
@@ -263,7 +261,7 @@ module RubyLanguageServer
       scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
       variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name: name)
       (scopes + variables).map do |thing|
-        Location.hash(thing.code_file.uri, thing.top_line + 1)
+        Location.hash(thing.code_file.uri.delete_prefix(self.class.root_uri), thing.top_line)
       end
     end
 

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-# Set up a database that resides in RAM
-connection_pool = ActiveRecord::Base.establish_connection(
+ActiveRecord::Base.establish_connection(
   adapter: 'sqlite3',
   database: 'file::memory:?cache=shared',
-  pool: 5 # does not seem to help
+  # database: '/database',
+  pool: 5, # does not seem to help
+  checkout_timeout: 30.seconds # does not seem to help
 )
-connection_pool.checkout_timeout = 20 # does not seem to help
 
 if ENV['LOG_LEVEL'] == 'DEBUG'
   begin

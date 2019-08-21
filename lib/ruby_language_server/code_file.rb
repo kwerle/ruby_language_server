@@ -117,7 +117,7 @@ module RubyLanguageServer
       return true if new_text == text
 
       RubyLanguageServer.logger.debug('Changed!')
-      update_attributes(text: new_text, refresh_root_scope: true)
+      update(text: new_text, refresh_root_scope: true)
     end
 
     def refresh_scopes_if_needed

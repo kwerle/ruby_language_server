@@ -44,7 +44,9 @@ module RubyLanguageServer
       end
 
       def scope_with_name(name, scopes)
-        scopes.where(name: name).first
+        return scopes.where(name: name).first if scopes.respond_to?(:where)
+
+        scopes.detect { |scope| scope.name == name }
       end
 
       def scope_completions_in_target_context(context, context_scope, scopes)

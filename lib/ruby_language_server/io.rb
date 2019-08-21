@@ -4,8 +4,9 @@ require 'json'
 
 module RubyLanguageServer
   class IO
-    def initialize(server)
+    def initialize(server, mutex)
       @server = server
+      @mutex = mutex
       server.io = self
       loop do
         (id, response) = process_request(STDIN)
@@ -57,7 +58,11 @@ module RubyLanguageServer
       params = request_json['params']
       method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
-        response = @server.send(method_name, params)
+        RubyLanguageServer.logger.debug 'Locking io'
+        response = @mutex.synchronize do
+          @server.send(method_name, params)
+        end
+        RubyLanguageServer.logger.debug 'UNLocking io'
         exit(true) if response == 'EXIT'
         return id, response
       else

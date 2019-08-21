@@ -22,8 +22,9 @@ require_relative 'completion'
 module RubyLanguageServer
   class Application
     def start
-      server = RubyLanguageServer::Server.new
-      RubyLanguageServer::IO.new(server)
+      update_mutex = Monitor.new
+      server = RubyLanguageServer::Server.new(update_mutex)
+      RubyLanguageServer::IO.new(server, update_mutex)
     end
   end
 end
