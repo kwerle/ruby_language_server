@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.1 Fri Aug 23 21:14:43 PDT 2019
+
+* #46 Something when horribly wrong: undefined method `uri' for nil:NilClass
+
 #### 0.3.0 Tue Aug 20 17:23:38 PDT 2019
 
 * #33 - migrate to database
