@@ -260,7 +260,7 @@ module RubyLanguageServer
     def project_definitions_for(name)
       scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
       variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name: name)
-      (scopes + variables).reject{|scope| scope.code_file.nil?}.map do |scope|
+      (scopes + variables).reject { |scope| scope.code_file.nil? }.map do |scope|
         Location.hash(scope.code_file.uri.delete_prefix(self.class.root_uri), scope.top_line, 1)
       end
     end
