@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.4 Fri Jan 10 08:37:02 PST 2020
+
+* #50 Don't use bundle exec in Dockerfile.
+
 #### 0.3.3 Thu Jan  9 20:20:58 PST 2020
 
 * #49 Lock to rails 5.  Also some fixes with Makefile, Gemfile, rubocop config.
