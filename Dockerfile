@@ -17,7 +17,7 @@ WORKDIR /app
 ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT /project/
 # ENV LOG_LEVEL DEBUG
 
-COPY Gemfile .
+COPY Gemfile* ./
 COPY ruby_language_server.gemspec .
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
@@ -25,4 +25,4 @@ RUN bundle install -j 4
 
 COPY . ./
 
-CMD ["ruby", "/app/exe/ruby_language_server"]
+CMD ["bundle", "exec", "ruby", "/app/exe/ruby_language_server"]
