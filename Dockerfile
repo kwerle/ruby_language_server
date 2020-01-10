@@ -25,4 +25,5 @@ RUN bundle install -j 4
 
 COPY . ./
 
-CMD ["bundle", "exec", "ruby", "/app/exe/ruby_language_server"]
+# We must not use bundle exec, here - we are running in the 
+CMD ["ruby", "/app/exe/ruby_language_server"]
