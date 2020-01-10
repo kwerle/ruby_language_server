@@ -1,6 +1,6 @@
 # Changelog
 
-#### 0.3.2 Thu Jan  9 20:20:58 PST 2020
+#### 0.3.3 Thu Jan  9 20:20:58 PST 2020
 
 * #49 Lock to rails 5.  Also some fixes with Makefile, Gemfile, rubocop config.
 
