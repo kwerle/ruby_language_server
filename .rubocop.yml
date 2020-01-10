@@ -93,7 +93,7 @@ Naming/UncommunicativeMethodParamName:
 Naming/VariableName:
   Exclude:
     - 'lib/ruby_language_server/server.rb'
-    
+
 Performance:
   Enable: true
 

@@ -40,7 +40,8 @@ Gem::Specification.new do |spec|
 
   # No - do not put these in dev - they are needed for the app
   spec.add_dependency 'rubocop'
-  spec.add_dependency 'rubocop-rspec' # Linter - no longer needed - use additional gems?
+  spec.add_dependency 'rubocop-performance' # Linter - no longer needed - use additional gems?
+  spec.add_dependency 'rubocop-rspec'       # Linter - no longer needed - use additional gems?
 
   spec.add_dependency 'amatch'      # in c
   spec.add_dependency 'fuzzy_match' # completion matching
