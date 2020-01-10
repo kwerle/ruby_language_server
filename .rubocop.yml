@@ -6,6 +6,9 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
+require:
+  - rubocop-performance
+
 AllCops:
   TargetRubyVersion: 2.6
 
@@ -90,6 +93,9 @@ Naming/UncommunicativeMethodParamName:
 Naming/VariableName:
   Exclude:
     - 'lib/ruby_language_server/server.rb'
+
+Performance:
+  Enable: true
 
 # Cop supports --auto-correct.
 Style/UnneededSort:

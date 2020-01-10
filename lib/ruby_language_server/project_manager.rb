@@ -249,7 +249,7 @@ module RubyLanguageServer
       return_array = []
       while check_scope
         scope.variables.each do |variable|
-          return_array << Location.hash(uri.delete_prefix(self.class.root_uri), variable.line - 1) if variable.name == name
+          return_array << Location.hash(uri.delete_prefix(self.class.root_uri), variable.line, 1) if variable.name == name
         end
         check_scope = check_scope.parent
       end
@@ -260,8 +260,8 @@ module RubyLanguageServer
     def project_definitions_for(name)
       scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
       variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name: name)
-      (scopes + variables).reject{|scope| scope.code_file.nil?}.map do |scope|
-        Location.hash(scope.code_file.uri.delete_prefix(self.class.root_uri), scope.top_line)
+      (scopes + variables).reject { |scope| scope.code_file.nil? }.map do |scope|
+        Location.hash(scope.code_file.uri.delete_prefix(self.class.root_uri), scope.top_line, 1)
       end
     end
 

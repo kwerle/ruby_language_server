@@ -40,18 +40,19 @@ Gem::Specification.new do |spec|
 
   # No - do not put these in dev - they are needed for the app
   spec.add_dependency 'rubocop'
-  spec.add_dependency 'rubocop-rspec' # Linter - no longer needed - use additional gems?
+  spec.add_dependency 'rubocop-performance' # Linter - no longer needed - use additional gems?
+  spec.add_dependency 'rubocop-rspec'       # Linter - no longer needed - use additional gems?
 
   spec.add_dependency 'amatch'      # in c
   spec.add_dependency 'fuzzy_match' # completion matching
 
-  spec.add_dependency 'activerecord'
+  spec.add_dependency 'activerecord', '~>5.2'
   spec.add_dependency 'sqlite3'
 
   spec.add_development_dependency 'guard'
   spec.add_development_dependency 'guard-minitest'
   spec.add_development_dependency 'guard-rubocop'
-  spec.add_development_dependency 'minitest'
+  spec.add_development_dependency 'minitest', '~>5.11'
   spec.add_development_dependency 'minitest-color'
   spec.add_development_dependency 'pry'
   spec.add_development_dependency 'pry-byebug'

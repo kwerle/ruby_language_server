@@ -20,10 +20,10 @@ continuous_development: build
 	done
 
 console: build
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) bin/console
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)  bin/console
 
 test: build
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) rake test && rubocop
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'bundle exec rake test && bundle exec rubocop'
 
 shell: build
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh
