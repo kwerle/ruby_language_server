@@ -7,6 +7,7 @@ describe RubyLanguageServer::ProjectManager do
   let(:rails_file_text) do
     <<~CODE_FILE
       class Foo < ActiveRecord::Base
+        @baz = :Baz
         has_one :bar
       end
     CODE_FILE
@@ -99,6 +100,16 @@ describe RubyLanguageServer::ProjectManager do
       scopes = project_manager.scopes_at('uri', OpenStruct.new(line: 1))
       assert_equal(1, scopes.length)
       assert_equal('Foo', scopes.first.name)
+    end
+  end
+
+  describe '.scope_definitions_for' do
+    it 'lists them appropriately' do
+      project_manager.update_document_content('uri', rails_file_text)
+      project_manager.scopes_at('uri', OpenStruct.new(line: 1)) # heat up the scopes
+      scope = project_manager.all_scopes.find_by(name: :Foo)
+      project_manager.scope_definitions_for('bar', scope, 'uri')
+      assert_equal([{uri: 'uri', range: {start: {line: 1, character: 1}, end: {line: 1, character: 1}}}], project_manager.scope_definitions_for('@baz', scope, 'uri'))
     end
   end
 end
