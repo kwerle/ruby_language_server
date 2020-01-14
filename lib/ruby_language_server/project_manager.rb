@@ -186,13 +186,15 @@ module RubyLanguageServer
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
         RubyLanguageServer.logger.error('Threading up!')
+        root_uri = @root_uri
+        root_uri += '/' unless root_uri.end_with? '/'
         project_ruby_files.each do |container_path|
           # Let's not preload spec/test or vendor - yet..
           next if container_path.match?(/^(.?spec|test|vendor)/)
 
           text = File.read(container_path)
           relative_path = container_path.delete_prefix(self.class.root_path)
-          host_uri = @root_uri + relative_path
+          host_uri = root_uri + relative_path
           RubyLanguageServer.logger.debug "Locking scan for #{container_path}"
           mutex.synchronize do
             RubyLanguageServer.logger.debug("Threading #{host_uri}")
@@ -244,17 +246,18 @@ module RubyLanguageServer
       project_definitions_for(name)
     end
 
+    # Return variables found in the current scope.  After all, those are the important ones.
+    # Should probably be private...
     def scope_definitions_for(name, scope, uri)
       check_scope = scope
       return_array = []
       while check_scope
         scope.variables.each do |variable|
-          return_array << Location.hash(uri, variable.line, 1) if variable.name == name
-          # return_array << Location.hash(uri.delete_prefix(self.class.root_uri), variable.line, 1) if variable.name == name
+          return_array << Location.hash(uri.delete_prefix(self.class.root_uri), variable.line, 1) if variable.name == name
         end
         check_scope = check_scope.parent
       end
-      RubyLanguageServer.logger.debug("scope_definitions_for(#{name}, #{scope.to_json}, #{uri}: #{return_array.uniq})")
+      RubyLanguageServer.logger.debug("==============>> scope_definitions_for(#{name}, #{scope.to_json}, #{uri}: #{return_array.uniq})")
       return_array.uniq
     end
 

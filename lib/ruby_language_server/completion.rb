@@ -59,7 +59,7 @@ module RubyLanguageServer
           RubyLanguageServer.logger.debug("scope_with_name: #{scope}")
         end
         scope ||= context_scope
-        RubyLanguageServer.logger.debug("scope: #{scope}")
+        RubyLanguageServer.logger.debug("scope: #{scope.to_json}")
         scope_completions(context.last, [scope] + scopes.includes(:variables))
       end
 
