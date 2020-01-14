@@ -84,7 +84,7 @@ Naming/ConstantName:
 
 # Configuration parameters: MinNameLength, AllowNamesEndingInNumbers, AllowedNames, ForbiddenNames.
 # AllowedNames: io, id, to, by, on, in, at, ip, db
-Naming/UncommunicativeMethodParamName:
+Naming/MethodParameterName:
   Exclude:
     - 'lib/ruby_language_server/scope_parser.rb'
 
@@ -98,7 +98,7 @@ Performance:
   Enable: true
 
 # Cop supports --auto-correct.
-Style/UnneededSort:
+Style/RedundantSort:
   Exclude:
     - 'lib/ruby_language_server/scope_data/scope.rb'
 
