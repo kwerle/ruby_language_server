@@ -64,10 +64,10 @@ module RubyLanguageServer
         end
         RubyLanguageServer.logger.debug 'UNLocking io'
         exit(true) if response == 'EXIT'
-        return id, response
+        [id, response]
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
-        return nil
+        nil
       end
     end
 

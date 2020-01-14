@@ -2,7 +2,7 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:2.6-alpine
+FROM ruby:2.7-alpine
 LABEL maintainer="kurt@CircleW.org"
 
 RUN gem update bundler
