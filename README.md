@@ -53,7 +53,6 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 * [CHANGELOG.txt](CHANGELOG.txt)
 * merge to master, etc
 * make gem_release
-** This is probably going to get more because of 2FA: https://rubygems.org/profile/edit
 
 # Authors
 
