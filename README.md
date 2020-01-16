@@ -49,11 +49,10 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 # Release instructions to self
 
 * For for release
-* bump version in version.rb file and Gemfile.lock
+* bump version in [version.rb](lib/ruby_language_server/version.rb) file and [Gemfile.lock](Gemfile.lock)
 * [CHANGELOG.txt](CHANGELOG.txt)
 * merge to master, etc
 * make gem_release
-** This is probably going to get more because of 2FA: https://rubygems.org/profile/edit
 
 # Authors
 

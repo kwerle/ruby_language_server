@@ -20,7 +20,7 @@ module RubyLanguageServer
       end
 
       def root_path
-        # I'm torn about  this.  Should this be set in the Server?  Or is this right.
+        # I'm torn about this.  Should this be set in the Server?  Or is this right.
         # Rather than worry too much, I'll just do this here and change it later if it feels wrong.
         path = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] || @_root_path
         return path if path.nil?
@@ -253,7 +253,7 @@ module RubyLanguageServer
       return_array = []
       while check_scope
         scope.variables.each do |variable|
-          return_array << Location.hash(uri.delete_prefix(self.class.root_uri), variable.line, 1) if variable.name == name
+          return_array << Location.hash(uri, variable.line, 1) if variable.name == name
         end
         check_scope = check_scope.parent
       end
