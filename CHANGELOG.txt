@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.7 Wed Jan 15 22:27:08 PST 2020
+
+* #52 Jump to variable broken on vscode
+
 #### 0.3.6 Mon Jan 13 22:48:31 PST 2020
 
 * #51 Tweaks to support vs code
