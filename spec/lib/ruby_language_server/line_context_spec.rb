@@ -6,6 +6,21 @@ require 'minitest/autorun'
 describe RubyLanguageServer::LineContext do
   let(:line_context) { RubyLanguageServer::LineContext }
 
+  describe "?'s'" do
+    it 'includes them in names' do
+      assert_equal(['foo?'], line_context.for('foo?(14)', 0))
+    end
+
+    it 'includes them in names' do
+      assert_equal(['foo?'], line_context.for('foo?(1).bar?(14)', 0))
+    end
+
+    it 'includes them in names' do
+      # This should probably be ['foo?', 'bar?']
+      assert_equal(['', 'bar?'], line_context.for('foo?(1).bar?(14)', 9))
+    end
+  end
+
   describe 'basic variables' do
     let(:line) { 'foo = bar' }
 

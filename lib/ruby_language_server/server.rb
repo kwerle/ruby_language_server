@@ -50,7 +50,7 @@ module RubyLanguageServer
     end
 
     def on_initialized(_hash)
-      RubyLanguageServer.logger.error("RubyLanguageServer::VERSION #{RubyLanguageServer::VERSION}")
+      RubyLanguageServer.logger.info("RubyLanguageServer::VERSION #{RubyLanguageServer::VERSION}")
     end
 
     def on_workspace_didChangeWatchedFiles(params)
@@ -109,7 +109,7 @@ module RubyLanguageServer
       uri = uri_from_params(params)
       position = postition_from_params(params)
       completions = @project_manager.completion_at(uri, position)
-      # RubyLanguageServer.logger.debug("completions: #{completions}")
+      RubyLanguageServer.logger.debug("completions: #{completions}")
       completions
     end
 
