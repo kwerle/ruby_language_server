@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.8 Wed Jan 22 22:22:35 PST 2020
+
+* #54 fix lookup for "something.is_method?" dropping the ?
+
 #### 0.3.7 Wed Jan 15 22:27:08 PST 2020
 
 * #52 Jump to variable broken on vscode
