@@ -44,16 +44,6 @@ module RubyLanguageServer
         scope_parts.count
       end
 
-      # Return the deepest child scopes of this scope - and on up.
-      # Not done recuresively because we don't really need to.
-      # Normally called on a root scope.
-      # def scopes_at(position)
-      #   line = position.line
-      #   matching_scopes = self_and_descendants.where('top_line <= ?', line).where('bottom_line >= ?', line)
-      #   deepest_scope = matching_scopes.max_by(&:depth)
-      #   deepest_scope&.self_and_ancestors || []
-      # end
-
       # Self and all descendents flattened into array
       def self_and_descendants
         return Scope.all if root_scope?
@@ -64,18 +54,6 @@ module RubyLanguageServer
       def descendants
         Scope.where('path like ?', "#{path}_%")
       end
-
-      # [self, parent, parent.parent...]
-      # def self_and_ancestors
-      #   return [self] if path.blank?
-      #   remaining_path = path.dup
-      #   ancestor_paths = scope_parts.inject([]) do |ary, scope_part|
-      #     ary << remaining_path
-      #     remaining_path =
-      #     ary
-      #   end
-      #   [self, parent&.self_and_ancestors].flatten.compact
-      # end
 
       def set_superclass_name(partial)
         if partial.start_with?('::')

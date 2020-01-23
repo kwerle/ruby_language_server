@@ -8,6 +8,7 @@ module RubyLanguageServer
       @initialization_error = nil
       config_store = RuboCop::ConfigStore.new
       config_store.options_config = config_path
+      RubyLanguageServer.logger.debug("Rubocop config_path: #{config_path}")
       super({}, config_store)
     rescue Exception => e
       RubyLanguageServer.logger.error(e)
@@ -79,7 +80,7 @@ module RubyLanguageServer
     def diagnostics(text, filename = nil)
       return initialization_offenses unless @initialization_error.nil?
 
-      maximum_severity = (ENV['LINT_LEVEL'] || 4).to_i
+      maximum_severity = 4 # (ENV['LINT_LEVEL'] || 4).to_i
       enabled_offenses = offenses(text, filename).reject { |offense| offense.status == :disabled }
       enabled_offenses.map do |offense|
         {
@@ -99,7 +100,7 @@ module RubyLanguageServer
       if excluded_file?(filename)
         []
       else
-        processed_source = RuboCop::ProcessedSource.new(text, 2.4, filename)
+        processed_source = RuboCop::ProcessedSource.new(text, 2.7, filename)
         offenses = inspect_file(processed_source)
         offenses.compact.flatten
       end

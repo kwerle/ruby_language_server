@@ -39,16 +39,32 @@ describe RubyLanguageServer::Completion do
     @scope_parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
   end
 
-  let(:Completion) { RubyLanguageServer::Completion }
   let(:all_scopes) { @scope_parser.root_scope.self_and_descendants }
   let(:nar_naz_scope) { all_scopes.find_by_path('Foo::Nar#naz') }
+
+  def scope_completions(*args)
+    RubyLanguageServer::Completion.send(:scope_completions, *args)
+  end
+
+  def scope_completions_in_target_context(*args)
+    RubyLanguageServer::Completion.send(:scope_completions_in_target_context, *args)
+  end
+
+  describe '.completion' do
+    it 'does the right thing' do
+      context = ['bar', 'ba']
+      completions = RubyLanguageServer::Completion.completion(context, nar_naz_scope, all_scopes)
+      # The first item really should be king: variable (13?)
+      assert_equal(completions[:items][0..1], [{label: "bar", kind: nil}, {label: "baz", kind: 2}])
+    end
+  end
 
   describe 'no context' do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = ['bog']
       context_scope = all_scopes.find_by_path('Foo::Bar')
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
-      completions = RubyLanguageServer::Completion.scope_completions(context.last, position_scopes)
+      completions = scope_completions(context.last, position_scopes)
       assert_equal(["bogus", "@bottom"], completions.map(&:first))
     end
   end
@@ -58,7 +74,7 @@ describe RubyLanguageServer::Completion do
       context = %w[bar ba]
       context_scope = nar_naz_scope
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
-      completions = RubyLanguageServer::Completion.scope_completions_in_target_context(context, context_scope, position_scopes)
+      completions = scope_completions_in_target_context(context, context_scope, position_scopes)
       assert_equal(%w[bar naz bogus], completions.map(&:first))
     end
   end
@@ -68,7 +84,7 @@ describe RubyLanguageServer::Completion do
       context = ['iter']
       context_scope = nar_naz_scope
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
-      completions = RubyLanguageServer::Completion.scope_completions(context, position_scopes)
+      completions = scope_completions(context, position_scopes)
       assert_equal([], completions.map(&:first))
     end
   end

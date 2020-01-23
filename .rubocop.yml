@@ -82,12 +82,6 @@ Naming/ConstantName:
     - 'lib/ruby_language_server/scope_data/base.rb'
 
 
-# Configuration parameters: MinNameLength, AllowNamesEndingInNumbers, AllowedNames, ForbiddenNames.
-# AllowedNames: io, id, to, by, on, in, at, ip, db
-Naming/MethodParameterName:
-  Exclude:
-    - 'lib/ruby_language_server/scope_parser.rb'
-
 # Configuration parameters: EnforcedStyle.
 # SupportedStyles: snake_case, camelCase
 Naming/VariableName:
@@ -96,11 +90,6 @@ Naming/VariableName:
 
 Performance:
   Enable: true
-
-# Cop supports --auto-correct.
-Style/RedundantSort:
-  Exclude:
-    - 'lib/ruby_language_server/scope_data/scope.rb'
 
 # Cop supports --auto-correct.
 Style/Attr:

@@ -28,7 +28,7 @@ module RubyLanguageServer
         result: response
       }
       response_body = JSON.unparse(full_response)
-      # RubyLanguageServer.logger.debug "response_body: #{response_body}"
+      RubyLanguageServer.logger.info "return_response body: #{response_body}"
       io.write "Content-Length: #{response_body.length + 0}\r\n"
       io.write "\r\n"
       io.write response_body
@@ -42,7 +42,7 @@ module RubyLanguageServer
         params: params
       }
       body = JSON.unparse(full_response)
-      # RubyLanguageServer.logger.debug "body: #{body}"
+      RubyLanguageServer.logger.info "send_notification body: #{body}"
       io.write "Content-Length: #{body.length + 0}\r\n"
       io.write "\r\n"
       io.write body

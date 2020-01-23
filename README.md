@@ -52,7 +52,7 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 * bump version in [version.rb](lib/ruby_language_server/version.rb) file and [Gemfile.lock](Gemfile.lock)
 * [CHANGELOG.txt](CHANGELOG.txt)
 * merge to master, etc
-* make gem_release
+* `make gem_release`
 
 # Authors
 

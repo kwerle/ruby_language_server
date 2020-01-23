@@ -28,39 +28,37 @@ module RubyLanguageServer
         RubyLanguageServer.logger.debug("completion(#{context}, #{scopes.map(&:name)})")
         completions =
           if context.length < 2
-            scope_completions(context.last, scopes)
+            scope_completions(context.first, scopes)
           else
             scope_completions_in_target_context(context, context_scope, scopes)
           end
+        RubyLanguageServer.logger.debug("completions: #{completions.as_json}")
         {
           isIncomplete: true,
           items: completions.uniq.map do |word, hash|
             {
               label: word,
-              kind: COMPLETION_ITEM_KIND[hash[:type]]
+              kind: COMPLETION_ITEM_KIND[hash[:type]&.to_sym]
             }
           end
         }
       end
 
-      def scope_with_name(name, scopes)
-        return scopes.where(name: name).first if scopes.respond_to?(:where)
+      private
 
-        scopes.detect { |scope| scope.name == name }
+      def scopes_with_name(name, scopes)
+        return scopes.where(name: name) if scopes.respond_to?(:where)
+
+        scopes.select { |scope| scope.name == name }
       end
 
       def scope_completions_in_target_context(context, context_scope, scopes)
         context_word = context[-2]
-        if context_word.match?(/^[A-Z]/)
-          scope = scope_with_name(context_word, scopes)
-        else
-          context_word = context_word.split(/_/).map(&:capitalize).join('')
-          scope = scope_with_name(context_word, scopes)
-          RubyLanguageServer.logger.debug("scope_with_name: #{scope}")
-        end
-        scope ||= context_scope
-        RubyLanguageServer.logger.debug("scope: #{scope.to_json}")
-        scope_completions(context.last, [scope] + scopes.includes(:variables))
+        context_word = context_word.split(/_/).map(&:capitalize).join('') unless context_word.match?(/^[A-Z]/)
+        context_scopes = scopes_with_name(context_word, scopes)
+        context_scopes ||= context_scope
+        RubyLanguageServer.logger.debug("context_scopes: #{context_scopes.to_json}")
+        scope_completions(context.last, Array(context_scopes) + scopes.includes(:variables))
       end
 
       def scope_completions(word, scopes)
