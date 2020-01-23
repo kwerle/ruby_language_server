@@ -54,15 +54,10 @@ module RubyLanguageServer
 
       def scope_completions_in_target_context(context, context_scope, scopes)
         context_word = context[-2]
-        if context_word.match?(/^[A-Z]/)
-          context_scopes = scopes_with_name(context_word, scopes)
-        else
-          context_word = context_word.split(/_/).map(&:capitalize).join('')
-          context_scopes = scopes_with_name(context_word, scopes)
-          RubyLanguageServer.logger.debug("completion scope: #{context_scopes}")
-        end
+        context_word = context_word.split(/_/).map(&:capitalize).join('') unless context_word.match?(/^[A-Z]/)
+        context_scopes = scopes_with_name(context_word, scopes)
         context_scopes ||= context_scope
-        RubyLanguageServer.logger.debug("scopes: #{scopes.to_json}")
+        RubyLanguageServer.logger.debug("context_scopes: #{context_scopes.to_json}")
         scope_completions(context.last, Array(context_scopes) + scopes.includes(:variables))
       end
 

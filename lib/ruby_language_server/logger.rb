@@ -7,7 +7,7 @@ module RubyLanguageServer
   # level_name = 'DEBUG'
   level = Logger::Severity.const_get(level_name)
   @logger = ::Logger.new(STDERR, level: level)
-
+  @logger.log(level, "Logger started at level #{level_name} -> #{level}")
   def self.logger
     @logger
   end
