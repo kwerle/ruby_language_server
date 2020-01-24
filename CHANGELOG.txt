@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.10 Fri Jan 24 00:19:14 PST 2020
+
+* botched the 0.3.9 release
+
 #### 0.3.9 Fri Jan 24 00:19:14 PST 2020
 
 * #55 Some problem with completion
