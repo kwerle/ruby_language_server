@@ -58,28 +58,33 @@ module RubyLanguageServer
         context_scopes = scopes_with_name(context_word, scopes)
         context_scopes ||= context_scope
         RubyLanguageServer.logger.debug("context_scopes: #{context_scopes.to_json}")
-        scope_completions(context.last, Array(context_scopes) + scopes.includes(:variables))
+        # scope_completions(context.last, Array(context_scopes) + scopes.includes(:variables))
+        (scope_completions(context.last, Array(context_scopes)).to_a + scope_completions(context.last, scopes.includes(:variables)).to_a).uniq.to_h
       end
 
       def scope_completions(word, scopes)
-        words = {}
-        scopes.each_with_object(words) do |scope, words_hash|
-          scope.children.method_scopes.each do |method_scope|
-            words_hash[method_scope.name] ||= {
-              depth: scope.depth,
-              type: method_scope.class_type
-            }
-          end
-          scope.variables.each do |variable|
-            words_hash[variable.name] ||= {
-              depth: scope.depth,
-              type: variable.variable_type
-            }
-          end
-        end
-        words = words.sort_by { |_word, hash| hash[:depth] }.to_h
+        # words = {}
+        # scopes.each_with_object(words) do |scope, words_hash|
+        #   scope.children.method_scopes.each do |method_scope|
+        #     words_hash[method_scope.name] ||= {
+        #       depth: scope.depth,
+        #       type: method_scope.class_type
+        #     }
+        #   end
+        #   scope.variables.each do |variable|
+        #     words_hash[variable.name] ||= {
+        #       depth: scope.depth,
+        #       type: variable.variable_type
+        #     }
+        #   end
+        # end
+        scope_ids = scopes.map(&:id)
+        word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids)
+        scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map{|scope| [scope.name, scope]}
+        variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).map{|variable| [variable.name, variable.scope]}
+        words = (scope_words + variable_words).to_h
         good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-        words = good_words.map { |w| [w, words[w]] }.to_h
+        words = good_words.each_with_object({}) { |word, hash| hash[word] = {depth: words[word].depth, type: words[word].class_type} }.to_h
       end
     end
   end

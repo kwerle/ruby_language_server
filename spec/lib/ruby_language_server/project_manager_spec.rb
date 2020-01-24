@@ -85,6 +85,38 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  describe '#completion_at' do
+    let(:file_text) do
+      <<~CODE_FILE
+        module Bar
+          class Foo < ActiveRecord::Base
+            @baz = :Baz
+            has_one :bar
+            Ba
+            Fo
+            ba
+          end
+        end
+      CODE_FILE
+    end
+
+    before(:each) do
+      project_manager.update_document_content('search_uri', file_text)
+    end
+
+    it 'finds the appropriate completions' do
+      position = OpenStruct.new(line: 4, character: 4)
+      results = project_manager.completion_at('search_uri', position)
+      assert_equal({:isIncomplete=>true, :items=>[{:label=>"Bar", :kind=>9}, {:label=>"bar", :kind=>2}, {:label=>"bar=", :kind=>2}, {:label=>"@baz", :kind=>7}]}, results)
+      position = OpenStruct.new(line: 5, character: 4)
+      results = project_manager.completion_at('search_uri', position)
+      assert_equal({:isIncomplete=>true, :items=>[{:label=>"Foo", :kind=>7}]}, results)
+      position = OpenStruct.new(line: 6, character: 4)
+      results = project_manager.completion_at('search_uri', position)
+      assert_equal({:isIncomplete=>true, :items=>[{:label=>"Bar", :kind=>9}, {:label=>"bar", :kind=>2}, {:label=>"bar=", :kind=>2}, {:label=>"@baz", :kind=>7}]}, results)
+    end
+  end
+
   describe '.project_definitions_for' do
     it 'should give a reasonable list' do
       project_manager.update_document_content('uri', rails_file_text)

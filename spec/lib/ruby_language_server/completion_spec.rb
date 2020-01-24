@@ -54,15 +54,14 @@ describe RubyLanguageServer::Completion do
     it 'does the right thing' do
       context = ['bar', 'ba']
       completions = RubyLanguageServer::Completion.completion(context, nar_naz_scope, all_scopes)
-      # The first item really should be king: variable (13?)
-      assert_equal(completions[:items][0..1], [{label: "bar", kind: nil}, {label: "baz", kind: 2}])
+      assert_equal([{:label=>"Bar", :kind=>7}, {:label=>"baz", :kind=>2}], completions[:items][0..1])
     end
   end
 
   describe 'no context' do
     it 'should find the appropriate stuff from inside Foo::Bar' do
       context = ['bog']
-      context_scope = all_scopes.find_by_path('Foo::Bar')
+      context_scope = all_scopes.find_by(path: 'Foo::Bar')
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
       completions = scope_completions(context.last, position_scopes)
       assert_equal(["bogus", "@bottom"], completions.map(&:first))
@@ -75,7 +74,7 @@ describe RubyLanguageServer::Completion do
       context_scope = nar_naz_scope
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
       completions = scope_completions_in_target_context(context, context_scope, position_scopes)
-      assert_equal(%w[bar naz bogus], completions.map(&:first))
+      assert_equal(["bar", "Bar", "naz", "Nar", "bogus"], completions.map(&:first))
     end
   end
 
