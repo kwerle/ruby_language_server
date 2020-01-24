@@ -24,13 +24,13 @@ module RubyLanguageServer
     }.freeze
 
     class << self
-      def completion(context, context_scope, scopes)
-        RubyLanguageServer.logger.debug("completion(#{context}, #{scopes.map(&:name)})")
+      def completion(context, context_scope, position_scopes)
+        RubyLanguageServer.logger.debug("completion(#{context}, #{position_scopes.map(&:name)})")
         completions =
           if context.length < 2
-            scope_completions(context.first, scopes)
+            scope_completions(context.first, position_scopes)
           else
-            scope_completions_in_target_context(context, context_scope, scopes)
+            scope_completions_in_target_context(context, context_scope, position_scopes)
           end
         RubyLanguageServer.logger.debug("completions: #{completions.as_json}")
         {
@@ -55,29 +55,24 @@ module RubyLanguageServer
       def scope_completions_in_target_context(context, context_scope, scopes)
         context_word = context[-2]
         context_word = context_word.split(/_/).map(&:capitalize).join('') unless context_word.match?(/^[A-Z]/)
-        context_scopes = scopes_with_name(context_word, scopes)
+        context_scopes = RubyLanguageServer::ScopeData::Scope.where(name: context_word)
         context_scopes ||= context_scope
         RubyLanguageServer.logger.debug("context_scopes: #{context_scopes.to_json}")
         # scope_completions(context.last, Array(context_scopes) + scopes.includes(:variables))
         (scope_completions(context.last, Array(context_scopes)).to_a + scope_completions(context.last, scopes.includes(:variables)).to_a).uniq.to_h
       end
 
+      def module_completions(word)
+        class_and_module_types = [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE]
+        scope_words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).sort_by(&:depth).map { |scope| [scope.name, scope] }
+        words = scope_words.to_h
+        good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
+        words = good_words.each_with_object({}) { |w, hash| hash[w] = {depth: words[w].depth, type: words[w].class_type} }.to_h
+      end
+
       def scope_completions(word, scopes)
-        # words = {}
-        # scopes.each_with_object(words) do |scope, words_hash|
-        #   scope.children.method_scopes.each do |method_scope|
-        #     words_hash[method_scope.name] ||= {
-        #       depth: scope.depth,
-        #       type: method_scope.class_type
-        #     }
-        #   end
-        #   scope.variables.each do |variable|
-        #     words_hash[variable.name] ||= {
-        #       depth: scope.depth,
-        #       type: variable.variable_type
-        #     }
-        #   end
-        # end
+        return module_completions(word) if word.match?(/\A[A-Z][a-z]/)
+
         scope_ids = scopes.map(&:id)
         word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids)
         scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map { |scope| [scope.name, scope] }

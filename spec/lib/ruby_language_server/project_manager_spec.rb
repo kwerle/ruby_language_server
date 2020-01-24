@@ -107,7 +107,7 @@ describe RubyLanguageServer::ProjectManager do
     it 'finds the appropriate completions' do
       position = OpenStruct.new(line: 4, character: 4)
       results = project_manager.completion_at('search_uri', position)
-      assert_equal({isIncomplete: true, items: [{label: 'Bar', kind: 9}, {label: 'bar', kind: 2}, {label: 'bar=', kind: 2}, {label: '@baz', kind: 7}]}, results)
+      assert_equal({isIncomplete: true, items: [{label: 'Bar', kind: 9}]}, results)
       position = OpenStruct.new(line: 5, character: 4)
       results = project_manager.completion_at('search_uri', position)
       assert_equal({isIncomplete: true, items: [{label: 'Foo', kind: 7}]}, results)
