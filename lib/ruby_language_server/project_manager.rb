@@ -96,15 +96,12 @@ module RubyLanguageServer
     end
 
     def completion_at(uri, position)
-      relative_position = position.dup
-      relative_position.character = relative_position.character # To get before the . or ::
-      # RubyLanguageServer.logger.debug("relative_position #{relative_position}")
+      context = context_at_location(uri, position)
+      return {} if context.blank?
+
       RubyLanguageServer.logger.debug("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
       position_scopes = scopes_at(uri, position) || RubyLanguageServer::ScopeData::Scope.where(id: root_scope_for(uri).id)
       context_scope = position_scopes.first
-      context = context_at_location(uri, relative_position)
-      return {} if context.nil? || context == ''
-
       RubyLanguageServer::Completion.completion(context, context_scope, position_scopes)
     end
 

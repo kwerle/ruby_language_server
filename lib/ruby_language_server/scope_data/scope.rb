@@ -72,6 +72,11 @@ module RubyLanguageServer
         class_type == TYPE_BLOCK
       end
 
+      # Not a block or root
+      def named_scope?
+        [TYPE_MODULE, TYPE_CLASS, TYPE_METHOD, TYPE_VARIABLE].include?(class_type)
+      end
+
       private
 
       def scope_parts

@@ -10,6 +10,8 @@ module RubyLanguageServer
 
       scope :constant_variables, -> { where("SUBSTR(name, 1, 1) between ('A') and ('Z')") }
 
+      delegate :depth, to: :scope
+
       # attr_accessor :line            # line
       # attr_accessor :column          # column
       # attr_accessor :name            # name
