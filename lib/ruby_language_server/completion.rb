@@ -80,11 +80,11 @@ module RubyLanguageServer
         # end
         scope_ids = scopes.map(&:id)
         word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids)
-        scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map{|scope| [scope.name, scope]}
-        variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).map{|variable| [variable.name, variable.scope]}
+        scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map { |scope| [scope.name, scope] }
+        variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).map { |variable| [variable.name, variable.scope] }
         words = (scope_words + variable_words).to_h
         good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-        words = good_words.each_with_object({}) { |word, hash| hash[word] = {depth: words[word].depth, type: words[word].class_type} }.to_h
+        words = good_words.each_with_object({}) { |w, hash| hash[w] = {depth: words[w].depth, type: words[w].class_type} }.to_h
       end
     end
   end

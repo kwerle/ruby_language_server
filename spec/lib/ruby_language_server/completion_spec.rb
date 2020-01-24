@@ -54,7 +54,7 @@ describe RubyLanguageServer::Completion do
     it 'does the right thing' do
       context = ['bar', 'ba']
       completions = RubyLanguageServer::Completion.completion(context, nar_naz_scope, all_scopes)
-      assert_equal([{:label=>"Bar", :kind=>7}, {:label=>"baz", :kind=>2}], completions[:items][0..1])
+      assert_equal([{label: "Bar", kind: 7}, {label: "baz", kind: 2}], completions[:items][0..1])
     end
   end
 
@@ -74,7 +74,7 @@ describe RubyLanguageServer::Completion do
       context_scope = nar_naz_scope
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
       completions = scope_completions_in_target_context(context, context_scope, position_scopes)
-      assert_equal(["bar", "Bar", "naz", "Nar", "bogus"], completions.map(&:first))
+      assert_equal(%w[bar Bar naz Nar bogus], completions.map(&:first))
     end
   end
 
