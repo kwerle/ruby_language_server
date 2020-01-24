@@ -34,7 +34,7 @@ Clone.  I love git [HubFlow](https://datasift.github.io/gitflow/).
 Check out the [Makefile](Makefile).  You are going to want to do
 `make guard` in one window and `make continuous_development` in another.
 
-* In Atom: install the ide-ruby.  
+* In Atom: install the ide-ruby.
 * Settings > Packages > ide-ruby > Image Name > local_ruby_language_server
 * CMD-ALT-CTRL-l (that's an L) will reload the window
 * CMD-ALT-i will show debugging info
