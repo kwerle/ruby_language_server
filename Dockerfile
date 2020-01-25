@@ -9,7 +9,14 @@ RUN gem update bundler
 
 # Needed for byebug and some other gems
 RUN apk update
-RUN apk add make g++ sqlite-dev
+RUN apk add curl make g++ sqlite-dev
+
+WORKDIR /usr/local/src
+RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip
+RUN unzip master.zip
+WORKDIR /usr/local/src/SQLite-Levenshtein-master
+RUN ./configure
+RUN make -j 8 install
 
 WORKDIR /app
 
@@ -21,9 +28,9 @@ COPY Gemfile* ./
 COPY ruby_language_server.gemspec .
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
-RUN bundle install -j 4
+RUN bundle install -j 8
 
 COPY . ./
 
-# We must not use bundle exec, here - we are running in the 
+# We must not use bundle exec, here - we are running in the
 CMD ["ruby", "/app/exe/ruby_language_server"]

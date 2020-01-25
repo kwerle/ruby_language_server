@@ -27,6 +27,9 @@ module RubyLanguageServer
 
       attr_accessor :type # Type of this scope (module, class, block)
 
+
+      # RubyLanguageServer::ScopeData::Scope.connection.exec_query("SELECT LEVENSHTEIN( 'This is not correct', 'This is correct' )")
+
       def method?
         type == TYPE_METHOD
       end
