@@ -1,5 +1,4 @@
 .byebug_history
 *.gem
 .Trash*
-active_record.log
-test.log
+*.log
