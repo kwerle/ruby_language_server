@@ -52,7 +52,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'guard'
   spec.add_development_dependency 'guard-minitest'
   spec.add_development_dependency 'guard-rubocop'
-  spec.add_development_dependency 'minitest', '~>5.11'
+  spec.add_development_dependency 'minitest', '5.13.0' # Very exact verion matching the one in gem_installer.rb because of runtime gem version conflicts
   spec.add_development_dependency 'minitest-color'
   spec.add_development_dependency 'pry'
   spec.add_development_dependency 'pry-byebug'
