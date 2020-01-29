@@ -27,6 +27,10 @@ module RubyLanguageServer
 
       attr_accessor :type # Type of this scope (module, class, block)
 
+      # bar should be closer to Bar than Far.  Adding the UPPER version accomplishes this.
+      scope :with_distance_from, ->(word) { select("*, LEVENSHTEIN(name, '#{sanitize_sql(word)}') + LEVENSHTEIN(UPPER(name), UPPER('#{sanitize_sql(word)}')) as levenshtein_distance") }
+      scope :closest_to, ->(word) { with_distance_from(word).order(:levenshtein_distance).limit(10) }
+
       # RubyLanguageServer::ScopeData::Scope.connection.exec_query("SELECT LEVENSHTEIN( 'This is not correct', 'This is correct' )")
 
       def method?
