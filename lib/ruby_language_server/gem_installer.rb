@@ -16,6 +16,7 @@ module RubyLanguageServer
         gemfile do
           source 'https://rubygems.org'
           gem 'rubocop', rubocop_gem.version.to_s
+          gem 'minitest', '5.13.0' # Very specific version matching one in gemspec
           gem_names.each do |gem_name|
             gem gem_name
           end
