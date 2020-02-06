@@ -67,7 +67,7 @@ describe RubyLanguageServer::ProjectManager do
       file_content = "# Nothing to see here\n"
       good_mock = MiniTest::Mock.new
       good_mock.expect(:diagnostics, [], [file_content, '/project/boo.rb'])
-      RubyLanguageServer::GoodCop.stub(:new, good_mock) do
+      RubyLanguageServer::GoodCop.stub(:instance, good_mock) do
         cf = RubyLanguageServer::CodeFile.build('file:///foo/boo.rb', file_content)
         project_manager.updated_diagnostics_for_codefile(cf)
       end

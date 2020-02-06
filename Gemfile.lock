@@ -7,7 +7,6 @@ PATH
       bundler
       etc
       fuzzy_match
-      jaro_winkler (= 1.5.4)
       json
       rubocop
       rubocop-performance
@@ -123,7 +122,7 @@ DEPENDENCIES
   guard
   guard-minitest
   guard-rubocop
-  minitest (= 5.13.0)
+  minitest
   minitest-color
   pry
   pry-byebug
