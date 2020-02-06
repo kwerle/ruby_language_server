@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.12 Thu Feb  6 06:18:33 UTC 2020
+
+* #58 Change the way additional gems are installed so there are not conflicts
+
 #### 0.3.11 Wed Jan 29 06:48:37 UTC 2020
 
 * #57 rubocop gemfiles mismatch
