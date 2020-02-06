@@ -81,6 +81,8 @@ Naming/ConstantName:
   Exclude:
     - 'lib/ruby_language_server/scope_data/base.rb'
 
+Naming/FileName:
+  Enabled: false
 
 # Configuration parameters: EnforcedStyle.
 # SupportedStyles: snake_case, camelCase

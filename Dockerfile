@@ -21,9 +21,9 @@ COPY Gemfile* ./
 COPY ruby_language_server.gemspec .
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
-RUN bundle install -j 4
+RUN bundle install -j 8
 
 COPY . ./
 
-# We must not use bundle exec, here - we are running in the 
+# We must not use bundle exec, here - we are running in the
 CMD ["ruby", "/app/exe/ruby_language_server"]
