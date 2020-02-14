@@ -32,7 +32,7 @@ module RubyLanguageServer
           else
             scope_completions_in_target_context(context, context_scope, position_scopes)
           end
-        RubyLanguageServer.logger.debug("completions: #{completions.as_json}")
+        # RubyLanguageServer.logger.debug("completions: #{completions.as_json}")
         {
           isIncomplete: true,
           items: completions.uniq.map do |word, hash|
@@ -64,19 +64,34 @@ module RubyLanguageServer
 
       def module_completions(word)
         class_and_module_types = [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE]
-        scope_words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).sort_by(&:depth).map { |scope| [scope.name, scope] }
-        words = scope_words.to_h
-        good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-        words = good_words.each_with_object({}) { |w, hash| hash[w] = {depth: words[w].depth, type: words[w].class_type} }.to_h
+
+        # scope_words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).sort_by(&:depth).map { |scope| [scope.name, scope] }
+        # words = scope_words.to_h
+        # good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
+        # words = good_words.each_with_object({}) { |w, hash| hash[w] = {depth: words[w].depth, type: words[w].class_type} }.to_h
+
+        words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).closest_to(word).limit(20)
+        RubyLanguageServer.logger.error("module_completions: #{words.as_json}")
+        # words.to_a.sort_by(&:depth).each_with_object({}){|a_word, hash| hash[a_word.name] = {depth: a_word.depth, type: a_word.class_type} }
+        good_words = FuzzyMatch.new(words.to_a, read: :name, threshold: 0.01).find_all(word).slice(0..10) || []
+        good_words.each_with_object({}) { |w, hash| hash[w.name] = {depth: w.depth, type: w.class_type} }.to_h
       end
 
       def scope_completions(word, scopes)
         return module_completions(word) if word.match?(/\A[A-Z][a-z]/)
 
+        # scope_ids = scopes.map(&:id)
+        # word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids)
+        # scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map { |scope| [scope.name, scope] }
+        # variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).map { |variable| [variable.name, variable.scope] }
+        # words = (scope_words + variable_words).to_h
+        # good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
+        # words = good_words.each_with_object({}) { |w, hash| hash[w] = {depth: words[w].depth, type: words[w].class_type} }.to_h
+
         scope_ids = scopes.map(&:id)
-        word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids)
+        word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids).closest_to(word).limit(5)
         scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map { |scope| [scope.name, scope] }
-        variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).map { |variable| [variable.name, variable.scope] }
+        variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).closest_to(word).limit(5).map { |variable| [variable.name, variable.scope] }
         words = (scope_words + variable_words).to_h
         good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
         words = good_words.each_with_object({}) { |w, hash| hash[w] = {depth: words[w].depth, type: words[w].class_type} }.to_h
