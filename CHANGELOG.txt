@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.3.13 Fri Feb 14 00:55:28 PST 2020
+
+* More stabbing at goodcop gemfile issues
+* Hopefully much higher performance and better completions
+
 #### 0.3.12 Thu Feb  6 06:18:33 UTC 2020
 
 * #58 Change the way additional gems are installed so there are not conflicts
