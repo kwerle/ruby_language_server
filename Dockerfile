@@ -9,7 +9,14 @@ RUN gem update bundler
 
 # Needed for byebug and some other gems
 RUN apk update
-RUN apk add make g++ sqlite-dev
+RUN apk add curl make g++ sqlite-dev
+
+WORKDIR /usr/local/src
+RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip
+RUN unzip master.zip
+WORKDIR /usr/local/src/SQLite-Levenshtein-master
+RUN ./configure
+RUN make -j 8 install
 
 WORKDIR /app
 
