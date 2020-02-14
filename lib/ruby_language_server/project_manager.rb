@@ -62,7 +62,7 @@ module RubyLanguageServer
         RubyLanguageServer::GemInstaller.install_gems(gem_names)
         @additional_gem_mutex.synchronize { @additional_gems_installed = true }
       rescue StandardError => e
-        RubyLanguageServer.logger.error("Issue installing rubocop gems: #{e}")
+        RubyLanguageServer.logger.error("Issue installing rubocop gems: #{e} #{e.backtrace}")
       end
     end
 
@@ -217,9 +217,8 @@ module RubyLanguageServer
     def updated_diagnostics_for_codefile(code_file)
       # Maybe we should be sharing this GoodCop across instances
       RubyLanguageServer.logger.debug("updated_diagnostics_for_codefile: #{code_file.uri}")
-      @good_cop ||= GoodCop.new
       project_relative_filename = filename_relative_to_project(code_file.uri)
-      code_file.diagnostics = @good_cop.diagnostics(code_file.text, project_relative_filename)
+      code_file.diagnostics = GoodCop.instance.diagnostics(code_file.text, project_relative_filename)
       RubyLanguageServer.logger.debug("code_file.diagnostics: #{code_file.diagnostics}")
       code_file.diagnostics
     end

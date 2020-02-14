@@ -4,12 +4,14 @@ require 'rubocop'
 
 module RubyLanguageServer
   class GoodCop < RuboCop::Runner
-    def initialize
-      @initialization_error = nil
-      config_store = RuboCop::ConfigStore.new
-      config_store.options_config = config_path
-      RubyLanguageServer.logger.debug("Rubocop config_path: #{config_path}")
-      super({}, config_store)
+    def initialize(config_path, initialization_error = nil)
+      @initialization_error = initialization_error
+      unless @initialization_error
+        config_store = RuboCop::ConfigStore.new
+        config_store.options_config = config_path
+        RubyLanguageServer.logger.debug("Rubocop config_path: #{config_path}")
+        super({}, config_store)
+      end
     rescue Exception => e
       RubyLanguageServer.logger.error(e)
       @initialization_error = "There was an issue loading the rubocop configuration file: #{e}.  Maybe you need to add some additional gems to the ide-ruby settings?"
@@ -100,7 +102,8 @@ module RubyLanguageServer
       if excluded_file?(filename)
         []
       else
-        processed_source = RuboCop::ProcessedSource.new(text, 2.7, filename)
+        ruby_version = 2.7
+        processed_source = RuboCop::ProcessedSource.new(text, ruby_version, filename)
         offenses = inspect_file(processed_source)
         offenses.compact.flatten
       end
@@ -119,14 +122,31 @@ module RubyLanguageServer
       ]
     end
 
-    def config_path
-      my_path = __FILE__
-      pathname = Pathname.new(my_path)
-      my_directory = pathname.dirname
-      fallback_pathname = my_directory + '../resources/fallback_rubocop.yml'
-      project_path = RubyLanguageServer::ProjectManager.root_path + '.rubocop.yml'
-      possible_config_paths = [project_path, fallback_pathname.to_s]
-      possible_config_paths.detect { |path| File.exist?(path) }
+    class << self
+      def instance
+        @config_path ||= config_path
+        config_path_timestamp = File.mtime(@config_path)
+        if @cached_config_path_timestamp.nil? || @cached_config_path_timestamp < config_path_timestamp
+          @cached_config_path_timestamp = config_path_timestamp
+          @instance = new(@config_path)
+        else
+          @instance
+        end
+      rescue StandardError => e
+        @instance = new(@config_path, e.to_s)
+      end
+
+      private
+
+      def config_path
+        my_path = __FILE__
+        pathname = Pathname.new(my_path)
+        my_directory = pathname.dirname
+        fallback_pathname = my_directory + '../resources/fallback_rubocop.yml'
+        project_path = RubyLanguageServer::ProjectManager.root_path + '.rubocop.yml'
+        possible_config_paths = [project_path, fallback_pathname.to_s]
+        possible_config_paths.detect { |path| File.exist?(path) }
+      end
     end
 
     def excluded_file?(filename)

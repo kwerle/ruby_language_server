@@ -8,13 +8,13 @@ describe RubyLanguageServer::GoodCop do
     RubyLanguageServer::ProjectManager.new('/foo', 'file:///remote') # GoodCop looks to the ProjectManager to get the project root path
   end
 
-  let(:good_cop) { RubyLanguageServer::GoodCop.new }
+  let(:good_cop) { RubyLanguageServer::GoodCop.instance }
 
   describe 'crashing' do
     it "must survive init failures" do
       raise_exception = -> { raise 'exception!' }
       RuboCop::ConfigStore.stub(:new, raise_exception) do
-        RubyLanguageServer::GoodCop.new
+        RubyLanguageServer::GoodCop.instance
       end
     end
   end

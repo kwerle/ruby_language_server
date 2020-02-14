@@ -1,5 +1,14 @@
 # Changelog
 
+#### 0.3.12 Thu Feb  6 06:18:33 UTC 2020
+
+* #58 Change the way additional gems are installed so there are not conflicts
+
+#### 0.3.11 Wed Jan 29 06:48:37 UTC 2020
+
+* #57 rubocop gemfiles mismatch
+* #56 .rubocop.yml changes do not rerun rubocop validations
+
 #### 0.3.10 Fri Jan 24 00:19:14 PST 2020
 
 * botched the 0.3.9 release
