@@ -7,10 +7,10 @@ module RubyLanguageServer
     def initialize(config_path, initialization_error = nil)
       @initialization_error = initialization_error
       unless @initialization_error
-        config_store = RuboCop::ConfigStore.new
-        config_store.options_config = config_path
+        @config_store = RuboCop::ConfigStore.new
+        @config_store.options_config = config_path
         RubyLanguageServer.logger.debug("Rubocop config_path: #{config_path}")
-        super({}, config_store)
+        super({}, @config_store)
       end
     rescue Exception => e
       RubyLanguageServer.logger.error(e)

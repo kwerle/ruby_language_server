@@ -14,3 +14,4 @@ module DatabaseClearing
 end
 
 Minitest::Test.prepend(DatabaseClearing)
+RubyLanguageServer.logger = Logger.new(File.open('test.log', 'w'))
