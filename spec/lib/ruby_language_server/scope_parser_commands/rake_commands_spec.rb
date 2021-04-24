@@ -38,7 +38,7 @@ describe RubyLanguageServer::ScopeParserCommands::RakeCommands do
       # This is not a great test.
       namespace_scope = scope_parser.root_scope.self_and_descendants.detect { |scope| scope.name == 'cadet' }
       refute_nil(namespace_scope)
-      assert_equal(['block', 'something:', 'block'], namespace_scope.descendants.map(&:name).compact)
+      assert_equal(['block', 'something:', 'block'], namespace_scope.descendants.filter_map(&:name))
     end
   end
 end

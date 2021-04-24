@@ -105,7 +105,7 @@ module RubyLanguageServer
         ruby_version = 2.7
         processed_source = RuboCop::ProcessedSource.new(text, ruby_version, filename)
         offenses = inspect_file(processed_source)
-      offenses.compact.flatten.reject(&:blank?) # reject blank because some are `false`
+        offenses.compact.flatten.reject(&:blank?) # reject blank because some are `false`
       end
     end
 

@@ -52,9 +52,7 @@ module RubyLanguageServer
       when String
         # We really don't do anything with it!
         RubyLanguageServer.logger.debug("We don't do Strings like #{root} with #{args}")
-      when NilClass
-        process(args)
-      when FalseClass
+      when NilClass, FalseClass
         process(args)
       else
         RubyLanguageServer.logger.warn("We don't respond to the likes of #{root} of class #{root.class}")
