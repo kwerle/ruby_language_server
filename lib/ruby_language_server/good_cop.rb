@@ -103,14 +103,9 @@ module RubyLanguageServer
         []
       else
         ruby_version = 2.7
-        begin
-          processed_source = RuboCop::ProcessedSource.new(text, ruby_version, filename)
-          offenses = inspect_file(processed_source)
-        rescue Exception => e
-          RuboCop::ProcessedSource.new(text, ruby_version, filename)
-          inspect_file(processed_source)
-        end
-        offenses.compact.flatten.reject(&:blank?) # reject blank because some are `false`
+        processed_source = RuboCop::ProcessedSource.new(text, ruby_version, filename)
+        offenses = inspect_file(processed_source)
+      offenses.compact.flatten.reject(&:blank?) # reject blank because some are `false`
       end
     end
 
