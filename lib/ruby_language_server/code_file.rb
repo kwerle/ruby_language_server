@@ -20,8 +20,7 @@ module RubyLanguageServer
     def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
 
-      new_code_file = create!(uri: uri, text: text)
-      new_code_file
+      create!(uri: uri, text: text)
     end
 
     # def text=(new_text)
