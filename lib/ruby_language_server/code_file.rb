@@ -36,11 +36,11 @@ module RubyLanguageServer
     #
     SYMBOL_KIND = {
       file: 1,
-      'module': 5, # 2,
+      module: 5, # 2,
       namespace: 3,
       package: 4,
-      'class': 5,
-      'method': 6,
+      class: 5,
+      method: 6,
       'singleton method': 6,
       property: 7,
       field: 8,

@@ -20,7 +20,7 @@ module RubyLanguageServer
             line: start_line - 1,
             character: start_character
           },
-          'end': {
+          end: {
             line: end_line - 1,
             character: end_character
           }

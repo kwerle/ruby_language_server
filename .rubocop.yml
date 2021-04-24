@@ -21,7 +21,7 @@ Lint/EmptyWhen:
 Lint/RescueException:
   Enabled: false
 
-Metrics/LineLength:
+Layout/LineLength:
   Enabled: false
 
 Style/CommentedKeyword:
