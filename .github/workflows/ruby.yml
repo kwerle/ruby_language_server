@@ -33,4 +33,6 @@ jobs:
 #         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
     - name: Run tests
       run:
-        make test
+        make image
+        docker run --rm ruby_language_server rake | tee test.log
+        docker run --rm ruby_language_server rubocop | tee rubocop.log
