@@ -1,3 +1,4 @@
+![Build Status](https://github.com/kwerle/ruby_language_server/actions/workflows/ruby.yml/badge.svg)
 # Overview
 
 https://github.com/kwerle/ruby_language_server
