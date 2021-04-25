@@ -1,15 +1,15 @@
 PROJECT_NAME=ruby_language_server
 LOCAL_LINK=-v $(PWD):/tmp/src -w /tmp/src
 
-build:
+image:
 	docker build -t $(PROJECT_NAME) .
 
-guard: build
+guard: image
 	echo > active_record.log
 	docker run -it --rm $(LOCAL_LINK) -e LOG_LEVEL=DEBUG $(PROJECT_NAME) bundle exec guard
 	echo > active_record.log
 
-continuous_development: build
+continuous_development: image
 	docker build -t local_ruby_language_server .
 	echo "You are going to want to set the ide-ruby 'Image Name' to local_ruby_language_server"
 	sleep 15
@@ -19,20 +19,20 @@ continuous_development: build
 	  sleep 2 ; \
 	done
 
-console: build
+console: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)  bin/console
 
-test: build
+test: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'bundle exec rake test && bundle exec rubocop'
 
-shell: build
+shell: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh
 
 # Just to make sure it works.
-server: build
+server: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)
 
-gem: build
+gem: image
 	rm -f $(PROJECT_NAME)*.gem
 	docker run $(LOCAL_LINK) $(PROJECT_NAME) gem build $(PROJECT_NAME)
 
