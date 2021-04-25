@@ -47,7 +47,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'amatch'      # in c
   spec.add_dependency 'fuzzy_match' # completion matching
 
-  spec.add_dependency 'activerecord', '~>6.0'
+  spec.add_dependency 'activerecord', '~>6.1'
   spec.add_dependency 'sqlite3'
 
   spec.add_development_dependency 'guard'
