@@ -32,6 +32,5 @@ jobs:
 #         ruby-version: ${{ matrix.ruby-version }}
 #         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
     - name: Run tests
-      run: 
-        docker build -t ruby_language_server .
-        docker run --rm ruby_language_server rake
+      run:
+        make test
