@@ -1,5 +1,11 @@
 # Changelog
 
+#### 0.3.14 Sat Apr 24 21:09:07 PDT 2021
+
+* Update rails activerecord to 6.1
+* Update ruby to 3
+* Fix some tests, docs, etc
+
 #### 0.3.13 Fri Feb 14 00:55:28 PST 2020
 
 * More stabbing at goodcop gemfile issues

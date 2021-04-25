@@ -7,9 +7,9 @@ The goal of this project is to provide a [language server](https://microsoft.git
 
 # Status
 
-Beta.  It does some stuff.  Pretty stable.  Used day-to-day.
+Used day-to-day.
 
-Help wanted.
+Help welcome.
 
 # Features
 
@@ -21,6 +21,7 @@ Help wanted.
 # Editor Integrations
 
 You probably want to use one of the developed integrations:
+* VSCode - https://github.com/kwerle/vscode_ruby_language_server
 * Atom - https://github.com/kwerle/ide-ruby
 * Theia - https://github.com/kwerle/theia_ruby_language_server
 
