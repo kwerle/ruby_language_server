@@ -265,7 +265,11 @@ module RubyLanguageServer
     private
 
     def add_variable(name, line, column, scope = @current_scope)
-      scope.variables.where(name: name).first_or_create(line: line, column: column)
+      newvar = scope.variables.where(name: name).first_or_create!(
+        line: line,
+        column: column,
+        code_file: scope.code_file
+      )
       if scope.top_line.blank?
         scope.top_line = line
         scope.save!
@@ -274,6 +278,7 @@ module RubyLanguageServer
       # # blocks don't declare their first line in the parser
       # scope.top_line ||= line
       # scope.variables << new_variable unless scope.has_variable_or_constant?(new_variable)
+      newvar
     end
 
     def add_ivar(name, line, column)

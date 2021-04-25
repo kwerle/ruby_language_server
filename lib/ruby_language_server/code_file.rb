@@ -23,17 +23,6 @@ module RubyLanguageServer
       create!(uri: uri, text: text)
     end
 
-    # def text=(new_text)
-    #   RubyLanguageServer.logger.debug("text= for #{uri}")
-    #   if @text == new_text
-    #     RubyLanguageServer.logger.debug('IT WAS THE SAME!!!!!!!!!!!!')
-    #     return
-    #   end
-    #   @text = new_text
-    #   update_attribute(:refresh_root_scope, true)
-    #   root_scope
-    # end
-    #
     SYMBOL_KIND = {
       file: 1,
       module: 5, # 2,

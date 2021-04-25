@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 require 'pry'
-require 'minitest/color'
 require_relative '../lib/ruby_language_server'
+
+require 'minitest/reporters'
+Minitest::Reporters.use!
 
 module DatabaseClearing
   def setup
