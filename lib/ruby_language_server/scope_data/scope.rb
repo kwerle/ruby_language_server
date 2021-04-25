@@ -8,7 +8,7 @@ module RubyLanguageServer
     # It is used to track top & bottom line, variables in this scope, constants, and children - which could be functions, classes, blocks, etc.  Anything that adds scope.
     class Scope < Base
       has_many :variables, dependent: :destroy
-      belongs_to :code_file
+      belongs_to :code_file # , optional: false
       belongs_to :parent, class_name: 'Scope', optional: true
       has_many :children, class_name: 'Scope', foreign_key: :parent_id
 

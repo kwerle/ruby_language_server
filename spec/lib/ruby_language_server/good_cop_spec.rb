@@ -14,7 +14,7 @@ describe RubyLanguageServer::GoodCop do
     it "must survive init failures" do
       raise_exception = -> { raise 'exception!' }
       RuboCop::ConfigStore.stub(:new, raise_exception) do
-        RubyLanguageServer::GoodCop.instance
+        refute_nil(RubyLanguageServer::GoodCop.new('bogus'))
       end
     end
   end

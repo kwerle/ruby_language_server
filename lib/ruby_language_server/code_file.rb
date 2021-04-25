@@ -20,28 +20,16 @@ module RubyLanguageServer
     def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
 
-      new_code_file = create!(uri: uri, text: text)
-      new_code_file
+      create!(uri: uri, text: text)
     end
 
-    # def text=(new_text)
-    #   RubyLanguageServer.logger.debug("text= for #{uri}")
-    #   if @text == new_text
-    #     RubyLanguageServer.logger.debug('IT WAS THE SAME!!!!!!!!!!!!')
-    #     return
-    #   end
-    #   @text = new_text
-    #   update_attribute(:refresh_root_scope, true)
-    #   root_scope
-    # end
-    #
     SYMBOL_KIND = {
       file: 1,
-      'module': 5, # 2,
+      module: 5, # 2,
       namespace: 3,
       package: 4,
-      'class': 5,
-      'method': 6,
+      class: 5,
+      method: 6,
       'singleton method': 6,
       property: 7,
       field: 8,
