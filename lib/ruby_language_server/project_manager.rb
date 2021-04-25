@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'fuzzy_match'
-require 'amatch' # note that you have to require this... fuzzy_match won't require it for you
+require 'amatch' # NOTE: that you have to require this... fuzzy_match won't require it for you
 FuzzyMatch.engine = :amatch # This should be in a config somewhere
 
 module RubyLanguageServer
@@ -271,8 +271,7 @@ module RubyLanguageServer
     private
 
     def code_file_for_uri(uri)
-      code_file = CodeFile.find_by_uri(uri) || CodeFile.build(uri, nil)
-      code_file
+      CodeFile.find_by_uri(uri) || CodeFile.build(uri, nil)
     end
 
     def filename_relative_to_project(filename)

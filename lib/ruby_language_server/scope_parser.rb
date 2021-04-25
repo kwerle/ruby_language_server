@@ -15,9 +15,7 @@ module RubyLanguageServer
     include ScopeParserCommands::RspecCommands
     include ScopeParserCommands::RailsCommands
     include ScopeParserCommands::RubyCommands
-    attr_reader :sexp
-    attr_reader :lines
-    attr_reader :current_scope
+    attr_reader :sexp, :lines, :current_scope
 
     def initialize(sexp, lines = 1)
       @sexp = sexp
@@ -54,9 +52,7 @@ module RubyLanguageServer
       when String
         # We really don't do anything with it!
         RubyLanguageServer.logger.debug("We don't do Strings like #{root} with #{args}")
-      when NilClass
-        process(args)
-      when FalseClass
+      when NilClass, FalseClass
         process(args)
       else
         RubyLanguageServer.logger.warn("We don't respond to the likes of #{root} of class #{root.class}")
@@ -154,7 +150,7 @@ module RubyLanguageServer
     # def self.something(par)...
     # [:var_ref, [:@kw, "self", [28, 14]]], [[:@period, ".", [28, 18]], [:@ident, "something", [28, 19]], [:paren, [:params, [[:@ident, "par", [28, 23]]], nil, nil, nil, nil, nil, nil]], [:bodystmt, [[:assign, [:var_field, [:@ident, "pax", [29, 12]]], [:var_ref, [:@ident, "par", [29, 18]]]]], nil, nil, nil]]
     def on_defs(args, rest)
-      on_def(rest[1], rest[2..-1]) if args[1][1] == 'self' && rest[0][1] == '.'
+      on_def(rest[1], rest[2..]) if args[1][1] == 'self' && rest[0][1] == '.'
     end
 
     # Multiple left hand side
@@ -269,7 +265,11 @@ module RubyLanguageServer
     private
 
     def add_variable(name, line, column, scope = @current_scope)
-      scope.variables.where(name: name).first_or_create(line: line, column: column)
+      newvar = scope.variables.where(name: name).first_or_create!(
+        line: line,
+        column: column,
+        code_file: scope.code_file
+      )
       if scope.top_line.blank?
         scope.top_line = line
         scope.save!
@@ -278,6 +278,7 @@ module RubyLanguageServer
       # # blocks don't declare their first line in the parser
       # scope.top_line ||= line
       # scope.variables << new_variable unless scope.has_variable_or_constant?(new_variable)
+      newvar
     end
 
     def add_ivar(name, line, column)

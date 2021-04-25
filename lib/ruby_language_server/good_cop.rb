@@ -7,7 +7,7 @@ module RubyLanguageServer
     def initialize(config_path, initialization_error = nil)
       @initialization_error = initialization_error
       unless @initialization_error
-        @config_store = RuboCop::ConfigStore.new
+        initialize_rubocop_ivars
         @config_store.options_config = config_path
         RubyLanguageServer.logger.debug("Rubocop config_path: #{config_path}")
         super({}, @config_store)
@@ -105,8 +105,20 @@ module RubyLanguageServer
         ruby_version = 2.7
         processed_source = RuboCop::ProcessedSource.new(text, ruby_version, filename)
         offenses = inspect_file(processed_source)
-        offenses.compact.flatten
+        offenses.compact.flatten.reject(&:blank?) # reject blank because some are `false`
       end
+    end
+
+    def initialize_rubocop_ivars
+      @config_store ||= RuboCop::ConfigStore.new
+      @options ||= {}
+      @errors ||= []
+      @warnings ||= []
+    end
+
+    def inspect_file(source)
+      initialize_rubocop_ivars
+      super
     end
 
     def initialization_offenses
@@ -142,14 +154,15 @@ module RubyLanguageServer
         my_path = __FILE__
         pathname = Pathname.new(my_path)
         my_directory = pathname.dirname
-        fallback_pathname = my_directory + '../resources/fallback_rubocop.yml'
-        project_path = RubyLanguageServer::ProjectManager.root_path + '.rubocop.yml'
+        fallback_pathname = "#{my_directory}/../resources/fallback_rubocop.yml"
+        project_path = "#{RubyLanguageServer::ProjectManager.root_path}.rubocop.yml"
         possible_config_paths = [project_path, fallback_pathname.to_s]
         possible_config_paths.detect { |path| File.exist?(path) }
       end
     end
 
     def excluded_file?(filename)
+      initialize_rubocop_ivars
       file_config = @config_store.for(filename)
       file_config.file_to_exclude?(filename)
     end

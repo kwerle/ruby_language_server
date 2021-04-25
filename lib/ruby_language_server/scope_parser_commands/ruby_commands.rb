@@ -44,8 +44,7 @@ module RubyLanguageServer
       private
 
       def ruby_command_names(rest)
-        names = rest.flatten.select { |o| o.instance_of? String }
-        names
+        rest.flatten.select { |o| o.instance_of? String }
       end
 
       def ruby_command_column(args)
