@@ -32,10 +32,10 @@ jobs:
 #         ruby-version: ${{ matrix.ruby-version }}
 #         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
     - name: build
-        run: make image
+      run: make image
     - name: test
-        run: docker run --rm ruby_language_server rake | tee test.log
+      run: docker run --rm ruby_language_server rake | tee test.log
     - name: rubocop
-        run: docker run --rm ruby_language_server rubocop | tee rubocop.log
+      run: docker run --rm ruby_language_server rubocop | tee rubocop.log
 
 
