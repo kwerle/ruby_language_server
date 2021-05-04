@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.15 Tue May  4 15:34:22 PDT 2021
+
+* Add support for rspec context blocks #53
+
 #### 0.3.14 Sat Apr 24 21:09:07 PDT 2021
 
 * Update rails activerecord to 6.1
