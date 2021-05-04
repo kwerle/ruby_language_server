@@ -7,6 +7,10 @@ module RubyLanguageServer
         rspec_block_command('describe', line, args, rest)
       end
 
+      def on_context_command(line, args, rest)
+        rspec_block_command('context', line, args, rest)
+      end
+
       def on_it_command(line, args, rest)
         rspec_block_command('it', line, args, rest)
       end
