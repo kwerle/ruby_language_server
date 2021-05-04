@@ -18,7 +18,7 @@
 # and, you'll have to watch "config/Guardfile" instead of "Guardfile"
 
 group :red_green_refactor, halt_on_fail: true do
-  guard :minitest, all_after_pass: true do
+  guard :minitest, all_after_pass: true, cli: '--guard' do
     # with Minitest::Unit
     # watch(%r{^test/(.*)\/?test_(.*)\.rb$})
     # watch(%r{^lib/(.*/)?([^/]+)\.rb$})     { |m| "test/#{m[1]}test_#{m[2]}.rb" }
