@@ -10,7 +10,12 @@ ActiveRecord::Base.establish_connection(
 
 database = ActiveRecord::Base.connection.instance_variable_get :@connection
 database.enable_load_extension(1)
-database.load_extension('/usr/local/lib/liblevenshtein.so.0.0.0')
+if Gem.win_platform?
+  # load DLL from PATH
+  database.load_extension('liblevenshtein.dll')
+else
+  database.load_extension('/usr/local/lib/liblevenshtein.so.0.0.0')
+end
 database.enable_load_extension(0)
 
 if ENV['LOG_LEVEL'] == 'DEBUG'
