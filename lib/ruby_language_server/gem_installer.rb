@@ -19,11 +19,17 @@ module RubyLanguageServer
           # For some reason, installing bundler makes it unhappy.  Whatever.
           Gem::Specification.reject { |s| s.name == 'bundler' }.each do |specification|
             gem_name = specification.name
-            gem(gem_name, specification.version.to_s)
-            gems_already_installed << gem_name
+            begin
+              gem(gem_name, specification&.version&.to_s)
+              gems_already_installed << gem_name
+            rescue Error => e
+              RubyLanguageServer.logger.error("Error loading rubocop gem #{gem_name} #{e}")
+            end
           end
           additional_gem_names.each do |gem_name|
             gem gem_name unless gems_already_installed.include?(gem_name)
+          rescue Error => e
+            RubyLanguageServer.logger.error("Error loading rubocop gem! #{gem_name} #{e}")
           end
         end
       end
