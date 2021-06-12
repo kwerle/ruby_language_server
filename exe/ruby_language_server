@@ -3,6 +3,11 @@
 
 $LOAD_PATH << File.join(__dir__, '..', 'lib')
 
+if Gem.win_platform?
+  $stdin.binmode
+  $stdout.binmode
+end
+
 require 'ruby_language_server'
 
 application = RubyLanguageServer::Application.new
