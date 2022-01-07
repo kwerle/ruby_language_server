@@ -15,12 +15,7 @@ on:
 
 jobs:
   test:
-
     runs-on: ubuntu-latest
-#     strategy:
-#       matrix:
-#         ruby-version: ['2.6', '2.7', '3.0']
-
     steps:
     - uses: actions/checkout@v2
 #     - name: Set up Ruby
@@ -37,5 +32,24 @@ jobs:
       run: docker run --rm ruby_language_server rake | tee test.log
     - name: rubocop
       run: docker run --rm ruby_language_server rubocop | tee rubocop.log
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v2
+      - name: install buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          version: latest
+      - name: build the image
+        run: |
+          docker buildx build \
+          --push \
+          --tag kwerle/ruby_language_server \
+          --platform linux/amd64,linux/arm64/v8 .
+
+
 
 
