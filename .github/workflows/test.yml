@@ -18,38 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-#     - name: Set up Ruby
-#     # To automatically get bug fixes and new Ruby versions for ruby/setup-ruby,
-#     # change this to (see https://github.com/ruby/setup-ruby#versioning):
-#     # uses: ruby/setup-ruby@v1
-#       uses: ruby/setup-ruby@473e4d8fe5dd94ee328fdfca9f8c9c7afc9dae5e
-#       with:
-#         ruby-version: ${{ matrix.ruby-version }}
-#         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
     - name: build
       run: make image
     - name: test
       run: docker run --rm ruby_language_server rake | tee test.log
     - name: rubocop
       run: docker run --rm ruby_language_server rubocop | tee rubocop.log
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v2
-      - name: install buildx
-        id: buildx
-        uses: crazy-max/ghaction-docker-buildx@v1
-        with:
-          version: latest
-      - name: build the image
-        run: |
-          docker buildx build \
-          --push \
-          --tag kwerle/ruby_language_server \
-          --platform linux/amd64,linux/arm64/v8 .
-
-
-
-

@@ -1,6 +1,9 @@
 PROJECT_NAME=ruby_language_server
 LOCAL_LINK=-v $(PWD):/tmp/src -w /tmp/src
 
+cross_arch:
+	docker buildx build --push --platform linux/amd64,linux/arm64/v8 -t kwerle/$(PROJECT_NAME) .
+
 image:
 	docker build -t $(PROJECT_NAME) .
 
@@ -39,3 +42,8 @@ gem: image
 # Requires rubygems be installed on host
 gem_release: gem
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) gem push $(PROJECT_NAME)*.gem
+
+cross_platform_image:
+	(docker buildx ls | grep mybuilder) || docker buildx create --name mybuilder
+	docker buildx use mybuilder
+	docker buildx build --platform linux/amd64,linux/arm64 -t $(PROJECT_NAME) .
