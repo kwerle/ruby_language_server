@@ -1,5 +1,8 @@
 # Changelog
 
+#### 0.3.16.1 Fri Jun 11 19:03:10 PDT 2021
+
+* Update docker image to be cross-platform
 
 #### 0.3.16 Fri Jun 11 19:03:10 PDT 2021
 

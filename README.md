@@ -50,11 +50,14 @@ Write tests and guard will run them.  Make changes and reload the window.  Test 
 
 # Release instructions to self
 
-* For for release
+For gem release
 * bump version in [version.rb](lib/ruby_language_server/version.rb) file and [Gemfile.lock](Gemfile.lock)
 * [CHANGELOG.txt](CHANGELOG.txt)
 * merge to master, etc
 * `make gem_release`
+
+For docker release
+* `make publish_cross_platform_image`
 
 # Authors
 
