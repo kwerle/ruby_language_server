@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_language_server (0.3.16)
+    ruby_language_server (0.3.16.1)
       activerecord (~> 6.1)
       amatch
       bundler
