@@ -39,3 +39,8 @@ gem: image
 # Requires rubygems be installed on host
 gem_release: gem
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) gem push $(PROJECT_NAME)*.gem
+
+publish_cross_platform_image:
+	(docker buildx ls | grep mybuilder) || docker buildx create --name mybuilder
+	docker buildx use mybuilder
+	docker buildx build --push --platform linux/amd64,linux/arm64/v8 -t kwerle/$(PROJECT_NAME) .
