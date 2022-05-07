@@ -47,7 +47,7 @@ module RubyLanguageServer
       private
 
       def scopes_with_name(name, scopes)
-        return scopes.where(name: name) if scopes.respond_to?(:where)
+        return scopes.where(name:) if scopes.respond_to?(:where)
 
         scopes.select { |scope| scope.name == name }
       end

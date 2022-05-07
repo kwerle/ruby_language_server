@@ -24,7 +24,7 @@ module RubyLanguageServer
     def return_response(id, response, io = $stdout)
       full_response = {
         jsonrpc: '2.0',
-        id: id,
+        id:,
         result: response
       }
       response_body = JSON.unparse(full_response)
@@ -39,7 +39,7 @@ module RubyLanguageServer
       full_response = {
         jsonrpc: '2.0',
         method: message,
-        params: params
+        params:
       }
       body = JSON.unparse(full_response)
       RubyLanguageServer.logger.info "send_notification body: #{body}"

@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Provide a language server implementation for ruby in ruby.  See https://microsoft.github.io/language-server-protocol/ "A Language Server is meant to provide the language-specific smarts and communicate with development tools over a protocol that enables inter-process communication."'
   spec.homepage      = 'https://github.com/kwerle/ruby_language_server'
   spec.license       = 'MIT'
-  spec.required_ruby_version = '>=2.7.0'
+  spec.required_ruby_version = '>=3.1.0'
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
   # to allow pushing to a single host or delete this section to allow pushing to any host.
@@ -24,7 +24,7 @@ Gem::Specification.new do |spec|
     spec.metadata['changelog_uri'] = 'https://github.com/kwerle/ruby_language_server/blob/develop/CHANGELOG.txt'
   else
     raise 'RubyGems 2.0 or newer is required to protect against ' \
-      'public gem pushes.'
+          'public gem pushes.'
   end
 
   # Specify which files should be added to the gem when it is released.
@@ -59,4 +59,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'pry-byebug'
   spec.add_development_dependency 'rake' # required by guard :-(
   spec.add_development_dependency 'sexp_processor'
+  spec.metadata['rubygems_mfa_required'] = 'true'
 end

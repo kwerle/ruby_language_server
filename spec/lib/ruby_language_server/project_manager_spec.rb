@@ -22,7 +22,7 @@ describe RubyLanguageServer::ProjectManager do
   end
 
   def with_project_environment_root(temp_root)
-    original_root = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT']
+    original_root = ENV.fetch('RUBY_LANGUAGE_SERVER_PROJECT_ROOT', nil)
     ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] = temp_root
     yield
   ensure
@@ -77,7 +77,7 @@ describe RubyLanguageServer::ProjectManager do
 
   describe 'has_one' do
     it 'should show up as a method' do
-      project_manager.instance_variable_set('@additional_gems_installed', true)
+      project_manager.instance_variable_set(:@additional_gems_installed, true)
       project_manager.update_document_content('uri', rails_file_text)
       tags = project_manager.tags_for_uri('uri')
       bar_tag = tags.detect { |tag| tag[:name] == 'bar' }

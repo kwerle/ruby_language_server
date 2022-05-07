@@ -22,7 +22,7 @@ module RubyLanguageServer
       def root_path
         # I'm torn about this.  Should this be set in the Server?  Or is this right.
         # Rather than worry too much, I'll just do this here and change it later if it feels wrong.
-        path = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] || @_root_path
+        path = ENV.fetch('RUBY_LANGUAGE_SERVER_PROJECT_ROOT') { @_root_path }
         return path if path.nil?
 
         path.end_with?(File::SEPARATOR) ? path : "#{path}#{File::SEPARATOR}"
@@ -261,8 +261,8 @@ module RubyLanguageServer
     end
 
     def project_definitions_for(name)
-      scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
-      variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name: name)
+      scopes = RubyLanguageServer::ScopeData::Scope.where(name:)
+      variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name:)
       (scopes + variables).reject { |scope| scope.code_file.nil? }.map do |scope|
         Location.hash(scope.code_file.uri, scope.top_line, 1)
       end

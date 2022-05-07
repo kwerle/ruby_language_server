@@ -25,10 +25,10 @@ module RubyLanguageServer
       def self.build(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1)
         full_name = [parent ? parent.full_name : nil, name].compact.join(JoinHash[type])
         create!(
-          parent: parent,
-          top_line: top_line,
-          column: column,
-          name: name,
+          parent:,
+          top_line:,
+          column:,
+          name:,
           path: full_name,
           class_type: type
         )

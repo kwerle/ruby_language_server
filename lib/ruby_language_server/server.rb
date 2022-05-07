@@ -85,7 +85,7 @@ module RubyLanguageServer
 
     def send_diagnostics(uri, text)
       hash = @project_manager.update_document_content(uri, text)
-      io.send_notification('textDocument/publishDiagnostics', uri: uri, diagnostics: hash)
+      io.send_notification('textDocument/publishDiagnostics', uri:, diagnostics: hash)
     end
 
     def on_textDocument_didOpen(params)
