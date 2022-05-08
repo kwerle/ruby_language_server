@@ -316,10 +316,7 @@ module RubyLanguageServer
     # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
     def close_sibling_scopes(line)
       parent_scope = @current_scope
-      parent_scope&.descendants&.each do |scope|
-        scope.bottom_line = [scope.bottom_line, line - 1].compact.min
-        scope.save!
-      end
+      parent_scope&.descendants&.each { |scope| scope.close(line) }
     end
 
     def pop_scope

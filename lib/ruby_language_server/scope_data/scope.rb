@@ -12,6 +12,8 @@ module RubyLanguageServer
       belongs_to :parent, class_name: 'Scope', optional: true
       has_many :children, class_name: 'Scope', foreign_key: :parent_id
 
+      validate :bottom_line_ge_top_line, unless: :root_scope?
+
       scope :method_scopes, -> { where(class_type: TYPE_METHOD) }
       scope :for_line, ->(line) { where('top_line <= ? AND bottom_line >= ?', line, line).or(where(parent_id: nil)) }
       scope :by_path_length, -> { order(Arel.sql('length(path) DESC')) }
@@ -77,10 +79,24 @@ module RubyLanguageServer
         [TYPE_MODULE, TYPE_CLASS, TYPE_METHOD, TYPE_VARIABLE].include?(class_type)
       end
 
+      # Called from ScopeParser when a peer of this block starts - because we don't have an end notifier.
+      # So we do some reasonable cleanup here.
+      def close(line)
+        return destroy! if block_scope? && variables.none?
+
+        self.top_line ||= variables.map(&:top_line).min
+        self.bottom_line = [bottom_line, line].compact.min
+        save!
+      end
+
       private
 
       def scope_parts
         path&.split(/#{JoinHash.values.reject(&:blank?).uniq.join('|')}/)
+      end
+
+      def bottom_line_ge_top_line
+        errors.add(:bottom_line, 'must be greater than or equal to top line') if bottom_line && top_line && bottom_line < top_line
       end
     end
   end

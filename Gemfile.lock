@@ -83,9 +83,6 @@ GEM
     pry (0.14.1)
       coderay (~> 1.1)
       method_source (~> 1.0)
-    pry-byebug (3.8.0)
-      byebug (~> 11.0)
-      pry (~> 0.10)
     rainbow (3.1.1)
     rake (13.0.6)
     rb-fsevent (0.11.1)
@@ -104,9 +101,13 @@ GEM
       unicode-display_width (>= 1.4.0, < 3.0)
     rubocop-ast (1.17.0)
       parser (>= 3.1.1.0)
+    rubocop-minitest (0.19.1)
+      rubocop (>= 0.90, < 2.0)
     rubocop-performance (1.13.3)
       rubocop (>= 1.7.0, < 2.0)
       rubocop-ast (>= 0.4.0)
+    rubocop-rake (0.6.0)
+      rubocop (~> 1.0)
     rubocop-rspec (2.10.0)
       rubocop (~> 1.19)
     ruby-progressbar (1.11.0)
@@ -128,16 +129,16 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  byebug
   guard
   guard-minitest
   guard-rubocop
   minitest
   minitest-reporters
-  pry
-  pry-byebug
   rake
+  rubocop-minitest
+  rubocop-rake
   ruby_language_server!
-  sexp_processor
 
 BUNDLED WITH
    2.2.16
