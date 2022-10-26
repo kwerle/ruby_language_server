@@ -2,8 +2,8 @@
 
 ActiveRecord::Base.establish_connection(
   adapter: 'sqlite3',
-  database: 'file:memory?mode=memory&cache=shared',
-  # database: '/database',
+  # database: 'file:memory?mode=memory&cache=shared',
+  database: '/database',
   pool: 5, # does not seem to help
   checkout_timeout: 30.seconds # does not seem to help
 )
