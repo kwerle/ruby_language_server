@@ -187,16 +187,22 @@ module RubyLanguageServer
         root_uri += '/' unless root_uri.end_with? '/'
         project_ruby_files.each do |container_path|
           # Let's not preload spec/test or vendor - yet..
-          next if container_path.match?(/^(.?spec|test|vendor)/)
+          next if container_path.match?(/(spec|test|vendor)/)
 
           text = File.read(container_path)
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = root_uri + relative_path
           RubyLanguageServer.logger.debug "Locking scan for #{container_path}"
-          mutex.synchronize do
-            RubyLanguageServer.logger.debug("Threading #{host_uri}")
-            update_document_content(host_uri, text)
-            code_file_for_uri(host_uri).refresh_scopes_if_needed
+          RubyLanguageServer.logger.debug("Threading #{host_uri}")
+          begin
+            ActiveRecord::Base.connection_pool.with_connection do |connection|
+              update_document_content(host_uri, text)
+              code_file_for_uri(host_uri).refresh_scopes_if_needed
+            end
+          rescue StandardError => e
+            RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
+            sleep 5
+            retry
           end
           RubyLanguageServer.logger.debug "Unlocking scan for #{container_path}"
         end
@@ -218,7 +224,7 @@ module RubyLanguageServer
       # Maybe we should be sharing this GoodCop across instances
       RubyLanguageServer.logger.debug("updated_diagnostics_for_codefile: #{code_file.uri}")
       project_relative_filename = filename_relative_to_project(code_file.uri)
-      code_file.diagnostics = GoodCop.instance.diagnostics(code_file.text, project_relative_filename)
+      code_file.diagnostics = GoodCop.instance&.diagnostics(code_file.text, project_relative_filename)
       RubyLanguageServer.logger.debug("code_file.diagnostics: #{code_file.diagnostics}")
       code_file.diagnostics
     end

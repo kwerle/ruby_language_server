@@ -5,7 +5,7 @@ ActiveRecord::Base.establish_connection(
   # database: 'file:memory?mode=memory&cache=shared',
   database: '/database',
   pool: 5, # does not seem to help
-  checkout_timeout: 30.seconds # does not seem to help
+  timeout: 30.seconds # does not seem to help
 )
 
 database = ActiveRecord::Base.connection.instance_variable_get :@connection
