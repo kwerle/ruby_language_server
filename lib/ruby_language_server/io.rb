@@ -24,7 +24,7 @@ module RubyLanguageServer
     def return_response(id, response, io = $stdout)
       full_response = {
         jsonrpc: '2.0',
-        id: id,
+        id:,
         result: response
       }
       response_body = JSON.unparse(full_response)
@@ -39,7 +39,7 @@ module RubyLanguageServer
       full_response = {
         jsonrpc: '2.0',
         method: message,
-        params: params
+        params:
       }
       body = JSON.unparse(full_response)
       RubyLanguageServer.logger.info "send_notification body: #{body}"
@@ -58,11 +58,17 @@ module RubyLanguageServer
       params = request_json['params']
       method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
-        RubyLanguageServer.logger.debug 'Locking io'
-        response = @mutex.synchronize do
-          @server.send(method_name, params)
+        response = ActiveRecord::Base.connection_pool.with_connection do
+          retries = 3
+          begin
+            @server.send(method_name, params)
+          rescue StandardError => e
+            RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
+            sleep 5
+            retries -= 1
+            retry unless retries <= 0
+          end
         end
-        RubyLanguageServer.logger.debug 'UNLocking io'
         exit(true) if response == 'EXIT'
         [id, response]
       else

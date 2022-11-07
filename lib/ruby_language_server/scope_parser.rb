@@ -226,38 +226,6 @@ module RubyLanguageServer
           end
 
           [:def_with_access, klass, method_name, access, line]
-          # when 'scope', 'named_scope'
-          #   [:rails_def, :scope, args[1][0], line]
-          # when /^attr_(accessor|reader|writer)$/
-          #   gen_reader = Regexp.last_match(1) != 'writer'
-          #   gen_writer = Regexp.last_match(1) != 'reader'
-          #   args[1..-1].each_with_object([]) do |arg, gen|
-          #     gen << [:def, arg[0], line] if gen_reader
-          #     gen << [:def, "#{arg[0]}=", line] if gen_writer
-          #   end
-          # when 'has_many', 'has_and_belongs_to_many'
-          #   a = args[1][0]
-          #   kind = name.to_sym
-          #   gen = []
-          #   unless a.is_a?(Enumerable) && !a.is_a?(String)
-          #     a = a.to_s
-          #     gen << [:rails_def, kind, a, line]
-          #     gen << [:rails_def, kind, "#{a}=", line]
-          #     if (sing = a.chomp('s')) != a
-          #       # poor man's singularize
-          #       gen << [:rails_def, kind, "#{sing}_ids", line]
-          #       gen << [:rails_def, kind, "#{sing}_ids=", line]
-          #     end
-          #   end
-          #   gen
-          # when 'belongs_to', 'has_one'
-          #   a = args[1][0]
-          #   unless a.is_a?(Enumerable) && !a.is_a?(String)
-          #     kind = name.to_sym
-          #     %W[#{a} #{a}= build_#{a} create_#{a} create_#{a}!].inject([]) do |all, ident|
-          #       all << [:rails_def, kind, ident, line]
-          #     end
-          #   end
         end
       end
     end
@@ -265,19 +233,15 @@ module RubyLanguageServer
     private
 
     def add_variable(name, line, column, scope = @current_scope)
-      newvar = scope.variables.where(name: name).first_or_create!(
-        line: line,
-        column: column,
+      newvar = scope.variables.where(name:).first_or_create!(
+        line:,
+        column:,
         code_file: scope.code_file
       )
       if scope.top_line.blank?
         scope.top_line = line
         scope.save!
       end
-      # new_variable = ScopeData::Variable.build(scope, name, line, column)
-      # # blocks don't declare their first line in the parser
-      # scope.top_line ||= line
-      # scope.variables << new_variable unless scope.has_variable_or_constant?(new_variable)
       newvar
     end
 
@@ -316,10 +280,7 @@ module RubyLanguageServer
     # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
     def close_sibling_scopes(line)
       parent_scope = @current_scope
-      parent_scope&.descendants&.each do |scope|
-        scope.bottom_line = [scope.bottom_line, line - 1].compact.min
-        scope.save!
-      end
+      parent_scope&.descendants&.each { |scope| scope.close(line) }
     end
 
     def pop_scope

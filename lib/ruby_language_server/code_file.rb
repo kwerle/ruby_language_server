@@ -20,7 +20,7 @@ module RubyLanguageServer
     def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
 
-      create!(uri: uri, text: text)
+      create!(uri:, text:)
     end
 
     SYMBOL_KIND = {
@@ -70,7 +70,7 @@ module RubyLanguageServer
         kind = 9 if scope.name == 'initialize' # Magical special case
         scope_hash = {
           name: scope.name,
-          kind: kind,
+          kind:,
           location: Location.hash(uri, scope.top_line)
         }
         container_name = ancestor_scope_name(scope)
@@ -80,7 +80,7 @@ module RubyLanguageServer
       tags += variables.constant_variables.reload.map do |variable|
         name = variable.name
         {
-          name: name,
+          name:,
           kind: SYMBOL_KIND[:constant],
           location: Location.hash(uri, variable.line - 1),
           containerName: variable.scope.name

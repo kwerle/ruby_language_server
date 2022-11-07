@@ -102,7 +102,7 @@ module RubyLanguageServer
       if excluded_file?(filename)
         []
       else
-        ruby_version = 2.7
+        ruby_version = 3.1
         processed_source = RuboCop::ProcessedSource.new(text, ruby_version, filename)
         offenses = inspect_file(processed_source)
         offenses.compact.flatten.reject(&:blank?) # reject blank because some are `false`
@@ -136,13 +136,15 @@ module RubyLanguageServer
 
     class << self
       def instance
+        return @instance if @instance
+
         @config_path ||= config_path
         config_path_timestamp = File.mtime(@config_path)
         if @cached_config_path_timestamp.nil? || @cached_config_path_timestamp < config_path_timestamp
           @cached_config_path_timestamp = config_path_timestamp
           @instance = new(@config_path)
         else
-          @instance
+          @instance = new
         end
       rescue StandardError => e
         @instance = new(@config_path, e.to_s)

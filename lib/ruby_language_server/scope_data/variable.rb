@@ -15,10 +15,10 @@ module RubyLanguageServer
       def self.build(scope, name, line = 1, column = 1, type = TYPE_VARIABLE)
         path = [scope.full_name, name].join(JoinHash[TYPE_VARIABLE])
         create!(
-          line: line,
-          column: column,
-          name: name,
-          path: path,
+          line:,
+          column:,
+          name:,
+          path:,
           variable_type: type
         )
       end

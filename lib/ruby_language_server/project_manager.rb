@@ -22,7 +22,7 @@ module RubyLanguageServer
       def root_path
         # I'm torn about this.  Should this be set in the Server?  Or is this right.
         # Rather than worry too much, I'll just do this here and change it later if it feels wrong.
-        path = ENV['RUBY_LANGUAGE_SERVER_PROJECT_ROOT'] || @_root_path
+        path = ENV.fetch('RUBY_LANGUAGE_SERVER_PROJECT_ROOT') { @_root_path }
         return path if path.nil?
 
         path.end_with?(File::SEPARATOR) ? path : "#{path}#{File::SEPARATOR}"
@@ -179,28 +179,36 @@ module RubyLanguageServer
     #   data?: any
     # }
 
-    def scan_all_project_files(mutex)
+    def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
-      Thread.new do
-        RubyLanguageServer.logger.debug('Threading up!')
-        root_uri = @root_uri
-        root_uri += '/' unless root_uri.end_with? '/'
+      RubyLanguageServer.logger.debug('Threading up!')
+      root_uri = @root_uri
+      root_uri += '/' unless root_uri.end_with? '/'
+      # Using fork because this is run in a docker container that has fork.
+      # If you want to run this on some platform without fork, fork the code and PR it :-)
+      fork_id = fork do
         project_ruby_files.each do |container_path|
-          # Let's not preload spec/test or vendor - yet..
-          next if container_path.match?(/^(.?spec|test|vendor)/)
+          # Let's not preload spec/test files or vendor - yet..
+          next if container_path.match?(/(spec\.rb|test\.rb|vendor)/)
 
           text = File.read(container_path)
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = root_uri + relative_path
-          RubyLanguageServer.logger.debug "Locking scan for #{container_path}"
-          mutex.synchronize do
-            RubyLanguageServer.logger.debug("Threading #{host_uri}")
-            update_document_content(host_uri, text)
-            code_file_for_uri(host_uri).refresh_scopes_if_needed
+          RubyLanguageServer.logger.debug("Threading #{host_uri}")
+          begin
+            ActiveRecord::Base.connection_pool.with_connection do |_connection|
+              update_document_content(host_uri, text)
+              code_file_for_uri(host_uri).refresh_scopes_if_needed
+            end
+          rescue StandardError => e
+            RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
+            sleep 5
+            retry
           end
-          RubyLanguageServer.logger.debug "Unlocking scan for #{container_path}"
         end
       end
+      RubyLanguageServer.logger.debug("Forked process id to look at other files: #{fork_id}")
+      Process.detach(fork_id)
     end
 
     # returns diagnostic info (if possible)
@@ -218,7 +226,7 @@ module RubyLanguageServer
       # Maybe we should be sharing this GoodCop across instances
       RubyLanguageServer.logger.debug("updated_diagnostics_for_codefile: #{code_file.uri}")
       project_relative_filename = filename_relative_to_project(code_file.uri)
-      code_file.diagnostics = GoodCop.instance.diagnostics(code_file.text, project_relative_filename)
+      code_file.diagnostics = GoodCop.instance&.diagnostics(code_file.text, project_relative_filename)
       RubyLanguageServer.logger.debug("code_file.diagnostics: #{code_file.diagnostics}")
       code_file.diagnostics
     end
@@ -261,8 +269,8 @@ module RubyLanguageServer
     end
 
     def project_definitions_for(name)
-      scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
-      variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name: name)
+      scopes = RubyLanguageServer::ScopeData::Scope.where(name:)
+      variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name:)
       (scopes + variables).reject { |scope| scope.code_file.nil? }.map do |scope|
         Location.hash(scope.code_file.uri, scope.top_line, 1)
       end
