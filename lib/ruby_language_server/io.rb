@@ -58,14 +58,14 @@ module RubyLanguageServer
       params = request_json['params']
       method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
-        response = ActiveRecord::Base.connection_pool.with_connection do |connection|
+        response = ActiveRecord::Base.connection_pool.with_connection do
           retries = 3
           begin
             @server.send(method_name, params)
           rescue StandardError => e
             RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
             sleep 5
-            retries = retries - 1
+            retries -= 1
             retry unless retries <= 0
           end
         end

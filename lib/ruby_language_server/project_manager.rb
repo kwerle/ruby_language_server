@@ -179,7 +179,7 @@ module RubyLanguageServer
     #   data?: any
     # }
 
-    def scan_all_project_files(mutex)
+    def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       Thread.new do
         RubyLanguageServer.logger.debug('Threading up!')

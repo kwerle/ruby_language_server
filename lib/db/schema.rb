@@ -52,7 +52,7 @@ module Schema
     # So we utter some arcane sqlite code to find the existing tables if there are any.
     def already_initialized
       response = ActiveRecord::Base.connection_pool.with_connection { |con| con.exec_query "SELECT name  FROM sqlite_master WHERE type='table'" }
-      response.rows.flatten.member?("code_files")
+      response.rows.flatten.member?('code_files')
     rescue ExceptionName
       false
     end

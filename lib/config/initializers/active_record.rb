@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'byebug'
 
 ActiveRecord::Base.establish_connection(
@@ -18,7 +19,7 @@ else
 end
 database.enable_load_extension(0)
 
-if true || ENV['LOG_LEVEL'] == 'DEBUG'
+if ENV['LOG_LEVEL'] == 'DEBUG'
   begin
     warn('Turning on active record logging to active_record.log')
     ActiveRecord::Base.logger = Logger.new(File.open('/active_record.log', 'w'))
