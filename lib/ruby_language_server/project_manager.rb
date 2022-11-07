@@ -181,21 +181,22 @@ module RubyLanguageServer
 
     def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
-      Thread.new do
-        RubyLanguageServer.logger.debug('Threading up!')
-        root_uri = @root_uri
-        root_uri += '/' unless root_uri.end_with? '/'
+      RubyLanguageServer.logger.debug('Threading up!')
+      root_uri = @root_uri
+      root_uri += '/' unless root_uri.end_with? '/'
+      # Using fork because this is run in a docker container that has fork.
+      # If you want to run this on some platform without fork, fork the code and PR it :-)
+      fork_id = fork do
         project_ruby_files.each do |container_path|
-          # Let's not preload spec/test or vendor - yet..
-          next if container_path.match?(/(spec|test|vendor)/)
+          # Let's not preload spec/test files or vendor - yet..
+          next if container_path.match?(/(spec\.rb|test\.rb|vendor)/)
 
           text = File.read(container_path)
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = root_uri + relative_path
-          RubyLanguageServer.logger.debug "Locking scan for #{container_path}"
           RubyLanguageServer.logger.debug("Threading #{host_uri}")
           begin
-            ActiveRecord::Base.connection_pool.with_connection do |connection|
+            ActiveRecord::Base.connection_pool.with_connection do |_connection|
               update_document_content(host_uri, text)
               code_file_for_uri(host_uri).refresh_scopes_if_needed
             end
@@ -204,9 +205,10 @@ module RubyLanguageServer
             sleep 5
             retry
           end
-          RubyLanguageServer.logger.debug "Unlocking scan for #{container_path}"
         end
       end
+      RubyLanguageServer.logger.debug("Forked process id to look at other files: #{fork_id}")
+      Process.detach(fork_id)
     end
 
     # returns diagnostic info (if possible)
