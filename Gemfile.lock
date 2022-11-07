@@ -8,10 +8,10 @@ PATH
       etc
       fuzzy_match
       json
-      rubocop
+      rubocop (< 1.38.0)
       rubocop-performance
       rubocop-rspec
-      sqlite3
+      sqlite3 (< 1.5.0)
 
 GEM
   remote: https://rubygems.org/
@@ -90,7 +90,7 @@ GEM
       ffi (~> 1.0)
     regexp_parser (2.6.0)
     rexml (3.2.5)
-    rubocop (1.38.0)
+    rubocop (1.37.1)
       json (~> 2.3)
       parallel (~> 1.10)
       parser (>= 3.1.2.1)
@@ -102,7 +102,7 @@ GEM
       unicode-display_width (>= 1.4.0, < 3.0)
     rubocop-ast (1.23.0)
       parser (>= 3.1.1.0)
-    rubocop-minitest (0.23.0)
+    rubocop-minitest (0.23.1)
       rubocop (>= 0.90, < 2.0)
     rubocop-performance (1.15.0)
       rubocop (>= 1.7.0, < 2.0)
@@ -116,8 +116,7 @@ GEM
       sexp_processor (~> 4.16)
     sexp_processor (4.16.1)
     shellany (0.0.1)
-    sqlite3 (1.5.3-aarch64-linux)
-    sqlite3 (1.5.3-x86_64-linux)
+    sqlite3 (1.4.4)
     sync (0.5.0)
     thor (1.2.1)
     tins (1.31.1)
@@ -128,7 +127,6 @@ GEM
 
 PLATFORMS
   aarch64-linux-musl
-  x86_64-linux-musl
 
 DEPENDENCIES
   byebug
@@ -143,4 +141,4 @@ DEPENDENCIES
   ruby_language_server!
 
 BUNDLED WITH
-   2.2.16
+   2.3.25
