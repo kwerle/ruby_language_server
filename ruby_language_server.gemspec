@@ -48,7 +48,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'fuzzy_match' # completion matching
 
   spec.add_dependency 'activerecord', '~>7.0'
-  spec.add_dependency 'sqlite3'
+  spec.add_dependency 'sqlite3', '1.4.2' # somewhere between 1.4.2 and 1.5.2 stops working in docker
 
   spec.add_development_dependency 'byebug'
   spec.add_development_dependency 'guard'
