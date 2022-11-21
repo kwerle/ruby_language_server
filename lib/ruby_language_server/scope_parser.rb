@@ -184,13 +184,9 @@ module RubyLanguageServer
       end
 
       case name
-      when 'public', 'protected' # I don't think these get called ever
-        process(rest)
-      when 'private' # I don't think these get called ever
+      when 'public', 'private', 'protected'
         # FIXME: access control...
-        return process(rest) unless @shallow
-
-        process([])
+        process(rest)
       when 'delegate'
         # on_delegate(*args[0][1..-1])
       when 'def_delegator', 'def_instance_delegator'
