@@ -108,7 +108,7 @@ module RubyLanguageServer
       update(text: new_text, refresh_root_scope: true)
     end
 
-    def refresh_scopes_if_needed
+    def refresh_scopes_if_needed(shallow: false)
       return unless refresh_root_scope
 
       RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
@@ -117,7 +117,7 @@ module RubyLanguageServer
           self.class.transaction do
             scopes.clear
             variables.clear
-            new_root = ScopeParser.new(text).root_scope
+            new_root = ScopeParser.new(text, shallow).root_scope
             RubyLanguageServer.logger.debug("new_root.children #{new_root.children.as_json}") if new_root&.children
             raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
 

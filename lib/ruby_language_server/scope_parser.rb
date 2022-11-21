@@ -17,9 +17,10 @@ module RubyLanguageServer
     include ScopeParserCommands::RubyCommands
     attr_reader :sexp, :lines, :current_scope
 
-    def initialize(sexp, lines = 1)
+    def initialize(sexp, lines = 1, shallow = false)
       @sexp = sexp
       @lines = lines
+      @shallow = shallow
       @root_scope = nil
     end
 
@@ -233,6 +234,8 @@ module RubyLanguageServer
     private
 
     def add_variable(name, line, column, scope = @current_scope)
+      return if @shallow
+
       newvar = scope.variables.where(name:).first_or_create!(
         line:,
         column:,
@@ -259,7 +262,11 @@ module RubyLanguageServer
     def add_scope(args, rest, type)
       (_, name, (line, column)) = args
       scope = push_scope(type, name, line, column)
-      process(rest)
+      if type == ScopeData::Scope::TYPE_METHOD && @shallow
+        process([])
+      else
+        process(rest)
+      end
       pop_scope
       scope
     end
@@ -294,14 +301,14 @@ module RubyLanguageServer
   class ScopeParser < Ripper
     attr_reader :root_scope
 
-    def initialize(text)
+    def initialize(text, shallow = false)
       text ||= '' # empty is the same as nil - but it doesn't crash
       begin
         sexp = self.class.sexp(text)
       rescue TypeError => e
         RubyLanguageServer.logger.error("Exception in sexp: #{e} for text: #{text}")
       end
-      processor = SEXPProcessor.new(sexp, text.split("\n").length)
+      processor = SEXPProcessor.new(sexp, text.split("\n").length, shallow)
       @root_scope = processor.root_scope
     end
   end
