@@ -2,8 +2,10 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:3.1-alpine
+FROM ruby:3.2-alpine
 LABEL maintainer="kurt@CircleW.org"
+
+ENV RUBY_YJIT_ENABLE=1
 
 RUN gem update bundler
 
