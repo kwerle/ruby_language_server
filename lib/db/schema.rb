@@ -8,8 +8,8 @@ module Schema
           RubyLanguageServer.logger.debug(args)
         end
 
-        create_table :scopes, force: true do |t|
-          t.references :code_file
+        create_table :scopes do |t|
+          t.references :code_file, foreign_key: true
           t.integer :parent_id
           t.integer :top_line        # first line
           t.integer :bottom_line     # last line
@@ -25,8 +25,8 @@ module Schema
         add_index :scopes, :code_file
 
         create_table :variables, force: true do |t|
-          t.references :code_file
-          t.references :scope
+          t.references :code_file, foreign_key: true
+          t.references :scope, null: false, foreign_key: true
           t.integer :line
           t.integer :column
           t.string  :name
@@ -51,7 +51,7 @@ module Schema
     # Which it seems like sqlite is happy to do?
     # So we utter some arcane sqlite code to find the existing tables if there are any.
     def already_initialized
-      response = ActiveRecord::Base.connection_pool.with_connection { |con| con.exec_query "SELECT name  FROM sqlite_master WHERE type='table'" }
+      response = ActiveRecord::Base.connection_pool.with_connection { |con| con.exec_query "SELECT name FROM sqlite_master WHERE type='table'" }
       response.rows.flatten.member?('code_files')
     rescue ExceptionName
       false

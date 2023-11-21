@@ -19,6 +19,7 @@ module RubyLanguageServer
           column:,
           name:,
           path:,
+          scope:,
           variable_type: type
         )
       end

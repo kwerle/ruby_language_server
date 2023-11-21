@@ -50,7 +50,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'activerecord', '~>7.0'
   spec.add_dependency 'sqlite3', '<1.5.0' # 1.5.0 breaks in docker M1 at least
 
-  # spec.add_development_dependency 'byebug'
+  spec.add_development_dependency 'debug'
   spec.add_development_dependency 'guard'
   spec.add_development_dependency 'guard-minitest'
   spec.add_development_dependency 'guard-rubocop'
