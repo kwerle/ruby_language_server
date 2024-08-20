@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.17 Mon Aug 19 21:47:30 PDT 2024
+
+* Update ruby to 3.3
+
 #### 0.3.16.1 Thu Feb 17 23:27:11 PST 2022
 
 * Update docker image to be cross-platform
