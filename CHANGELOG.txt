@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.3.18 Tue Sep 10 20:10:21 PDT 2024
+
+* bump dependencies
+
 #### 0.3.17 Mon Aug 19 21:47:30 PDT 2024
 
 * Update ruby to 3.3
