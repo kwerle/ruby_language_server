@@ -20,7 +20,10 @@ describe RubyLanguageServer::ScopeParser do
       #   assert_equal(%w[baz], bar.children.map(&:name).sort)
       # end
       it 'does not add any variables at any scope' do
-        assert_equal(RubyLanguageServer::ScopeData::Variable.all.count, 0)
+        assert_equal(
+          RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name),
+          ["SOME_CONSTANT"]
+        )
       end
     end
 
@@ -30,9 +33,10 @@ describe RubyLanguageServer::ScopeParser do
       end
 
       it 'records all the variables (as opposed to shallow)' do
-        assert_equal(RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name), [
-                       "@biz", "@bottom", "@niz", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"
-                     ])
+        assert_equal(
+          RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name),
+          ["@biz", "@bottom", "@niz", "SOME_CONSTANT", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"]
+        )
       end
 
       describe 'class << self' do
@@ -65,7 +69,7 @@ describe RubyLanguageServer::ScopeParser do
       it 'module should span the whole file' do
         m = @parser.root_scope.children.first
         assert_equal(2, m.top_line)
-        assert_equal(40, m.bottom_line)
+        assert_equal(41, m.bottom_line)
       end
 
       it 'has two classes' do
@@ -98,7 +102,7 @@ describe RubyLanguageServer::ScopeParser do
       it 'has a couple of ivars for Bar' do
         m = @parser.root_scope.children.first
         bar = m.children.detect { |child| child.full_name == 'Foo::Bar' }
-        assert_equal(2, bar.variables.size)
+        assert_equal(3, bar.variables.size)
       end
 
       it 'has a 3 methods for Nar' do
@@ -111,7 +115,7 @@ describe RubyLanguageServer::ScopeParser do
       it 'has a couple of ivars for Nar' do
         m = @parser.root_scope.children.first
         bar = m.children.detect { |child| child.full_name == 'Foo::Bar' }
-        assert_equal(2, bar.variables.size)
+        assert_equal(3, bar.variables.size)
       end
     end
 

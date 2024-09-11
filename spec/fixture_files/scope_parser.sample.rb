@@ -1,6 +1,7 @@
 bogus = Some::Bogus
 module Foo
   class Bar
+    SOME_CONSTANT = 42
     @bottom = 1
 
     public def baz(bing, zing)

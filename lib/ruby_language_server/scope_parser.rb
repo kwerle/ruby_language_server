@@ -234,7 +234,7 @@ module RubyLanguageServer
     private
 
     def add_variable(name, line, column, scope = @current_scope)
-      return if @shallow
+      return if @shallow && !name.start_with?(/[A-Z]/) # DO add constants!
 
       newvar = scope.variables.where(name:).first_or_create!(
         line:,
