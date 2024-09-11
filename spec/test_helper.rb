@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# require 'byebug'
 require 'ostruct'
 require 'minitest/autorun'
 

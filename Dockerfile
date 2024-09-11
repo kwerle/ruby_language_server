@@ -7,7 +7,7 @@ LABEL maintainer="kurt@CircleW.org"
 
 RUN gem update bundler
 
-# Needed for byebug and some other gems
+# Needed for some gems
 RUN apk update
 RUN apk add curl make g++ sqlite-dev
 
