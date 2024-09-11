@@ -65,7 +65,7 @@ describe RubyLanguageServer::ProjectManager do
   describe '.updated_diagnostics_for_codefile' do
     it 'should call good cop diagnostics' do
       file_content = "# Nothing to see here\n"
-      good_mock = MiniTest::Mock.new
+      good_mock = Minitest::Mock.new
       good_mock.expect(:diagnostics, [], [file_content, '/project/boo.rb'])
       RubyLanguageServer::GoodCop.stub(:instance, good_mock) do
         cf = RubyLanguageServer::CodeFile.build('file:///foo/boo.rb', file_content)
@@ -113,7 +113,7 @@ describe RubyLanguageServer::ProjectManager do
       assert_equal({isIncomplete: true, items: [{label: 'Foo', kind: 7}]}, results)
       position = OpenStruct.new(line: 6, character: 4)
       results = project_manager.completion_at('search_uri', position)
-      assert_equal({isIncomplete: true, items: [{label: 'bar', kind: 2}, {label: 'Bar', kind: 9}, {label: 'bar=', kind: 2}, {label: '@baz', kind: 7}]}, results)
+      assert_equal({isIncomplete: true, items: [{label: 'Bar', kind: 9}, {label: 'bar', kind: 2}, {label: '@baz', kind: 7}, {label: 'bar=', kind: 2}]}, results)
     end
   end
 

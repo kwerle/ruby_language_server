@@ -2,10 +2,8 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:3.2-alpine
+FROM ruby:3.3-alpine
 LABEL maintainer="kurt@CircleW.org"
-
-ENV RUBY_YJIT_ENABLE=1
 
 RUN gem update bundler
 
@@ -23,7 +21,7 @@ RUN make -j 8 install
 WORKDIR /app
 
 # We expect the target project to be mounted here:
-ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT /project/
+ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT=/project/
 # ENV LOG_LEVEL DEBUG
 
 COPY Gemfile* ./

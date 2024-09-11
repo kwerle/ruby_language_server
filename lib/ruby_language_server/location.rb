@@ -26,6 +26,6 @@ module RubyLanguageServer
           }
         }
       end
-      end
+    end
   end
 end

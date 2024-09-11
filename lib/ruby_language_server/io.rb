@@ -13,7 +13,7 @@ module RubyLanguageServer
         return_response(id, response, $stdout) unless id.nil?
       rescue SignalException => e
         RubyLanguageServer.logger.error "We received a signal.  Let's bail: #{e}"
-        exit(true)
+        exit
       rescue Exception => e
         RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
         backtrace = e.backtrace * "\n"
@@ -69,7 +69,7 @@ module RubyLanguageServer
             retry unless retries <= 0
           end
         end
-        exit(true) if response == 'EXIT'
+        exit if response == 'EXIT'
         [id, response]
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
