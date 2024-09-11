@@ -40,7 +40,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'json'
 
   # No - do not put these in dev - they are needed for the app
-  spec.add_dependency 'rubocop', '<1.38.0'  # Something broke in 1.38.0.  Move to rubocop --server?
+  spec.add_dependency 'rubocop', '>1.38.0' # Something broke in 1.38.0.  Move to rubocop --server?
+  spec.add_dependency 'rubocop-ast', '>1.32.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_dependency 'rubocop-performance' # Linter - no longer needed - use additional gems?
   spec.add_dependency 'rubocop-rspec'       # Linter - no longer needed - use additional gems?
 
