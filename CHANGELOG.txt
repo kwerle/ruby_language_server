@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.4.0 Fri May  9 22:33:03 PDT 2025
+
+* Ditch rubocop - it has its own LSP
+* Also update rails version
+
 #### 0.3.18 Tue Sep 10 20:10:21 PDT 2024
 
 * bump dependencies

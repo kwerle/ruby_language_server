@@ -7,7 +7,7 @@ ActiveRecord::Base.establish_connection(
   timeout: 30.seconds # does not seem to help
 )
 
-database = ActiveRecord::Base.connection.instance_variable_get :@connection
+database = ActiveRecord::Base.connection.raw_connection
 database.enable_load_extension(1)
 if Gem.win_platform?
   # load DLL from PATH

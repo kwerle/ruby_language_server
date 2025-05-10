@@ -25,7 +25,7 @@ module RubyLanguageServer
       # attr_accessor :superclass_name # superclass name
 
       def self.build(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1)
-        full_name = [parent ? parent.full_name : nil, name].compact.join(JoinHash[type])
+        full_name = [parent&.full_name, name].compact.join(JoinHash[type])
         create!(
           parent:,
           top_line:,
