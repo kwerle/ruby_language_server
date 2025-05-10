@@ -53,28 +53,6 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
-  describe '.install_additional_gems' do
-    it 'should deal with nil and blank and space' do
-      # There is no refute throws.  So let's just be happy.
-      project_manager.install_additional_gems(nil)
-      project_manager.install_additional_gems([])
-      project_manager.install_additional_gems([''])
-    end
-  end
-
-  describe '.updated_diagnostics_for_codefile' do
-    it 'should call good cop diagnostics' do
-      file_content = "# Nothing to see here\n"
-      good_mock = MiniTest::Mock.new
-      good_mock.expect(:diagnostics, [], [file_content, '/project/boo.rb'])
-      RubyLanguageServer::GoodCop.stub(:instance, good_mock) do
-        cf = RubyLanguageServer::CodeFile.build('file:///foo/boo.rb', file_content)
-        project_manager.updated_diagnostics_for_codefile(cf)
-      end
-      good_mock.verify
-    end
-  end
-
   describe 'has_one' do
     it 'should show up as a method' do
       project_manager.instance_variable_set(:@additional_gems_installed, true)

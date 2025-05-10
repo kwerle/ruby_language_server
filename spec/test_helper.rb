@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require 'byebug'
+require 'debug'
+require 'ostruct'
 require_relative '../lib/ruby_language_server'
 
 require 'minitest/reporters'

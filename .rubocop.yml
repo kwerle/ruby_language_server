@@ -19,6 +19,12 @@ AllCops:
   Exclude:
     - 'spec/fixture_files/**/*'
 
+Gemspec/DependencyVersion:
+  Enabled: false
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
 Layout/SpaceInsideHashLiteralBraces:
   Enabled: false
 
@@ -152,23 +158,19 @@ Style/GuardClause:
 Style/HashSyntax:
   Exclude:
     - 'lib/ruby_language_server/location.rb'
-    - 'spec/lib/ruby_language_server/good_cop_spec.rb'
 
 # Cop supports --auto-correct.
 # Configuration parameters: IgnoredMethods.
 Style/MethodCallWithoutArgsParentheses:
   Exclude:
     - 'lib/ruby_language_server/scope_parser.rb'
-    - 'spec/lib/ruby_language_server/good_cop_spec.rb'
 
 Style/MultilineBlockChain:
   Exclude:
-    - 'lib/ruby_language_server/good_cop.rb'
 
 # Cop supports --auto-correct.
 Style/MutableConstant:
   Exclude:
-    - 'lib/ruby_language_server/good_cop.rb'
     - 'lib/ruby_language_server/scope_data/base.rb'
     - 'lib/ruby_language_server/version.rb'
 
@@ -222,7 +224,6 @@ Style/StringLiterals:
     - 'lib/ruby_language_server/scope_parser.rb'
     - 'spec/lib/ruby_language_server/code_file_spec.rb'
     - 'spec/lib/ruby_language_server/completion_spec.rb'
-    - 'spec/lib/ruby_language_server/good_cop_spec.rb'
     - 'spec/lib/ruby_language_server/line_context_spec.rb'
     - 'spec/lib/ruby_language_server/scope_parser_spec.rb'
 

@@ -35,30 +35,27 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Normally the system will have these - but not if it's a stripped down docker image
+  spec.add_dependency 'activerecord', '~>7.0'
+  spec.add_dependency 'amatch'      # in c
   spec.add_dependency 'bundler'
   spec.add_dependency 'etc'
-  spec.add_dependency 'json'
-
-  # No - do not put these in dev - they are needed for the app
-  spec.add_dependency 'rubocop', '>1.38.0' # Something broke in 1.38.0.  Move to rubocop --server?
-  spec.add_dependency 'rubocop-ast', '>1.32.0' # Something broke in 1.38.0.  Move to rubocop --server?
-  spec.add_dependency 'rubocop-performance' # Linter - no longer needed - use additional gems?
-  spec.add_dependency 'rubocop-rspec'       # Linter - no longer needed - use additional gems?
-
-  spec.add_dependency 'amatch'      # in c
   spec.add_dependency 'fuzzy_match' # completion matching
+  spec.add_dependency 'json'
+  spec.add_dependency 'ostruct'
+  spec.add_dependency 'sqlite3'
 
-  spec.add_dependency 'activerecord', '~>7.0'
-  spec.add_dependency 'sqlite3', '<1.5.0' # 1.5.0 breaks in docker M1 at least
-
-  spec.add_development_dependency 'byebug'
+  spec.add_development_dependency 'debug'
   spec.add_development_dependency 'guard'
   spec.add_development_dependency 'guard-minitest'
   spec.add_development_dependency 'guard-rubocop'
   spec.add_development_dependency 'minitest'
   spec.add_development_dependency 'minitest-reporters'
   spec.add_development_dependency 'rake' # required by guard :-(
+  spec.add_development_dependency 'rubocop', '>1.38.0' # Something broke in 1.38.0.  Move to rubocop --server?
+  spec.add_development_dependency 'rubocop-ast', '>1.32.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_development_dependency 'rubocop-minitest'
+  spec.add_development_dependency 'rubocop-performance' # Linter - no longer needed - use additional gems?
   spec.add_development_dependency 'rubocop-rake'
+  spec.add_development_dependency 'rubocop-rspec'       # Linter - no longer needed - use additional gems?
   spec.metadata['rubygems_mfa_required'] = 'true'
 end

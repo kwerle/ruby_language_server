@@ -49,22 +49,13 @@ module RubyLanguageServer
 
       @root_uri = "file://#{path}"
       # This is {uri: code_file} where content stuff is like
-      @additional_gems_installed = false
-      @additional_gem_mutex = Mutex.new
+      # @additional_gems_installed = false
+      # @additional_gem_mutex = Mutex.new
     end
 
-    def diagnostics_ready?
-      @additional_gem_mutex.synchronize { @additional_gems_installed }
-    end
-
-    def install_additional_gems(gem_names)
-      Thread.new do
-        RubyLanguageServer::GemInstaller.install_gems(gem_names)
-        @additional_gem_mutex.synchronize { @additional_gems_installed = true }
-      rescue StandardError => e
-        RubyLanguageServer.logger.error("Issue installing rubocop gems: #{e} #{e.backtrace}")
-      end
-    end
+    # def diagnostics_ready?
+    #   @additional_gem_mutex.synchronize { @additional_gems_installed }
+    # end
 
     def text_for_uri(uri)
       code_file = code_file_for_uri(uri)
@@ -219,17 +210,17 @@ module RubyLanguageServer
       return code_file.diagnostics if code_file.text == text
 
       code_file.update_text(text)
-      diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
+      # diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
     end
 
-    def updated_diagnostics_for_codefile(code_file)
-      # Maybe we should be sharing this GoodCop across instances
-      RubyLanguageServer.logger.debug("updated_diagnostics_for_codefile: #{code_file.uri}")
-      project_relative_filename = filename_relative_to_project(code_file.uri)
-      code_file.diagnostics = GoodCop.instance&.diagnostics(code_file.text, project_relative_filename)
-      RubyLanguageServer.logger.debug("code_file.diagnostics: #{code_file.diagnostics}")
-      code_file.diagnostics
-    end
+    # def updated_diagnostics_for_codefile(code_file)
+    #   # Maybe we should be sharing this GoodCop across instances
+    #   RubyLanguageServer.logger.debug("updated_diagnostics_for_codefile: #{code_file.uri}")
+    #   project_relative_filename = filename_relative_to_project(code_file.uri)
+    #   # code_file.diagnostics = GoodCop.instance&.diagnostics(code_file.text, project_relative_filename)
+    #   RubyLanguageServer.logger.debug("code_file.diagnostics: #{code_file.diagnostics}")
+    #   code_file.diagnostics
+    # end
 
     # Returns the context of what is being typed in the given line
     def context_at_location(uri, position)
