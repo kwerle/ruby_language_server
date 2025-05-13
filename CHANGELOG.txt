@@ -1,5 +1,12 @@
 # Changelog
 
+#### 0.4.1 Mon May 12 20:49:11 PDT 2025
+
+* Update ruby
+* Update rails
+* Add autopublish
+* tweak extension loading to address bug - maybe
+
 #### 0.4.0 Fri May  9 22:33:03 PDT 2025
 
 * Ditch rubocop - it has its own LSP
