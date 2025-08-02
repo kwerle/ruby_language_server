@@ -149,7 +149,7 @@ GEM
       lint_roller (~> 1.1)
       rubocop (~> 1.72, >= 1.72.1)
     ruby-progressbar (1.13.0)
-    securerandom (0.4.2)
+    securerandom (0.4.1)
     shellany (0.0.1)
     sqlite3 (2.6.0-aarch64-linux-musl)
     sqlite3 (2.6.0-x86_64-linux-gnu)
