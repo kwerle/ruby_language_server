@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_language_server (0.4.1)
+    ruby_language_server (0.4.2)
       activerecord (~> 8.0)
       amatch
       bundler
@@ -33,7 +33,7 @@ GEM
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
       uri (>= 0.13.1)
-    amatch (0.4.1)
+    amatch (0.4.2)
       mize
       tins (~> 1.0)
     ansi (1.5.0)
@@ -149,7 +149,7 @@ GEM
       lint_roller (~> 1.1)
       rubocop (~> 1.72, >= 1.72.1)
     ruby-progressbar (1.13.0)
-    securerandom (0.4.1)
+    securerandom (0.4.2)
     shellany (0.0.1)
     sqlite3 (2.6.0-aarch64-linux-musl)
     sqlite3 (2.6.0-x86_64-linux-gnu)
