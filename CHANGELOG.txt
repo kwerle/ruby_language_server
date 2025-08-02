@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.4.2 Sat Aug  2 09:20:41 PDT 2025
+
+* Update thor (security advisory)
+
 #### 0.4.1 Mon May 12 20:49:11 PDT 2025
 
 * Update ruby
