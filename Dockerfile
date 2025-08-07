@@ -9,7 +9,8 @@ RUN gem update bundler
 
 # Needed for byebug and some other gems
 RUN apk update
-RUN apk add curl make g++ sqlite-dev yaml-dev
+# busybox-extras for telnet
+RUN apk add curl make g++ sqlite-dev yaml-dev busybox-extras
 
 WORKDIR /usr/local/src
 RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip
