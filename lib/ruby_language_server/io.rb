@@ -15,8 +15,8 @@ module RubyLanguageServer
       configure_io
 
       loop do
-        (id, response) = process_request(@in)
-        return_response(id, response, @out) unless id.nil?
+        (id, response) = process_request
+        return_response(id, response) unless id.nil?
       rescue SignalException => e
         RubyLanguageServer.logger.error "We received a signal.  Let's bail: #{e}"
         exit
@@ -24,50 +24,17 @@ module RubyLanguageServer
         RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
         backtrace = e.backtrace * "\n"
         RubyLanguageServer.logger.error "Backtrace:\n#{backtrace}"
-      if @using_socket && @in
-        begin
-          @in.close
-        rescue
-        end
+      end
+      return unless @using_socket
+
+      begin
+        @in&.close
+      rescue StandardError => e
+        RubyLanguageServer.logger.error "Error closing socket: #{e}"
       end
     end
 
-    private
-
-    attr_accessor :in, :out
-
-    def configure_io
-      if ENV['LSP_PORT']
-        @tcp_server = TCPServer.new(ENV['LSP_PORT'].to_i)
-        RubyLanguageServer.logger.info "Listening on TCP port #{ENV['LSP_PORT']} for LSP connections"
-        self.in = @tcp_server.accept
-        self.out = self.in
-        @using_socket = true
-        RubyLanguageServer.logger.info "Accepted LSP socket connection"
-      else
-        self.in = $stdin
-        self.out = $stdout
-        @using_socket = false
-      end
-    end
-    end
-
-    def return_response(id, response, io = nil)
-      io ||= out
-      full_response = {
-        jsonrpc: '2.0',
-        id:,
-        result: response
-      }
-      response_body = JSON.unparse(full_response)
-      RubyLanguageServer.logger.info "return_response body: #{response_body}"
-      io.write "Content-Length: #{response_body.length}\r\n"
-      io.write "\r\n"
-      io.write response_body
-      io.flush if io.respond_to?(:flush)
-    end
-
-    def send_notification(message, params, io = nil)
+    def send_notification(message, params)
       io ||= out
       full_response = {
         jsonrpc: '2.0',
@@ -82,9 +49,42 @@ module RubyLanguageServer
       io.flush if io.respond_to?(:flush)
     end
 
-    def process_request(io = nil)
-      io ||= self.in
-      request_body = get_request(io)
+    private
+
+    attr_accessor :in, :out
+
+    def configure_io
+      if ENV['LSP_PORT']
+        @tcp_server = TCPServer.new(ENV['LSP_PORT'].to_i)
+        RubyLanguageServer.logger.info "Listening on TCP port #{ENV['LSP_PORT']} for LSP connections"
+        self.in = @tcp_server.accept
+        self.out = self.in
+        @using_socket = true
+        RubyLanguageServer.logger.info 'Accepted LSP socket connection'
+      else
+        self.in = $stdin
+        self.out = $stdout
+        @using_socket = false
+      end
+    end
+
+    def return_response(id, response)
+      io ||= out
+      full_response = {
+        jsonrpc: '2.0',
+        id:,
+        result: response
+      }
+      response_body = JSON.unparse(full_response)
+      RubyLanguageServer.logger.info "return_response body: #{response_body}"
+      io.write "Content-Length: #{response_body.length}\r\n"
+      io.write "\r\n"
+      io.write response_body
+      io.flush if io.respond_to?(:flush)
+    end
+
+    def process_request
+      request_body = get_request
       # RubyLanguageServer.logger.debug "request_body: #{request_body}"
       request_json = JSON.parse request_body
       id = request_json['id']
@@ -111,9 +111,9 @@ module RubyLanguageServer
       end
     end
 
-    def get_request(io = nil)
+    def get_request
       io ||= self.in
-      initial_line = get_initial_request_line(io)
+      initial_line = get_initial_request_line
       RubyLanguageServer.logger.debug "initial_line: #{initial_line}"
       length = get_length(initial_line)
       content = ''
@@ -130,19 +130,18 @@ module RubyLanguageServer
       content
     end
 
-    def get_initial_request_line(io = nil)
-      io ||= self.in
-      io.gets
+    def get_initial_request_line
+      self.in.gets
     end
 
     def get_length(string)
       return 0 if string.nil?
+
       string.match(/Content-Length: (\d+)/)[1].to_i
     end
 
-    def get_content(size, io = nil)
-      io ||= self.in
-      io.read(size)
+    def get_content(size)
+      self.in.read(size)
     end
   end # class
 end # module
