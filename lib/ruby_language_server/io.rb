@@ -119,7 +119,7 @@ module RubyLanguageServer
       content = ''
       while content.length < length + 2
         begin
-          content += get_content(length + 2, io) # Why + 2?  CRLF?
+          content += get_content(length + 2) # Why + 2?  CRLF?
         rescue Exception => e
           RubyLanguageServer.logger.error e
           # We have almost certainly been disconnected from the server
