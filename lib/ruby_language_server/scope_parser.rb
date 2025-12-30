@@ -128,6 +128,17 @@ module RubyLanguageServer
       super
     end
 
+    # Visit constant write nodes
+    # FOO = 42
+    def visit_constant_write_node(node)
+      name = node.name.to_s
+      line = node.location.start_line
+      column = node.location.start_column
+
+      add_variable(name, line, column)
+      super
+    end
+
     # Visit multi-write nodes (parallel assignment)
     def visit_multi_write_node(node)
       node.lefts.each do |target|
@@ -308,6 +319,7 @@ module RubyLanguageServer
 
     # Extract the rest/body arguments from a call node
     # For attr methods, this needs to extract symbol arguments
+    # For rake tasks, this needs to extract keyword hash keys
     def extract_command_rest(node)
       return [] unless node.arguments
 
@@ -319,6 +331,15 @@ module RubyLanguageServer
           args << arg.value.to_s if arg.value
         when Prism::StringNode
           args << arg.unescaped
+        when Prism::KeywordHashNode
+          # Handle keyword arguments like: task something: [] do
+          # Extract the keys which are the task names
+          arg.elements.each do |element|
+            if element.is_a?(Prism::AssocNode) && element.key.is_a?(Prism::SymbolNode)
+              # Add the colon suffix to match Rake syntax expectations
+              args << "#{element.key.value}:"
+            end
+          end
         end
       end
       args
