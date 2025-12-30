@@ -28,6 +28,9 @@ test: image
 shell: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh
 
+run_in_shell: image
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c '$(COMMAND)'
+
 # Just to make sure it works.
 server: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)

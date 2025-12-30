@@ -17,13 +17,16 @@ module RubyLanguageServer
 
       private
 
-      def rspec_block_command(prefix, line, args, rest)
+      def rspec_block_command(prefix, line, _args, rest)
         name = "#{prefix} "
         name += rest.flatten.select { |part| part.instance_of?(String) }.join('::')
-        push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, false)
-        process(args)
-        process(rest)
-        # We push a scope and don't pop it because we're called inside on_method_add_block
+
+        # Push the named scope (e.g., "describe Something")
+        # The block node will create a child "block" scope automatically
+        # Signal that visit_call_node should pop this scope after visiting children
+        end_line = @current_block_node ? @current_block_node.location.end_line : line
+        push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, end_line, false)
+        @command_pushed_scope = true
       end
     end
   end

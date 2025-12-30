@@ -42,15 +42,17 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'fuzzy_match' # completion matching
   spec.add_dependency 'json'
   spec.add_dependency 'ostruct'
+  spec.add_dependency 'prism'
   spec.add_dependency 'sqlite3'
 
   spec.add_development_dependency 'debug'
-  spec.add_development_dependency 'guard'
+  spec.add_development_dependency 'guard' # as of ruby 4: Sorry, you can't use Pry without Readline or a compatible library.
   spec.add_development_dependency 'guard-minitest'
   spec.add_development_dependency 'guard-rubocop'
   spec.add_development_dependency 'minitest'
   spec.add_development_dependency 'minitest-reporters'
   spec.add_development_dependency 'rake' # required by guard :-(
+  spec.add_development_dependency 'rb-readline'
   spec.add_development_dependency 'rubocop', '>1.38.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_development_dependency 'rubocop-ast', '>1.32.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_development_dependency 'rubocop-minitest'
