@@ -88,7 +88,7 @@ module RubyLanguageServer
     end
 
     # Visit a singleton class (class << self)
-    def visit_singleton_class_node(node)
+    def visit_singleton_class_node(node) # rubocop:disable Lint/UselessMethodDefinition:
       # For class << self, we visit the body but don't create a new scope
       # The methods defined inside will be class methods of the current scope
       super
@@ -158,7 +158,7 @@ module RubyLanguageServer
       end
 
       # Handle rest parameter in multi-assignment
-      if node.rest && node.rest.is_a?(Prism::SplatNode) && node.rest.expression
+      if node.rest.is_a?(Prism::SplatNode) && node.rest.expression
         case node.rest.expression
         when Prism::LocalVariableTargetNode
           add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column)
@@ -199,7 +199,7 @@ module RubyLanguageServer
       if node.rest
         case node.rest
         when Prism::SplatNode
-          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column) if node.rest.expression && node.rest.expression.is_a?(Prism::RequiredParameterNode)
+          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column) if node.rest.expression.is_a?(Prism::RequiredParameterNode)
         end
       end
 
@@ -259,7 +259,7 @@ module RubyLanguageServer
       end
 
       # Rest parameter
-      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column) if params_node.rest && params_node.rest.name
+      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column) if params_node.rest&.name
 
       # Keyword parameters
       params_node.keywords.each do |param|
@@ -408,11 +408,10 @@ module RubyLanguageServer
       @current_scope = new_scope
     end
 
-    # This is a very poor man's "end" handler because there is no end handler.
-    # The notion is that when you start the next scope, all the previous peers and unclosed descendents of the previous peer should be closed.
-    def close_sibling_scopes(line)
+    # Clean up any empty block scopes when starting a new sibling scope.
+    def close_sibling_scopes(_line)
       parent_scope = @current_scope
-      parent_scope&.descendants&.each { |scope| scope.close(line) }
+      parent_scope&.descendants&.each(&:close)
     end
 
     def pop_scope

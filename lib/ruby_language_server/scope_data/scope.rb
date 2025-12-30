@@ -79,14 +79,9 @@ module RubyLanguageServer
         [TYPE_MODULE, TYPE_CLASS, TYPE_METHOD, TYPE_VARIABLE].include?(class_type)
       end
 
-      # Called from ScopeParser when a peer of this block starts - because we don't have an end notifier.
-      # So we do some reasonable cleanup here.
-      def close(line)
-        return destroy! if block_scope? && variables.none?
-
-        self.top_line ||= variables.map(&:top_line).min
-        self.bottom_line = [bottom_line, line].compact.min
-        save!
+      # Called from ScopeParser to cleanup empty blocks.
+      def close
+        destroy! if block_scope? && variables.none?
       end
 
       private
