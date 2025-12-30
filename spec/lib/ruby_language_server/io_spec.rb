@@ -1,129 +1,115 @@
 # frozen_string_literal: true
 
-# require 'spec_helper'
+require_relative '../../test_helper'
 require 'stringio'
 require 'json'
-require_relative '../../../lib/ruby_language_server/io'
 
-describe RubyLanguageServer::IO do
-  let(:fake_in) { StringIO.new }
-  let(:fake_out) { StringIO.new }
-  let(:server) { Object.new }
-  let(:mutex) { Object.new }
+class TestRubyLanguageServerIO < Minitest::Test
+  def setup
+    @fake_in = StringIO.new
+    @fake_out = StringIO.new
+    @server = Object.new
+    @mutex = Object.new
+  end
 
-  before do
+  def test_initialize_sets_up_stdio_streams_and_assigns_server_io
     # Patch ENV to ensure stdio mode
-    allow(ENV).to receive(:[]).with('LSP_PORT').and_return(nil)
-  end
-
-  describe '#initialize' do
-    it 'sets up stdio streams and assigns server.io' do
-      allow_any_instance_of(RubyLanguageServer::IO).to receive(:configure_io) do |io_instance|
-        io_instance.send(:in=, fake_in)
-        io_instance.send(:out=, fake_out)
-        io_instance.instance_variable_set(:@using_socket, false)
+    assert_nil ENV['LSP_PORT']
+    # Patch configure_io to use our fake streams
+    RubyLanguageServer::IO.class_eval do
+      alias_method :orig_configure_io, :configure_io
+      define_method(:configure_io) do |*_args|
+        self.send(:in=, @fake_in)
+        self.send(:out=, @fake_out)
+        @using_socket = false
       end
-      def server.io=(val); @io = val; end
-      thread = Thread.new do
-        begin
-          RubyLanguageServer::IO.new(server, mutex)
-        rescue SystemExit; end
-      end
-      sleep 0.05
-      expect(server.instance_variable_get(:@io)).to be_a(RubyLanguageServer::IO)
-      thread.kill
     end
+    server = Object.new
+    server.define_singleton_method(:io=) { |val| @io = val }
+    server.define_singleton_method(:io) { @io }
+    thread = Thread.new do
+      begin
+        RubyLanguageServer::IO.new(server, @mutex)
+      rescue SystemExit; end
+    end
+    sleep 0.05
+    assert_instance_of RubyLanguageServer::IO, server.io
+    thread.kill
+    RubyLanguageServer::IO.class_eval { alias_method :configure_io, :orig_configure_io }
   end
 
-  describe '#return_response' do
-    it 'writes a JSON-RPC response to the output' do
-      io = RubyLanguageServer::IO.allocate
-      io.send(:out=, fake_out)
-      io.send(:return_response, 1, {foo: 'bar'})
-      expect(fake_out.string).to include('Content-Length:')
-      expect(fake_out.string).to include('jsonrpc')
-      expect(fake_out.string).to include('foo')
-    end
+  def test_return_response_writes_jsonrpc_response
+    io = RubyLanguageServer::IO.allocate
+    io.send(:out=, @fake_out)
+    io.send(:return_response, 1, {foo: 'bar'})
+    str = @fake_out.string
+    assert_includes str, 'Content-Length:'
+    assert_includes str, 'jsonrpc'
+    assert_includes str, 'foo'
   end
 
-  describe '#send_notification' do
-    it 'writes a JSON-RPC notification to the output' do
-      io = RubyLanguageServer::IO.allocate
-      io.send(:out=, fake_out)
-      io.send(:send_notification, 'testMethod', {foo: 'bar'})
-      expect(fake_out.string).to include('Content-Length:')
-      expect(fake_out.string).to include('testMethod')
-      expect(fake_out.string).to include('foo')
-    end
+  def test_send_notification_writes_jsonrpc_notification
+    io = RubyLanguageServer::IO.allocate
+    io.send(:out=, @fake_out)
+    io.send(:send_notification, 'testMethod', {foo: 'bar'})
+    str = @fake_out.string
+    assert_includes str, 'Content-Length:'
+    assert_includes str, 'testMethod'
+    assert_includes str, 'foo'
   end
 
-  describe '#get_length' do
-    it 'returns the correct length from header' do
-      io = RubyLanguageServer::IO.allocate
-      expect(io.send(:get_length, 'Content-Length: 42')).to eq(42)
-    end
-    it 'returns 0 for nil' do
-      io = RubyLanguageServer::IO.allocate
-      expect(io.send(:get_length, nil)).to eq(0)
-    end
+  def test_get_length_returns_correct_length
+    io = RubyLanguageServer::IO.allocate
+    assert_equal 42, io.send(:get_length, 'Content-Length: 42')
+    assert_equal 0, io.send(:get_length, nil)
   end
 
-  describe '#get_initial_request_line' do
-    it 'reads a line from input' do
-      io = RubyLanguageServer::IO.allocate
-      fake_in.string = "Content-Length: 42\n"
-      io.send(:in=, fake_in)
-      expect(io.send(:get_initial_request_line)).to eq("Content-Length: 42\n")
-    end
+  def test_get_initial_request_line_reads_line
+    io = RubyLanguageServer::IO.allocate
+    @fake_in.string = "Content-Length: 42\n"
+    io.send(:in=, @fake_in)
+    assert_equal "Content-Length: 42\n", io.send(:get_initial_request_line)
   end
 
-  describe '#get_content' do
-    it 'reads the specified number of bytes from input' do
-      io = RubyLanguageServer::IO.allocate
-      fake_in.string = 'abcdefg'
-      io.send(:in=, fake_in)
-      expect(io.send(:get_content, 3)).to eq('abc')
-    end
+  def test_get_content_reads_bytes
+    io = RubyLanguageServer::IO.allocate
+    @fake_in.string = 'abcdefg'
+    io.send(:in=, @fake_in)
+    assert_equal 'abc', io.send(:get_content, 3)
   end
 
-  describe '#get_request' do
-    it 'reads a request body of the expected length' do
-      io = RubyLanguageServer::IO.allocate
-      header = "Content-Length: 5\n"
-      body = "abcde\r\n"
-      fake_in = StringIO.new(header + body)
-      io.send(:in=, fake_in)
-      expect(io.send(:get_request)).to include('abcde')
-    end
+  def test_get_request_reads_body
+    io = RubyLanguageServer::IO.allocate
+    header = "Content-Length: 5\n"
+    body = "abcde\r\n"
+    fake_in = StringIO.new(header + body)
+    io.send(:in=, fake_in)
+    assert_includes io.send(:get_request), 'abcde'
   end
 
-  describe '#process_request' do
-    it 'calls the correct server method and returns the response' do
-      # Prepare a fake server with a method matching the request
-      server = Object.new
-      def server.on_test_method(params); { result: params['foo'] }; end
-      # Prepare a request
-      request = { id: 1, method: 'test_method', params: { 'foo' => 'bar' } }.to_json
-      header = "Content-Length: #{request.bytesize}\n"
-      body = request + "\r\n"
-      fake_in = StringIO.new(header + body)
-      io = RubyLanguageServer::IO.allocate
-      io.send(:in=, fake_in)
-      io.instance_variable_set(:@server, server)
-      result = io.send(:process_request)
-      expect(result).to eq([1, { result: 'bar' }])
-    end
+  def test_process_request_calls_server_method_and_returns_response
+    server = Object.new
+    def server.on_test_method(params); { result: params['foo'] }; end
+    request = { id: 1, method: 'test_method', params: { 'foo' => 'bar' } }.to_json
+    header = "Content-Length: #{request.bytesize}\n"
+    body = request + "\r\n"
+    fake_in = StringIO.new(header + body)
+    io = RubyLanguageServer::IO.allocate
+    io.send(:in=, fake_in)
+    io.instance_variable_set(:@server, server)
+    result = io.send(:process_request)
+    assert_equal [1, { result: 'bar' }], result
+  end
 
-    it 'returns nil and logs if server does not respond to method' do
-      server = Object.new
-      request = { id: 1, method: 'no_such_method', params: {} }.to_json
-      header = "Content-Length: #{request.bytesize}\n"
-      body = request + "\r\n"
-      fake_in = StringIO.new(header + body)
-      io = RubyLanguageServer::IO.allocate
-      io.send(:in=, fake_in)
-      io.instance_variable_set(:@server, server)
-      expect(io.send(:process_request)).to be_nil
-    end
+  def test_process_request_returns_nil_if_server_does_not_respond
+    server = Object.new
+    request = { id: 1, method: 'no_such_method', params: {} }.to_json
+    header = "Content-Length: #{request.bytesize}\n"
+    body = request + "\r\n"
+    fake_in = StringIO.new(header + body)
+    io = RubyLanguageServer::IO.allocate
+    io.send(:in=, fake_in)
+    io.instance_variable_set(:@server, server)
+    assert_nil io.send(:process_request)
   end
 end
