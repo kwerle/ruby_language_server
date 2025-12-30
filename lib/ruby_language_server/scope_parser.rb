@@ -37,9 +37,10 @@ module RubyLanguageServer
     def visit_class_node(node)
       name = constant_path_name(node.constant_path)
       line = node.location.start_line
+      end_line = node.location.end_line
       column = node.location.start_column
 
-      scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column)
+      scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column, end_line)
 
       # Handle superclass
       if node.superclass
@@ -55,9 +56,10 @@ module RubyLanguageServer
     def visit_module_node(node)
       name = constant_path_name(node.constant_path)
       line = node.location.start_line
+      end_line = node.location.end_line
       column = node.location.start_column
 
-      push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column)
+      push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line)
       super
       pop_scope
     end
@@ -66,14 +68,13 @@ module RubyLanguageServer
     def visit_def_node(node)
       name = node.name.to_s
       line = node.location.start_line
+      end_line = node.location.end_line
       column = node.location.start_column
 
-      scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, false)
+      scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
 
       # Process parameters
-      if node.parameters
-        visit_parameters(node.parameters)
-      end
+      visit_parameters(node.parameters) if node.parameters
 
       # Process body only if not shallow
       if @shallow
@@ -96,17 +97,16 @@ module RubyLanguageServer
     # Visit block nodes
     def visit_block_node(node)
       line = node.location.start_line
+      end_line = node.location.end_line
       column = node.location.start_column
 
       # Use block-specific name if set by command handler, otherwise use 'block'
       name = @block_names.delete(node.object_id) || 'block'
 
-      push_scope(ScopeData::Scope::TYPE_BLOCK, name, line, column, false)
+      push_scope(ScopeData::Scope::TYPE_BLOCK, name, line, column, end_line, false)
 
       # Process block parameters
-      if node.parameters
-        visit_block_parameters(node.parameters)
-      end
+      visit_block_parameters(node.parameters) if node.parameters
 
       super
       pop_scope
@@ -199,9 +199,7 @@ module RubyLanguageServer
       if node.rest
         case node.rest
         when Prism::SplatNode
-          if node.rest.expression && node.rest.expression.is_a?(Prism::RequiredParameterNode)
-            add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column)
-          end
+          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column) if node.rest.expression && node.rest.expression.is_a?(Prism::RequiredParameterNode)
         end
       end
 
@@ -261,9 +259,7 @@ module RubyLanguageServer
       end
 
       # Rest parameter
-      if params_node.rest && params_node.rest.name
-        add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column)
-      end
+      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column) if params_node.rest && params_node.rest.name
 
       # Keyword parameters
       params_node.keywords.each do |param|
@@ -272,22 +268,16 @@ module RubyLanguageServer
       end
 
       # Keyword rest parameter
-      if params_node.keyword_rest && params_node.keyword_rest.name
-        add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column)
-      end
+      add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column) if params_node.keyword_rest && params_node.keyword_rest.name
 
       # Block parameter
-      if params_node.block && params_node.block.name
-        add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column)
-      end
+      add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column) if params_node.block && params_node.block.name
     end
 
     def visit_block_parameters(params_node)
       return unless params_node
 
-      if params_node.parameters
-        visit_parameters(params_node.parameters)
-      end
+      visit_parameters(params_node.parameters) if params_node.parameters
     end
 
     def constant_path_name(node)
@@ -410,10 +400,10 @@ module RubyLanguageServer
       [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE].include?(type)
     end
 
-    def push_scope(type, name, top_line, column, close_siblings = true)
+    def push_scope(type, name, top_line, column, end_line, close_siblings = true)
       close_sibling_scopes(top_line) if close_siblings
       new_scope = ScopeData::Scope.build(@current_scope, type, name, top_line, column)
-      new_scope.bottom_line = @lines
+      new_scope.bottom_line = end_line
       new_scope.save!
       @current_scope = new_scope
     end

@@ -35,7 +35,7 @@ describe RubyLanguageServer::ScopeParserCommands::RspecCommands do
   describe 'blocks' do
     it 'should have a few' do
       assert_equal('describe Some::Class', @parser.root_scope.children.first.name)
-      assert_equal(["", "describe Some::Class", "block", "block", "describe some thing", "block", "block", "describe inner thing", "block", "it is happy", "block", "it is not sad", "block", "context some context", "block"], @parser.root_scope.self_and_descendants.filter_map(&:name))
+      assert_equal(['', 'describe Some::Class', 'block', 'block', 'describe some thing', 'block', 'block', 'describe inner thing', 'block', 'it is happy', 'block', 'it is not sad', 'block', 'context some context', 'block'], @parser.root_scope.self_and_descendants.filter_map(&:name))
     end
 
     it 'should have a context block' do

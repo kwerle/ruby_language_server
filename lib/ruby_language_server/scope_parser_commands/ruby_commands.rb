@@ -55,11 +55,11 @@ module RubyLanguageServer
       def ruby_command_add_attr(line, column, names, reader, writer)
         names.each do |name|
           if reader
-            push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, name, line, column)
+            push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, name, line, column, line)
             pop_scope
           end
           if writer
-            push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, "#{name}=", line, column)
+            push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, "#{name}=", line, column, line)
             pop_scope
           end
         end
