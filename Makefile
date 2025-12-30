@@ -1,3 +1,4 @@
+ .PHONY: image guard continuous_development console test shell run_in_shell server gem gem_release publish_cross_platform_image
 PROJECT_NAME=ruby_language_server
 LOCAL_LINK=-v $(PWD):/tmp/src -w /tmp/src
 
@@ -6,7 +7,7 @@ image:
 
 guard: image
 	echo > active_record.log
-	docker run -it --rm $(LOCAL_LINK) -e LOG_LEVEL=DEBUG $(PROJECT_NAME) bundle exec guard
+	./bin/run_in_shell bundle exec guard
 	echo > active_record.log
 
 continuous_development: image
@@ -20,27 +21,31 @@ continuous_development: image
 	done
 
 console: image
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)  bin/console
+	./bin/run_in_shell bin/console
 
 test: image
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'bundle exec rake test && bundle exec rubocop'
+	./bin/run_in_shell bundle exec rake test && bundle exec rubocop
+
 
 shell: image
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh
+	./bin/run_in_shell sh
+
+run_in_shell:
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "${SHELL_COMMAND}"
 
 # Just to make sure it works.
 server: image
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)
+	./bin/run_in_shell
 
 gem: image
 	rm -f $(PROJECT_NAME)*.gem
-	docker run $(LOCAL_LINK) $(PROJECT_NAME) gem build $(PROJECT_NAME)
+	./bin/run_in_shell gem build $(PROJECT_NAME)
 
 # Requires rubygems be installed on host
 gem_release: gem
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) gem push $(PROJECT_NAME)*.gem
+	./bin/run_in_shell gem push $(PROJECT_NAME)*.gem
 
 publish_cross_platform_image:
-	(docker buildx ls | grep mybuilder) || docker buildx create --name mybuilder
-	docker buildx use mybuilder
-	docker buildx build --push --platform linux/amd64,linux/arm64/v8 -t kwerle/$(PROJECT_NAME) .
+	(docker buildx ls | grep mybuilder) || ./bin/run_in_shell docker buildx create --name mybuilder
+	./bin/run_in_shell docker buildx use mybuilder
+	./bin/run_in_shell docker buildx build --push --platform linux/amd64,linux/arm64/v8 -t kwerle/$(PROJECT_NAME) .

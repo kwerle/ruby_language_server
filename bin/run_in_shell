@@ -1,0 +1,5 @@
+#!/bin/sh
+# Mostly so AI can run commands in a consistent environment
+SHELL_COMMAND="$*"
+export SHELL_COMMAND
+make run_in_shell
