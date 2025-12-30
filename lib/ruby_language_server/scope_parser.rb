@@ -371,16 +371,11 @@ module RubyLanguageServer
       return if @shallow
       return if scope.nil?
 
-      newvar = scope.variables.where(name:).first_or_create!(
+      scope.variables.where(name:).first_or_create!(
         line:,
         column:,
         code_file: scope.code_file
       )
-      if scope.top_line.blank?
-        scope.top_line = line
-        scope.save!
-      end
-      newvar
     end
 
     def add_ivar(name, line, column)
@@ -401,7 +396,7 @@ module RubyLanguageServer
     end
 
     def push_scope(type, name, top_line, column, end_line, close_siblings = true)
-      close_sibling_scopes(top_line) if close_siblings
+      close_sibling_scopes if close_siblings
       new_scope = ScopeData::Scope.build(@current_scope, type, name, top_line, column)
       new_scope.bottom_line = end_line
       new_scope.save!
@@ -409,9 +404,8 @@ module RubyLanguageServer
     end
 
     # Clean up any empty block scopes when starting a new sibling scope.
-    def close_sibling_scopes(_line)
-      parent_scope = @current_scope
-      parent_scope&.descendants&.each(&:close)
+    def close_sibling_scopes
+      @current_scope&.descendants&.each(&:close)
     end
 
     def pop_scope
