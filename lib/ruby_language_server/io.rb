@@ -111,8 +111,7 @@ module RubyLanguageServer
       end
     end
 
-    def get_request
-      io ||= self.in
+    def get_request # rubocop:disable Naming/AccessorMethodName
       initial_line = get_initial_request_line
       RubyLanguageServer.logger.debug "initial_line: #{initial_line}"
       length = get_length(initial_line)
@@ -130,7 +129,7 @@ module RubyLanguageServer
       content
     end
 
-    def get_initial_request_line
+    def get_initial_request_line # rubocop:disable Naming/AccessorMethodName
       self.in.gets
     end
 

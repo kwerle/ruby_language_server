@@ -14,13 +14,13 @@ class TestRubyLanguageServerIO < Minitest::Test
 
   def test_initialize_sets_up_stdio_streams_and_assigns_server_io
     # Patch ENV to ensure stdio mode
-    assert_nil ENV['LSP_PORT']
+    assert_nil ENV.fetch('LSP_PORT', nil)
     # Patch configure_io to use our fake streams
     RubyLanguageServer::IO.class_eval do
       alias_method :orig_configure_io, :configure_io
       define_method(:configure_io) do |*_args|
-        self.send(:in=, @fake_in)
-        self.send(:out=, @fake_out)
+        send(:in=, @fake_in)
+        send(:out=, @fake_out)
         @using_socket = false
       end
     end
@@ -28,9 +28,9 @@ class TestRubyLanguageServerIO < Minitest::Test
     server.define_singleton_method(:io=) { |val| @io = val }
     server.define_singleton_method(:io) { @io }
     thread = Thread.new do
-      begin
-        RubyLanguageServer::IO.new(server, @mutex)
-      rescue SystemExit; end
+      RubyLanguageServer::IO.new(server, @mutex)
+    rescue SystemExit
+      nil
     end
     sleep 0.05
     assert_instance_of RubyLanguageServer::IO, server.io
@@ -89,10 +89,12 @@ class TestRubyLanguageServerIO < Minitest::Test
 
   def test_process_request_calls_server_method_and_returns_response
     server = Object.new
-    def server.on_test_method(params); { result: params['foo'] }; end
+    def server.on_test_method(params)
+      { result: params['foo'] }
+    end
     request = { id: 1, method: 'test_method', params: { 'foo' => 'bar' } }.to_json
     header = "Content-Length: #{request.bytesize}\n"
-    body = request + "\r\n"
+    body = "#{request}\r\n"
     fake_in = StringIO.new(header + body)
     io = RubyLanguageServer::IO.allocate
     io.send(:in=, fake_in)
@@ -105,7 +107,7 @@ class TestRubyLanguageServerIO < Minitest::Test
     server = Object.new
     request = { id: 1, method: 'no_such_method', params: {} }.to_json
     header = "Content-Length: #{request.bytesize}\n"
-    body = request + "\r\n"
+    body = "#{request}\r\n"
     fake_in = StringIO.new(header + body)
     io = RubyLanguageServer::IO.allocate
     io.send(:in=, fake_in)
