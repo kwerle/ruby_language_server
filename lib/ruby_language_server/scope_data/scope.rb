@@ -24,12 +24,13 @@ module RubyLanguageServer
       # attr_accessor :name            # method
       # attr_accessor :superclass_name # superclass name
 
-      def self.build(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1)
+      def self.build(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1, bottom_line = nil)
         full_name = [parent&.full_name, name].compact.join(JoinHash[type])
         create!(
           parent:,
           top_line:,
           column:,
+          bottom_line:,
           name:,
           path: full_name,
           class_type: type
@@ -77,6 +78,20 @@ module RubyLanguageServer
       # Not a block or root
       def named_scope?
         [TYPE_MODULE, TYPE_CLASS, TYPE_METHOD, TYPE_VARIABLE].include?(class_type)
+      end
+
+      # Get parameters as an array of hashes
+      def parsed_parameters
+        return [] unless parameters.present?
+
+        JSON.parse(parameters)
+      rescue JSON::ParserError
+        []
+      end
+
+      # Set parameters from an array
+      def set_parameters(params_array)
+        self.parameters = params_array.to_json if params_array.present?
       end
 
       # Called from ScopeParser to cleanup empty blocks.

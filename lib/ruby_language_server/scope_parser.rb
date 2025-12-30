@@ -73,7 +73,14 @@ module RubyLanguageServer
 
       scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
 
-      # Process parameters
+      # Extract and store parameters
+      if node.parameters
+        params_data = extract_parameters_data(node.parameters)
+        scope.set_parameters(params_data) if params_data.any?
+        scope.save!
+      end
+
+      # Process parameters (adds them as variables in scope)
       visit_parameters(node.parameters) if node.parameters
 
       # Process body only if not shallow
@@ -88,7 +95,7 @@ module RubyLanguageServer
     end
 
     # Visit a singleton class (class << self)
-    def visit_singleton_class_node(node) # rubocop:disable Lint/UselessMethodDefinition:
+    def visit_singleton_class_node(node) # rubocop:disable Lint/UselessMethodDefinition
       # For class << self, we visit the body but don't create a new scope
       # The methods defined inside will be class methods of the current scope
       super
@@ -239,6 +246,45 @@ module RubyLanguageServer
 
     private
 
+    def extract_parameters_data(params_node)
+      return [] unless params_node
+
+      params = []
+
+      # Required parameters
+      params_node.requireds.each do |param|
+        case param
+        when Prism::RequiredParameterNode
+          params << { name: param.name.to_s, type: 'required' }
+        when Prism::MultiTargetNode
+          # Handle destructuring - simplified as single param
+          params << { name: 'args', type: 'required' }
+        end
+      end
+
+      # Optional parameters
+      params_node.optionals.each do |param|
+        params << { name: param.name.to_s, type: 'optional' }
+      end
+
+      # Rest parameter
+      params << { name: "*#{params_node.rest.name}", type: 'rest' } if params_node.rest&.name
+
+      # Keyword parameters
+      params_node.keywords.each do |param|
+        name = param.name.to_s
+        params << { name: "#{name}:", type: 'keyword' }
+      end
+
+      # Keyword rest parameter
+      params << { name: "**#{params_node.keyword_rest.name}", type: 'keyword_rest' } if params_node.keyword_rest&.name
+
+      # Block parameter
+      params << { name: "&#{params_node.block.name}", type: 'block' } if params_node.block&.name
+
+      params
+    end
+
     def visit_parameters(params_node)
       return unless params_node
 
@@ -268,10 +314,10 @@ module RubyLanguageServer
       end
 
       # Keyword rest parameter
-      add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column) if params_node.keyword_rest && params_node.keyword_rest.name
+      add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column) if params_node.keyword_rest&.name
 
       # Block parameter
-      add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column) if params_node.block && params_node.block.name
+      add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column) if params_node.block&.name
     end
 
     def visit_block_parameters(params_node)
@@ -397,9 +443,7 @@ module RubyLanguageServer
 
     def push_scope(type, name, top_line, column, end_line, close_siblings = true)
       close_sibling_scopes if close_siblings
-      new_scope = ScopeData::Scope.build(@current_scope, type, name, top_line, column)
-      new_scope.bottom_line = end_line
-      new_scope.save!
+      new_scope = ScopeData::Scope.build(@current_scope, type, name, top_line, column, end_line)
       @current_scope = new_scope
     end
 

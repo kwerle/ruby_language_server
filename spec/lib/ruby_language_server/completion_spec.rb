@@ -88,4 +88,75 @@ describe RubyLanguageServer::Completion do
       assert_equal([], completions.map(&:first))
     end
   end
+
+  describe 'method parameters' do
+    before do
+      @code_with_params = <<-SOURCE
+      class Foo
+        def simple_method(arg1, arg2)
+        end
+
+        def method_with_keyword(name:, age: 18)
+        end
+
+        def method_mixed(required, optional = nil, *rest, keyword:, **kwargs, &block)
+        end
+      end
+      SOURCE
+      @parser = RubyLanguageServer::ScopeParser.new(@code_with_params)
+    end
+
+    it 'should capture method parameters' do
+      simple_method = @parser.root_scope.self_and_descendants.find_by_path('Foo#simple_method')
+      params = simple_method.parsed_parameters
+      assert_equal(2, params.length)
+      assert_equal('arg1', params[0]['name'])
+      assert_equal('required', params[0]['type'])
+      assert_equal('arg2', params[1]['name'])
+      assert_equal('required', params[1]['type'])
+    end
+
+    it 'should capture keyword parameters' do
+      keyword_method = @parser.root_scope.self_and_descendants.find_by_path('Foo#method_with_keyword')
+      params = keyword_method.parsed_parameters
+      assert_equal(2, params.length)
+      assert_equal('name:', params[0]['name'])
+      assert_equal('keyword', params[0]['type'])
+      assert_equal('age:', params[1]['name'])
+      assert_equal('keyword', params[1]['type'])
+    end
+
+    it 'should generate snippet for method with parameters' do
+      snippet = RubyLanguageServer::Completion.send(:generate_method_snippet, 'simple_method', [
+                                                      { 'name' => 'arg1', 'type' => 'required' },
+                                                      { 'name' => 'arg2', 'type' => 'required' }
+                                                    ])
+      assert_equal('simple_method(${1:arg1}, ${2:arg2})', snippet)
+    end
+
+    it 'should generate snippet for method with keyword parameters' do
+      snippet = RubyLanguageServer::Completion.send(:generate_method_snippet, 'method_with_keyword', [
+                                                      { 'name' => 'name:', 'type' => 'keyword' },
+                                                      { 'name' => 'age:', 'type' => 'keyword' }
+                                                    ])
+      assert_equal('method_with_keyword(name: ${1:value}, age: ${2:value})', snippet)
+    end
+
+    it 'should store parameters and generate snippets for methods' do
+      all_scopes = @parser.root_scope.self_and_descendants
+      simple_method_scope = all_scopes.find_by_path('Foo#simple_method')
+
+      # Test 1: Ensure method has parameters stored
+      assert simple_method_scope, 'simple_method scope should exist'
+      params = simple_method_scope.parsed_parameters
+      assert params.any?, 'simple_method should have parameters'
+      assert_equal(2, params.length)
+      assert_equal('arg1', params[0]['name'])
+      assert_equal('arg2', params[1]['name'])
+
+      # Test 2: Verify snippet generation works with those parameters
+      snippet = RubyLanguageServer::Completion.send(:generate_method_snippet, 'simple_method', params)
+      assert_equal('simple_method(${1:arg1}, ${2:arg2})', snippet)
+    end
+  end
 end
