@@ -22,6 +22,7 @@ module RubyLanguageServer
       @shallow = shallow
       @root_scope = nil
       @current_scope = nil
+      @block_names = {}
     end
 
     def root_scope
@@ -97,7 +98,10 @@ module RubyLanguageServer
       line = node.location.start_line
       column = node.location.start_column
 
-      push_scope(ScopeData::Scope::TYPE_BLOCK, 'block', line, column, false)
+      # Use block-specific name if set by command handler, otherwise use 'block'
+      name = @block_names.delete(node.object_id) || 'block'
+
+      push_scope(ScopeData::Scope::TYPE_BLOCK, name, line, column, false)
 
       # Process block parameters
       if node.parameters
@@ -220,10 +224,19 @@ module RubyLanguageServer
       # Handle special commands like attr_accessor, private, etc.
       # Only handle if there's no receiver (i.e., it's a method call in current scope)
       if node.receiver.nil?
-        handle_command(name, line, node)
-      end
+        block_node = node.block if node.block.is_a?(Prism::BlockNode)
+        handle_command(name, line, node, block_node)
 
-      super
+        # If the command pushed a scope for a block, pop it after visiting children
+        should_pop = @command_pushed_scope
+        @command_pushed_scope = false
+
+        super
+
+        pop_scope if should_pop
+      else
+        super
+      end
     end
 
     private
@@ -282,30 +295,42 @@ module RubyLanguageServer
       when Prism::ConstantReadNode
         node.name.to_s
       when Prism::ConstantPathNode
+        # For Some::Class, we need to recursively build the path
         parts = []
-        current = node
-        while current.is_a?(Prism::ConstantPathNode)
-          if current.name.is_a?(Prism::ConstantReadNode)
-            parts.unshift(current.name.name.to_s)
+
+        # Add the rightmost name (e.g., "Class" in Some::Class)
+        parts << node.name.to_s
+
+        # Traverse the parent chain
+        current = node.parent
+        while current
+          case current
+          when Prism::ConstantReadNode
+            parts.unshift(current.name.to_s)
+            current = nil
+          when Prism::ConstantPathNode
+            parts.unshift(current.name.to_s)
+            current = current.parent
+          else
+            current = nil
           end
-          current = current.parent
         end
-        if current.is_a?(Prism::ConstantReadNode)
-          parts.unshift(current.name.to_s)
-        end
+
         parts.join('::')
       else
         node.to_s if node.respond_to?(:to_s)
       end
     end
 
-    def handle_command(name, line, node)
+    def handle_command(name, line, node, block_node = nil)
       method_name = "on_#{name}_command"
       if respond_to?(method_name)
         # Extract arguments from Prism node and format for command handler
         args = extract_command_args(node)
         rest = extract_command_rest(node)
+        @current_block_node = block_node
         send(method_name, line, args, rest)
+        @current_block_node = nil
       else
         RubyLanguageServer.logger.debug("We don't have a #{method_name}")
       end
@@ -320,6 +345,7 @@ module RubyLanguageServer
     # Extract the rest/body arguments from a call node
     # For attr methods, this needs to extract symbol arguments
     # For rake tasks, this needs to extract keyword hash keys
+    # For rspec commands, this needs to extract constant paths
     def extract_command_rest(node)
       return [] unless node.arguments
 
@@ -331,6 +357,12 @@ module RubyLanguageServer
           args << arg.value.to_s if arg.value
         when Prism::StringNode
           args << arg.unescaped
+        when Prism::ConstantReadNode
+          # Handle constant arguments like: describe SomeClass
+          args << arg.name.to_s
+        when Prism::ConstantPathNode
+          # Handle constant path arguments like: describe Some::Class
+          args << constant_path_name(arg)
         when Prism::KeywordHashNode
           # Handle keyword arguments like: task something: [] do
           # Extract the keys which are the task names

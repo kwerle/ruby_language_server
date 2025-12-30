@@ -20,8 +20,12 @@ module RubyLanguageServer
       def rspec_block_command(prefix, line, args, rest)
         name = "#{prefix} "
         name += rest.flatten.select { |part| part.instance_of?(String) }.join('::')
+
+        # Push the named scope (e.g., "describe Something")
+        # The block node will create a child "block" scope automatically
+        # Signal that visit_call_node should pop this scope after visiting children
         push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, false)
-        # We push a scope and don't pop it because we're called inside on_method_add_block
+        @command_pushed_scope = true
       end
     end
   end
