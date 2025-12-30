@@ -15,6 +15,18 @@ module RubyLanguageServer
         rspec_block_command('it', line, args, rest)
       end
 
+      def on_let_command(line, args, rest)
+        # Extract the variable name from the symbol (e.g., :foo -> foo)
+        var_name = rest.flatten.first
+        return unless var_name.is_a?(String)
+
+        # Get the column from the args
+        (_, _, (_, column)) = args
+        
+        # Add the variable to the current scope
+        add_variable(var_name, line, column)
+      end
+
       private
 
       def rspec_block_command(prefix, line, _args, rest)

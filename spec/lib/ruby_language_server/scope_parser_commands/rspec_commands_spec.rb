@@ -46,4 +46,28 @@ describe RubyLanguageServer::ScopeParserCommands::RspecCommands do
       assert_equal('context some context', context_block.name)
     end
   end
+
+  describe 'let variables' do
+    it 'should capture let variables in the appropriate scope' do
+      top_describe = @parser.root_scope.children.first
+      block = top_describe.children.first
+      
+      # Check that 'foo' variable is in the top describe block
+      foo_variable = block.variables.find { |v| v.name == 'foo' }
+      refute_nil(foo_variable, 'Expected to find foo variable in top describe block')
+      assert_equal(2, foo_variable.line)
+    end
+
+    it 'should capture let variables in nested scopes' do
+      top_describe = @parser.root_scope.children.first
+      block = top_describe.children.first
+      some_thing_describe = block.children.find { |c| c.name == 'describe some thing' }
+      some_thing_block = some_thing_describe.children.first
+      
+      # Check that 'common' variable is in the nested describe block
+      common_variable = some_thing_block.variables.find { |v| v.name == 'common' }
+      refute_nil(common_variable, 'Expected to find common variable in nested describe block')
+      assert_equal(5, common_variable.line)
+    end
+  end
 end
