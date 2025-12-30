@@ -1,240 +1,294 @@
 # frozen_string_literal: true
 
-require 'ripper'
+require 'prism'
 require_relative 'scope_parser_commands/rake_commands'
 require_relative 'scope_parser_commands/rspec_commands'
 require_relative 'scope_parser_commands/ruby_commands'
 require_relative 'scope_parser_commands/rails_commands'
 
 module RubyLanguageServer
-  # This class is responsible for processing the generated sexp from the ScopeParser below.
+  # This class is responsible for processing the AST from Prism.
   # It builds scopes that amount to heirarchical arrays with information about what
   # classes, methods, variables, etc - are in each scope.
-  class SEXPProcessor
+  class PrismProcessor < Prism::Visitor
     include ScopeParserCommands::RakeCommands
     include ScopeParserCommands::RspecCommands
     include ScopeParserCommands::RailsCommands
     include ScopeParserCommands::RubyCommands
-    attr_reader :sexp, :lines, :current_scope
+    attr_reader :current_scope, :lines
 
-    def initialize(sexp, lines = 1, shallow = false)
-      @sexp = sexp
+    def initialize(lines = 1, shallow = false)
       @lines = lines
       @shallow = shallow
       @root_scope = nil
+      @current_scope = nil
     end
 
     def root_scope
-      return @root_scope unless @root_scope.nil?
-
-      @root_scope = ScopeData::Scope.where(path: nil, class_type: ScopeData::Scope::TYPE_ROOT).first_or_create!
-      @current_scope = @root_scope
-      process(@sexp)
-      @root_scope
-    end
-
-    def process(sexp)
-      return if sexp.nil?
-
-      root, args, *rest = sexp
-      # RubyLanguageServer.logger.error("Doing #{[root, args, rest]}")
-      case root
-      when Array
-        sexp.each { |child| process(child) }
-      when Symbol
-        root = root.to_s.gsub(/^@+/, '')
-        method_name = "on_#{root}"
-        if respond_to? method_name
-          send(method_name, args, rest)
-        else
-          RubyLanguageServer.logger.debug("We don't have a #{method_name} with #{args}")
-          process(args)
-        end
-      when String
-        # We really don't do anything with it!
-        RubyLanguageServer.logger.debug("We don't do Strings like #{root} with #{args}")
-      when NilClass, FalseClass
-        process(args)
-      else
-        RubyLanguageServer.logger.warn("We don't respond to the likes of #{root} of class #{root.class}")
+      @root_scope ||= begin
+        scope = ScopeData::Scope.where(path: nil, class_type: ScopeData::Scope::TYPE_ROOT).first_or_create!
+        @current_scope = scope
+        scope
       end
     end
 
-    def on_sclass(_args, rest)
-      process(rest)
-    end
-
-    # foo = bar -- bar is in the vcall.  Pretty sure we don't want to remember this.
-    def on_vcall(_args, rest)
-      # Seriously - discard args.  Maybe process rest?
-      process(rest)
-    end
-
-    def on_program(args, _rest)
-      process(args)
-    end
-
-    def on_var_field(args, rest)
-      (_, name, (line, column)) = args
-      return if name.nil?
-
-      if name.start_with?('@')
-        add_ivar(name, line, column)
-      else
-        add_variable(name, line, column)
+    # Visit a class node
+    def visit_class_node(node)
+      name = constant_path_name(node.constant_path)
+      line = node.location.start_line
+      column = node.location.start_column
+      
+      scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column)
+      
+      # Handle superclass
+      if node.superclass
+        superclass_name = constant_path_name(node.superclass)
+        scope.set_superclass_name(superclass_name) if superclass_name
       end
-      process(rest)
-    end
-
-    def on_bodystmt(args, _rest)
-      process(args)
-    end
-
-    def on_module(args, rest)
-      scope = add_scope(args.last, rest, ScopeData::Scope::TYPE_MODULE)
-      assign_subclass(scope, rest)
-    end
-
-    def on_class(args, rest)
-      scope = add_scope(args.last, rest, ScopeData::Scope::TYPE_CLASS)
-      assign_subclass(scope, rest)
-    end
-
-    def assign_subclass(scope, sexp)
-      return unless !sexp[0].nil? && sexp[0][0] == :var_ref
-
-      (_, (_, name)) = sexp[0]
-      scope.set_superclass_name(name)
-    end
-
-    def on_method_add_block(args, rest)
-      scope = @current_scope
-      process(args)
-      process(rest)
-      # add_scope(args, rest, ScopeData::Scope::TYPE_BLOCK)
-      unless @current_scope == scope
-        scope.bottom_line = [scope&.bottom_line, @current_scope.bottom_line].compact.max
-        scope.save!
-        pop_scope
-      end
-    end
-
-    def on_do_block(args, rest)
-      ((_, ((_, (_, (_, _name, (line, column))))))) = args
-      push_scope(ScopeData::Scope::TYPE_BLOCK, 'block', line, column, false)
-      process(args)
-      process(rest)
+      
+      super
       pop_scope
     end
 
-    def on_block_var(args, rest)
-      process(args)
-      process(rest)
+    # Visit a module node
+    def visit_module_node(node)
+      name = constant_path_name(node.constant_path)
+      line = node.location.start_line
+      column = node.location.start_column
+      
+      push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column)
+      super
+      pop_scope
     end
 
-    # Used only to describe subclasses? -- nope
-    def on_var_ref(_args, _rest)
-      # [:@const, "Bar", [13, 20]]
-      # (_, name) = args
-      # @current_scope.set_superclass_name(name)
-    end
-
-    def on_assign(args, rest)
-      process(args)
-      process(rest)
-    end
-
-    def on_def(args, rest)
-      add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
-    end
-
-    # def self.something(par)...
-    # [:var_ref, [:@kw, "self", [28, 14]]], [[:@period, ".", [28, 18]], [:@ident, "something", [28, 19]], [:paren, [:params, [[:@ident, "par", [28, 23]]], nil, nil, nil, nil, nil, nil]], [:bodystmt, [[:assign, [:var_field, [:@ident, "pax", [29, 12]]], [:var_ref, [:@ident, "par", [29, 18]]]]], nil, nil, nil]]
-    def on_defs(args, rest)
-      on_def(rest[1], rest[2..]) if args[1][1] == 'self' && rest[0][1] == '.'
-    end
-
-    # Multiple left hand side
-    # (foo, bar) = somethingg...
-    def on_mlhs(args, rest)
-      process(args)
-      process(rest)
-    end
-
-    # ident is something that gets processed at parameters to a function or block
-    def on_ident(name, ((line, column)))
-      add_variable(name, line, column)
-    end
-
-    def on_params(args, rest)
-      process(args)
-      process(rest)
-    end
-
-    # The on_command function idea is stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb
-    def on_command(args, rest)
-      # [:@ident, "public", [6, 8]]
-      (_, name, (line, _column)) = args
-
-      method_name = "on_#{name}_command"
-      if respond_to? method_name
-        return send(method_name, line, args, rest)
+    # Visit a def node
+    def visit_def_node(node)
+      name = node.name.to_s
+      line = node.location.start_line
+      column = node.location.start_column
+      
+      scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, false)
+      
+      # Process parameters
+      if node.parameters
+        visit_parameters(node.parameters)
+      end
+      
+      # Process body only if not shallow
+      if @shallow
+        # Skip body processing
       else
-        RubyLanguageServer.logger.debug("We don't have a #{method_name} with #{args}")
+        super
       end
+      
+      pop_scope
+      scope
+    end
 
-      case name
-      when 'public', 'private', 'protected'
-        # FIXME: access control...
-        process(rest)
-      when 'delegate'
-        # on_delegate(*args[0][1..-1])
-      when 'def_delegator', 'def_instance_delegator'
-        # on_def_delegator(*args[0][1..-1])
-      when 'def_delegators', 'def_instance_delegators'
-        # on_def_delegators(*args[0][1..-1])
+    # Visit a singleton class (class << self)
+    def visit_singleton_class_node(node)
+      # For class << self, we visit the body but don't create a new scope
+      # The methods defined inside will be class methods of the current scope
+      super
+    end
+
+    # Visit block nodes
+    def visit_block_node(node)
+      line = node.location.start_line
+      column = node.location.start_column
+      
+      push_scope(ScopeData::Scope::TYPE_BLOCK, 'block', line, column, false)
+      
+      # Process block parameters
+      if node.parameters
+        visit_block_parameters(node.parameters)
+      end
+      
+      super
+      pop_scope
+    end
+
+    # Visit local variable write nodes
+    def visit_local_variable_write_node(node)
+      name = node.name.to_s
+      line = node.location.start_line
+      column = node.location.start_column
+      
+      add_variable(name, line, column)
+      super
+    end
+
+    # Visit instance variable write nodes
+    def visit_instance_variable_write_node(node)
+      name = node.name.to_s
+      line = node.location.start_line
+      column = node.location.start_column
+      
+      add_ivar(name, line, column)
+      super
+    end
+
+    # Visit multi-write nodes (parallel assignment)
+    def visit_multi_write_node(node)
+      node.lefts.each do |target|
+        case target
+        when Prism::LocalVariableTargetNode
+          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+        when Prism::InstanceVariableTargetNode
+          add_ivar(target.name.to_s, target.location.start_line, target.location.start_column)
+        when Prism::MultiTargetNode
+          # Handle nested destructuring like (a, (b, c)) = ...
+          visit_multi_target(target)
+        end
+      end
+      
+      # Handle rest parameter in multi-assignment
+      if node.rest && node.rest.is_a?(Prism::SplatNode) && node.rest.expression
+        case node.rest.expression
+        when Prism::LocalVariableTargetNode
+          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column)
+        end
+      end
+      
+      super
+    end
+    
+    # Helper to handle nested multi-target nodes
+    def visit_multi_target(node)
+      node.lefts.each do |target|
+        case target
+        when Prism::LocalVariableTargetNode
+          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+        when Prism::InstanceVariableTargetNode
+          add_ivar(target.name.to_s, target.location.start_line, target.location.start_column)
+        when Prism::MultiTargetNode
+          visit_multi_target(target)
+        end
       end
     end
 
-    # The on_method_add_arg function is downright stolen from RipperTags https://github.com/tmm1/ripper-tags/blob/master/lib/ripper-tags/parser.rb
-    def on_method_add_arg(call, args)
-      call_name = call && call[0]
-      first_arg = args && args[0] == :args && args[1]
-
-      if call_name == :call && first_arg
-        if args.length == 2
-          # augment call if a single argument was used
-          call = call.dup
-          call[3] = args[1]
-        end
-        call
-      elsif call_name == :fcall && first_arg
-        name, line = call[1]
-        case name
-        when 'alias_method' # this is an fcall
-          [:alias, args[1][0], args[2][0], line] if args[1] && args[2]
-        when 'define_method' # this is an fcall
-          [:def, args[1][0], line]
-        when 'public_class_method', 'private_class_method', 'private', 'public', 'protected'
-          access = name.sub('_class_method', '')
-
-          if args[1][1] == 'self'
-            klass = 'self'
-            method_name = args[1][2]
-          else
-            klass = nil
-            method_name = args[1][1]
-          end
-
-          [:def_with_access, klass, method_name, access, line]
-        end
+    # Visit call nodes (method calls)
+    def visit_call_node(node)
+      name = node.name.to_s
+      line = node.location.start_line
+      
+      # Handle special commands like attr_accessor, private, etc.
+      # Only handle if there's no receiver (i.e., it's a method call in current scope)
+      if node.receiver.nil?
+        handle_command(name, line, node)
       end
+      
+      super
     end
 
     private
 
+    def visit_parameters(params_node)
+      return unless params_node
+      
+      # Required parameters
+      params_node.requireds.each do |param|
+        if param.is_a?(Prism::RequiredParameterNode)
+          add_variable(param.name.to_s, param.location.start_line, param.location.start_column)
+        end
+      end
+      
+      # Optional parameters
+      params_node.optionals.each do |param|
+        add_variable(param.name.to_s, param.location.start_line, param.location.start_column)
+      end
+      
+      # Rest parameter
+      if params_node.rest && params_node.rest.name
+        add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column)
+      end
+      
+      # Keyword parameters
+      params_node.keywords.each do |param|
+        name = param.name.to_s
+        add_variable(name, param.location.start_line, param.location.start_column)
+      end
+      
+      # Keyword rest parameter
+      if params_node.keyword_rest && params_node.keyword_rest.name
+        add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column)
+      end
+      
+      # Block parameter
+      if params_node.block && params_node.block.name
+        add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column)
+      end
+    end
+
+    def visit_block_parameters(params_node)
+      return unless params_node
+      
+      if params_node.parameters
+        visit_parameters(params_node.parameters)
+      end
+    end
+
+    def constant_path_name(node)
+      case node
+      when Prism::ConstantReadNode
+        node.name.to_s
+      when Prism::ConstantPathNode
+        parts = []
+        current = node
+        while current.is_a?(Prism::ConstantPathNode)
+          if current.name.is_a?(Prism::ConstantReadNode)
+            parts.unshift(current.name.name.to_s)
+          end
+          current = current.parent
+        end
+        if current.is_a?(Prism::ConstantReadNode)
+          parts.unshift(current.name.to_s)
+        end
+        parts.join('::')
+      else
+        node.to_s if node.respond_to?(:to_s)
+      end
+    end
+
+    def handle_command(name, line, node)
+      method_name = "on_#{name}_command"
+      if respond_to?(method_name)
+        # Extract arguments from Prism node and format for command handler
+        args = extract_command_args(node)
+        rest = extract_command_rest(node)
+        send(method_name, line, args, rest)
+      else
+        RubyLanguageServer.logger.debug("We don't have a #{method_name}")
+      end
+    end
+
+    # Extract arguments in format expected by command handlers
+    # Returns: [:@ident, "method_name", [line, column]]
+    def extract_command_args(node)
+      [:@ident, node.name.to_s, [node.location.start_line, node.location.start_column]]
+    end
+
+    # Extract the rest/body arguments from a call node
+    # For attr methods, this needs to extract symbol arguments
+    def extract_command_rest(node)
+      return [] unless node.arguments
+
+      args = []
+      node.arguments.arguments.each do |arg|
+        case arg
+        when Prism::SymbolNode
+          # Extract symbol name
+          args << arg.value.to_s if arg.value
+        when Prism::StringNode
+          args << arg.unescaped
+        end
+      end
+      args
+    end
+
     def add_variable(name, line, column, scope = @current_scope)
       return if @shallow
+      return if scope.nil?
 
       newvar = scope.variables.where(name:).first_or_create!(
         line:,
@@ -250,6 +304,8 @@ module RubyLanguageServer
 
     def add_ivar(name, line, column)
       scope = @current_scope
+      return if scope.nil?
+      
       unless scope == root_scope
         ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
         while !ivar_scope_types.include?(scope.class_type) && !scope.parent.nil?
@@ -257,18 +313,6 @@ module RubyLanguageServer
         end
       end
       add_variable(name, line, column, scope)
-    end
-
-    def add_scope(args, rest, type)
-      (_, name, (line, column)) = args
-      scope = push_scope(type, name, line, column)
-      if type == ScopeData::Scope::TYPE_METHOD && @shallow
-        process([])
-      else
-        process(rest)
-      end
-      pop_scope
-      scope
     end
 
     def type_is_class_or_module(type)
@@ -295,21 +339,26 @@ module RubyLanguageServer
     end
   end
 
-  # This class builds on Ripper's sexp processor to add ruby and rails magic.
+  # This class builds on Prism's AST processor to add ruby and rails magic.
   # Specifically it knows about things like alias, attr_*, has_one/many, etc.
   # It adds the appropriate definitions for those magic words.
-  class ScopeParser < Ripper
+  class ScopeParser
     attr_reader :root_scope
 
     def initialize(text, shallow = false)
       text ||= '' # empty is the same as nil - but it doesn't crash
       begin
-        sexp = self.class.sexp(text)
-      rescue TypeError => e
-        RubyLanguageServer.logger.error("Exception in sexp: #{e} for text: #{text}")
+        result = Prism.parse(text)
+        processor = PrismProcessor.new(text.split("\n").length, shallow)
+        processor.root_scope # Initialize root scope
+        result.value.accept(processor)
+        @root_scope = processor.root_scope
+      rescue StandardError => e
+        RubyLanguageServer.logger.error("Exception in prism parsing: #{e} for text: #{text}")
+        # Create an empty root scope on error
+        processor = PrismProcessor.new(text.split("\n").length, shallow)
+        @root_scope = processor.root_scope
       end
-      processor = SEXPProcessor.new(sexp, text.split("\n").length, shallow)
-      @root_scope = processor.root_scope
     end
   end
 end
