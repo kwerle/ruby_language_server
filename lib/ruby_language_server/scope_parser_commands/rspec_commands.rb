@@ -21,8 +21,6 @@ module RubyLanguageServer
         name = "#{prefix} "
         name += rest.flatten.select { |part| part.instance_of?(String) }.join('::')
         push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, false)
-        process(args)
-        process(rest)
         # We push a scope and don't pop it because we're called inside on_method_add_block
       end
     end

@@ -37,15 +37,15 @@ module RubyLanguageServer
       name = constant_path_name(node.constant_path)
       line = node.location.start_line
       column = node.location.start_column
-      
+
       scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column)
-      
+
       # Handle superclass
       if node.superclass
         superclass_name = constant_path_name(node.superclass)
         scope.set_superclass_name(superclass_name) if superclass_name
       end
-      
+
       super
       pop_scope
     end
@@ -55,7 +55,7 @@ module RubyLanguageServer
       name = constant_path_name(node.constant_path)
       line = node.location.start_line
       column = node.location.start_column
-      
+
       push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column)
       super
       pop_scope
@@ -66,21 +66,21 @@ module RubyLanguageServer
       name = node.name.to_s
       line = node.location.start_line
       column = node.location.start_column
-      
+
       scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, false)
-      
+
       # Process parameters
       if node.parameters
         visit_parameters(node.parameters)
       end
-      
+
       # Process body only if not shallow
       if @shallow
         # Skip body processing
       else
         super
       end
-      
+
       pop_scope
       scope
     end
@@ -96,14 +96,14 @@ module RubyLanguageServer
     def visit_block_node(node)
       line = node.location.start_line
       column = node.location.start_column
-      
+
       push_scope(ScopeData::Scope::TYPE_BLOCK, 'block', line, column, false)
-      
+
       # Process block parameters
       if node.parameters
         visit_block_parameters(node.parameters)
       end
-      
+
       super
       pop_scope
     end
@@ -113,7 +113,7 @@ module RubyLanguageServer
       name = node.name.to_s
       line = node.location.start_line
       column = node.location.start_column
-      
+
       add_variable(name, line, column)
       super
     end
@@ -123,7 +123,7 @@ module RubyLanguageServer
       name = node.name.to_s
       line = node.location.start_line
       column = node.location.start_column
-      
+
       add_ivar(name, line, column)
       super
     end
@@ -141,7 +141,7 @@ module RubyLanguageServer
           visit_multi_target(target)
         end
       end
-      
+
       # Handle rest parameter in multi-assignment
       if node.rest && node.rest.is_a?(Prism::SplatNode) && node.rest.expression
         case node.rest.expression
@@ -149,11 +149,11 @@ module RubyLanguageServer
           add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column)
         end
       end
-      
+
       super
     end
-    
-    # Helper to handle nested multi-target nodes
+
+    # Helper to handle nested multi-target nodes (for assignments)
     def visit_multi_target(node)
       node.lefts.each do |target|
         case target
@@ -167,17 +167,51 @@ module RubyLanguageServer
       end
     end
 
+    # Helper to extract variables from multi-target nodes (for parameters)
+    # block_method { |(a, b), c| ... } # we need to extract a and b in addition to c
+    def extract_multi_target_variables(node)
+      node.lefts.each do |target|
+        case target
+        when Prism::RequiredParameterNode
+          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+        when Prism::MultiTargetNode
+          # Recursively handle nested destructuring
+          extract_multi_target_variables(target)
+        end
+      end
+
+      # Handle rest in multi-target (though rare in practice)
+      if node.rest
+        case node.rest
+        when Prism::SplatNode
+          if node.rest.expression && node.rest.expression.is_a?(Prism::RequiredParameterNode)
+            add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column)
+          end
+        end
+      end
+
+      # Handle rights (elements after rest)
+      node.rights.each do |target|
+        case target
+        when Prism::RequiredParameterNode
+          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+        when Prism::MultiTargetNode
+          extract_multi_target_variables(target)
+        end
+      end
+    end
+
     # Visit call nodes (method calls)
     def visit_call_node(node)
       name = node.name.to_s
       line = node.location.start_line
-      
+
       # Handle special commands like attr_accessor, private, etc.
       # Only handle if there's no receiver (i.e., it's a method call in current scope)
       if node.receiver.nil?
         handle_command(name, line, node)
       end
-      
+
       super
     end
 
@@ -185,35 +219,39 @@ module RubyLanguageServer
 
     def visit_parameters(params_node)
       return unless params_node
-      
+
       # Required parameters
       params_node.requireds.each do |param|
-        if param.is_a?(Prism::RequiredParameterNode)
+        case param
+        when Prism::RequiredParameterNode
           add_variable(param.name.to_s, param.location.start_line, param.location.start_column)
+        when Prism::MultiTargetNode
+          # Handle destructuring in parameters like |(a, b), c|
+          extract_multi_target_variables(param)
         end
       end
-      
+
       # Optional parameters
       params_node.optionals.each do |param|
         add_variable(param.name.to_s, param.location.start_line, param.location.start_column)
       end
-      
+
       # Rest parameter
       if params_node.rest && params_node.rest.name
         add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column)
       end
-      
+
       # Keyword parameters
       params_node.keywords.each do |param|
         name = param.name.to_s
         add_variable(name, param.location.start_line, param.location.start_column)
       end
-      
+
       # Keyword rest parameter
       if params_node.keyword_rest && params_node.keyword_rest.name
         add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column)
       end
-      
+
       # Block parameter
       if params_node.block && params_node.block.name
         add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column)
@@ -222,7 +260,7 @@ module RubyLanguageServer
 
     def visit_block_parameters(params_node)
       return unless params_node
-      
+
       if params_node.parameters
         visit_parameters(params_node.parameters)
       end
@@ -305,7 +343,7 @@ module RubyLanguageServer
     def add_ivar(name, line, column)
       scope = @current_scope
       return if scope.nil?
-      
+
       unless scope == root_scope
         ivar_scope_types = [ScopeData::Base::TYPE_CLASS, ScopeData::Base::TYPE_MODULE]
         while !ivar_scope_types.include?(scope.class_type) && !scope.parent.nil?

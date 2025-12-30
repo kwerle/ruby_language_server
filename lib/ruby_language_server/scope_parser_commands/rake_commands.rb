@@ -10,8 +10,6 @@ module RubyLanguageServer
         name = rest.flatten.detect { |o| o.instance_of?(String) }
         # add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
         push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, false)
-        process(args)
-        process(rest)
         # We push a scope and don't pop it because we're called inside on_method_add_block
       end
 
@@ -22,8 +20,6 @@ module RubyLanguageServer
         name = rest.flatten.detect { |o| o.instance_of?(String) }
         # add_scope(args, rest, ScopeData::Scope::TYPE_METHOD)
         push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, false)
-        process(args)
-        process(rest)
         # We push a scope and don't pop it because we're called inside on_method_add_block
       end
     end
