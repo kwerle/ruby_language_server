@@ -17,10 +17,11 @@ module RubyLanguageServer
 
       def on_let_command(line, args, rest)
         # Extract the variable name from the symbol (e.g., :foo -> foo)
+        # The rest array contains the extracted symbol values from extract_command_rest
         var_name = rest.flatten.first
         return unless var_name.is_a?(String)
 
-        # Get the column from the args
+        # Extract the column from args structure: [:@ident, "let", [line, column]]
         (_, _, (_, column)) = args
         
         # Add the variable to the current scope
