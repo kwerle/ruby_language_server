@@ -52,16 +52,16 @@ describe RubyLanguageServer::ScopeData::Scope do
     end
   end
 
-  # describe '.scopes_at' do
-  #   it 'should find the deepest scope' do
-  #     assert_equal([], root_scope.scopes_at(OpenStruct.new(line: 0)))
-  #     assert_equal([], root_scope.scopes_at(OpenStruct.new(line: 1)))
-  #     assert_equal(foo_scope, root_scope.scopes_at(OpenStruct.new(line: 2)).first)
-  #     assert_equal(bar_class_scope, root_scope.scopes_at(OpenStruct.new(line: 3)).first)
-  #     assert_equal(baz_method_scope, root_scope.scopes_at(OpenStruct.new(line: 6)).first)
-  #     assert_equal(nar_class_scope, root_scope.scopes_at(OpenStruct.new(line: 13)).first)
-  #     assert_equal(naz_method_scope, root_scope.scopes_at(OpenStruct.new(line: 16)).first)
-  #     assert_equal(RubyLanguageServer::ScopeData::Base::TYPE_BLOCK, root_scope.scopes_at(OpenStruct.new(line: 19)).first.class_type)
-  #   end
-  # end
+  describe '.scopes_at' do
+    it 'should find the deepest scope' do
+      assert_equal([], root_scope.self_and_descendants.for_line(0).where.not(class_type: 'root').to_a)
+      assert_equal([], root_scope.self_and_descendants.for_line(1).where.not(class_type: 'root').to_a)
+      assert_equal(foo_scope, root_scope.self_and_descendants.for_line(2).by_path_length.first)
+      assert_equal(bar_class_scope, root_scope.self_and_descendants.for_line(3).by_path_length.first)
+      assert_equal(baz_method_scope, root_scope.self_and_descendants.for_line(6).by_path_length.first)
+      assert_equal(nar_class_scope, root_scope.self_and_descendants.for_line(13).by_path_length.first)
+      assert_equal(naz_method_scope, root_scope.self_and_descendants.for_line(16).by_path_length.first)
+      assert_equal(RubyLanguageServer::ScopeData::Base::TYPE_BLOCK, root_scope.self_and_descendants.for_line(19).by_path_length.first.class_type)
+    end
+  end
 end
