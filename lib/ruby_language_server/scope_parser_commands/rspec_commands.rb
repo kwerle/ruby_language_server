@@ -27,6 +27,20 @@ module RubyLanguageServer
         add_variable(var_name, line, column)
       end
 
+      # let! is an eager version of let that is evaluated immediately
+      def method_missing(method_name, *args, &block)
+        # Handle let! command by calling on_let_command
+        if method_name.to_s == 'on_let!_command'
+          on_let_command(*args)
+        else
+          super
+        end
+      end
+
+      def respond_to_missing?(method_name, include_private = false)
+        method_name.to_s == 'on_let!_command' || super
+      end
+
       private
 
       def rspec_block_command(prefix, line, _args, rest)
