@@ -5,6 +5,9 @@ LOCAL_LINK=-v $(PWD):/tmp/src -w /tmp/src
 image:
 	docker build -t $(PROJECT_NAME) .
 
+force_rebuild_image:
+	docker build --no-cache -t $(PROJECT_NAME) .
+
 guard: image
 	echo > active_record.log
 	./bin/run_in_shell bundle exec guard

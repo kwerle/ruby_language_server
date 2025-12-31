@@ -18,9 +18,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: build
-      run: make image
-    - name: test
-      run: docker run --rm ruby_language_server rake | tee test.log
-    - name: rubocop
-      run: docker run --rm ruby_language_server rubocop | tee rubocop.log
+    - name: Run tests
+      run: make test

@@ -14,10 +14,16 @@ plugins:
   - rubocop-rake
 
 AllCops:
-  TargetRubyVersion: 3.3
+  TargetRubyVersion: 3.3 # 4.0 not yet afailable Tue Dec 30 15:07:23 PST 2025
   NewCops: enable
   Exclude:
     - 'spec/fixture_files/**/*'
+
+Naming/PredicatePrefix:
+  Enabled: false
+
+Naming/PredicateMethod:
+  Enabled: false
 
 Gemspec/DependencyVersion:
   Enabled: false

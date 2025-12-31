@@ -11,8 +11,7 @@ module RubyLanguageServer
         (_, _, (_, column)) = args
         name = rest.flatten.detect { |o| o.instance_of? String }
         [name, "#{name}="].each do |method_name|
-          push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, method_name, line, column)
-          process(rest)
+          push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, method_name, line, column, line)
           pop_scope
         end
       end
