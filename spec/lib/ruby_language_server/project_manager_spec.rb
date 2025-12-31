@@ -219,6 +219,8 @@ describe RubyLanguageServer::ProjectManager do
 
       # Now search for OtherClass from the first file
       position = OpenStruct.new(line: 0, character: 0)
+      results = project_manager.possible_definitions('other_uri', position)
+      assert_equal([], results)
 
       # We need to actually have "OtherClass" in the file at that position
       # Let's update the test file

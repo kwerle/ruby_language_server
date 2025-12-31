@@ -42,7 +42,7 @@ describe RubyLanguageServer::ScopeParserCommands::RubyCommands do
   describe 'attr_accessor' do
     it 'should create both reader and writer methods' do
       method_names = class_scope.children.map(&:name)
-      
+
       # Should have both getter and setter for each attribute
       assert_includes method_names, 'name'
       assert_includes method_names, 'name='
@@ -54,7 +54,7 @@ describe RubyLanguageServer::ScopeParserCommands::RubyCommands do
   describe 'attr_writer' do
     it 'should create only writer methods' do
       method_names = class_scope.children.map(&:name)
-      
+
       # Should only have setters, not getters
       assert_includes method_names, 'secret='
       assert_includes method_names, 'password='
