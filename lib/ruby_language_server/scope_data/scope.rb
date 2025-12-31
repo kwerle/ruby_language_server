@@ -24,7 +24,7 @@ module RubyLanguageServer
       # attr_accessor :name            # method
       # attr_accessor :superclass_name # superclass name
 
-      def self.build(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1, bottom_line = nil)
+      def self.build(parent = nil, type = TYPE_ROOT, name = '', top_line = 1, column = 1, bottom_line = nil) # rubocop:disable Metrics/ParameterLists
         full_name = [parent&.full_name, name].compact.join(JoinHash[type])
         create!(
           parent:,
@@ -62,7 +62,7 @@ module RubyLanguageServer
         if partial.start_with?('::')
           self.superclass_name = partial.gsub(/^::/, '')
         else
-          self.superclass_name = [parent ? parent.full_name : nil, partial].compact.join(JoinHash[class_type])
+          self.superclass_name = [parent&.full_name, partial].compact.join(JoinHash[class_type])
         end
         save!
       end
