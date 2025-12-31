@@ -53,6 +53,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'minitest-reporters'
   spec.add_development_dependency 'rake' # required by guard :-(
   spec.add_development_dependency 'rb-readline'
+  spec.add_development_dependency 'rcov'
   spec.add_development_dependency 'rubocop', '>1.38.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_development_dependency 'rubocop-ast', '>1.32.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_development_dependency 'rubocop-minitest'

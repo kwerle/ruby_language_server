@@ -25,6 +25,9 @@ console: image
 test: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'bundle exec rake test && bundle exec rubocop'
 
+coverage: image
+	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'gem install rcov && bundle exec rcov spec/**/*_spec.rb'
+
 shell: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh
 
