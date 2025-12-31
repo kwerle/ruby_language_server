@@ -70,4 +70,25 @@ describe RubyLanguageServer::ScopeParserCommands::RspecCommands do
       assert_equal(5, common_variable.line)
     end
   end
+
+  describe 'let! variables' do
+    before do
+      @let_bang_code = <<-SOURCE
+      describe 'eager evaluation' do
+        let!(:eager_var) { 'eager_value' }
+      end
+      SOURCE
+      @let_bang_parser = RubyLanguageServer::ScopeParser.new(@let_bang_code)
+    end
+
+    it 'should capture let! variables' do
+      describe_scope = @let_bang_parser.root_scope.children.first
+      block = describe_scope.children.first
+      
+      # Check that 'eager_var' variable is captured
+      eager_variable = block.variables.find { |v| v.name == 'eager_var' }
+      refute_nil(eager_variable, 'Expected to find eager_var from let!')
+      assert_equal(2, eager_variable.line)
+    end
+  end
 end
