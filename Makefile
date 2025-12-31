@@ -29,6 +29,9 @@ console: image
 test: image
 	./bin/run_in_shell "bundle exec rake test && bundle exec rubocop"
 
+coverage: image
+	./bin/run_in_shell "COVERAGE=true bundle exec rake test"
+
 shell: image
 	./bin/run_in_shell sh
 
