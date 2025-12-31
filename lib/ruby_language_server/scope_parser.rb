@@ -15,6 +15,7 @@ module RubyLanguageServer
     include ScopeParserCommands::RspecCommands
     include ScopeParserCommands::RailsCommands
     include ScopeParserCommands::RubyCommands
+
     attr_reader :current_scope, :lines
 
     def initialize(lines = 1, shallow = false)
@@ -441,7 +442,7 @@ module RubyLanguageServer
       [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE].include?(type)
     end
 
-    def push_scope(type, name, top_line, column, end_line, close_siblings = true)
+    def push_scope(type, name, top_line, column, end_line, close_siblings = true) # rubocop:disable Metrics/ParameterLists
       close_sibling_scopes if close_siblings
       new_scope = ScopeData::Scope.build(@current_scope, type, name, top_line, column, end_line)
       @current_scope = new_scope
