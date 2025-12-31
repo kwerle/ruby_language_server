@@ -23,24 +23,13 @@ module RubyLanguageServer
 
         # Extract the column from args structure: [:@ident, "let", [line, column]]
         (_, _, (_, column)) = args
-        
+
         # Add the variable to the current scope
         add_variable(var_name, line, column)
       end
 
-      # let! is an eager version of let that is evaluated immediately
-      def method_missing(method_name, *args, &block)
-        # Handle let! command by calling on_let_command
-        if method_name.to_s == 'on_let!_command'
-          on_let_command(*args)
-        else
-          super
-        end
-      end
-
-      def respond_to_missing?(method_name, include_private = false)
-        method_name.to_s == 'on_let!_command' || super
-      end
+      # let! is an eager version of let - alias it using send to avoid syntax issues
+      send(:alias_method, 'on_let!_command', :on_let_command)
 
       private
 

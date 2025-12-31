@@ -82,9 +82,10 @@ describe RubyLanguageServer::ScopeParserCommands::RspecCommands do
     end
 
     it 'should capture let! variables' do
-      describe_scope = @let_bang_parser.root_scope.children.first
+      # Get the describe scope for 'eager evaluation', not the first one which is from another test
+      describe_scope = @let_bang_parser.root_scope.children.find { |c| c.name.include?('eager evaluation') }
       block = describe_scope.children.first
-      
+
       # Check that 'eager_var' variable is captured
       eager_variable = block.variables.find { |v| v.name == 'eager_var' }
       refute_nil(eager_variable, 'Expected to find eager_var from let!')
