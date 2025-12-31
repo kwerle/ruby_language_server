@@ -23,7 +23,7 @@ console: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME)  bin/console
 
 test: image
-	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'bundle exec rake test && bundle exec rubocop'
+	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c 'bundle exec rake test && bundle exec rubocop'
 
 shell: image
 	docker run -it --rm $(LOCAL_LINK) $(PROJECT_NAME) sh
