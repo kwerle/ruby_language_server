@@ -2,7 +2,7 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:4.0-alpine
+FROM ruby:3.3-alpine
 LABEL maintainer="kurt@CircleW.org"
 
 RUN gem update bundler
@@ -28,8 +28,7 @@ RUN rm -rf /usr/local/src
 ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT=/project/
 # ENV LOG_LEVEL DEBUG
 
-COPY Gemfile* ./
-COPY ruby_language_server.gemspec .
+COPY Gemfile* ruby_language_server.gemspec ./
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
 RUN bundle install -j 8
