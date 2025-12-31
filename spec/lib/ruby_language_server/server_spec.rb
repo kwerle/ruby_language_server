@@ -226,29 +226,52 @@ describe RubyLanguageServer::Server do
   end
 
   describe '#on_textDocument_completion' do
+    let(:completion_test_file) do
+      <<~CODE_FILE
+        class CompletionTest
+          def method_one
+            @instance_var = 1
+          end
+
+          def method_two
+            met
+          end
+        end
+      CODE_FILE
+    end
+
     before do
       params = {
         'rootPath' => '/test/project',
         'rootUri' => 'file:///test/project'
       }
       server.on_initialize(params)
+
+      project_manager = server.instance_variable_get(:@project_manager)
+      project_manager.update_document_content('file:///test.rb', completion_test_file)
     end
 
     it 'returns completions at position' do
       params = {
         'textDocument' => { 'uri' => 'file:///test.rb' },
-        'position' => { 'line' => 3, 'character' => 5 }
+        'position' => { 'line' => 6, 'character' => 7 }
       }
-
-      project_manager = server.instance_variable_get(:@project_manager)
-      def project_manager.completion_at(_uri, _position)
-        [{ label: 'method_name', kind: 2 }]
-      end
 
       result = server.on_textDocument_completion(params)
 
       refute_nil(result)
-      assert_equal [{ label: 'method_name', kind: 2 }], result
+      assert_instance_of Hash, result
+      assert result.key?(:items)
+      assert_instance_of Array, result[:items]
+
+      # Should find completions starting with "met"
+      method_completions = result[:items].select { |item| item[:label].start_with?('met') }
+      refute_empty method_completions
+
+      # Should include method_one and method_two
+      labels = method_completions.map { |item| item[:label] }
+      assert_includes labels, 'method_one'
+      assert_includes labels, 'method_two'
     end
   end
 
