@@ -35,7 +35,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Normally the system will have these - but not if it's a stripped down docker image
-  spec.add_dependency 'activerecord', '~>8.0'
+  spec.add_dependency 'activerecord', '~>8.1'
   spec.add_dependency 'amatch'      # in c
   spec.add_dependency 'bundler'
   spec.add_dependency 'etc'
