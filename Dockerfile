@@ -2,7 +2,7 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:4.0-alpine
+FROM ruby:3.3-alpine
 LABEL maintainer="kurt@CircleW.org"
 
 RUN gem update bundler
@@ -10,7 +10,7 @@ RUN gem update bundler
 # Needed for byebug and some other gems
 RUN apk update
 # busybox-extras for telnet
-RUN apk add curl make g++ sqlite-dev yaml-dev busybox-extras
+RUN apk add curl make g++ sqlite-dev yaml-dev busybox-extras libffi-dev
 
 WORKDIR /usr/local/src
 RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip

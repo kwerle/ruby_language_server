@@ -24,8 +24,7 @@ console: image
 	./bin/run_in_shell bin/console
 
 test: image
-	./bin/run_in_shell bundle exec rake test && bundle exec rubocop
-
+	./bin/run_in_shell "bundle exec rake test && bundle exec rubocop"
 
 shell: image
 	./bin/run_in_shell sh
