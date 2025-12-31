@@ -18,6 +18,7 @@ module Schema
           t.string  :superclass_name
           t.string  :path
           t.string  :class_type, null: false
+          t.text    :parameters      # JSON string of method parameters
         end
 
         add_index :scopes, :name

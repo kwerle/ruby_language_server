@@ -15,7 +15,6 @@ Help welcome.
 
 * Definitions
 * Completions
-* Lint - thanks to [RuboCop](https://github.com/bbatsov/rubocop)
 * Please see the [FAQ_ROADMAP.md](./FAQ_ROADMAP.md)
 
 # Editor Integrations

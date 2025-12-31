@@ -1,5 +1,15 @@
 # Changelog
 
+#### 0.9.0 Wed Dec 31 08:35:27 PST 2025
+
+* Add socket support for IPC communication (alpha)
+* Add parameters for methods (alpha)
+* Add RSpec 'let' and 'let!' variable capture to scope parser
+* Improve test coverage with SimpleCov/rcov support
+* Update Ruby to 3.3 (4.0 has some gem build issues)
+* Update ActiveRecord gem to 8.1
+* Migrated from Ripper to Prism gem
+
 #### 0.4.2 Sat Aug  2 09:20:41 PDT 2025
 
 * Update thor (security advisory)

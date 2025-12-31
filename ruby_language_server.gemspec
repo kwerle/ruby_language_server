@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Provide a language server implementation for ruby in ruby.  See https://microsoft.github.io/language-server-protocol/ "A Language Server is meant to provide the language-specific smarts and communicate with development tools over a protocol that enables inter-process communication."'
   spec.homepage      = 'https://github.com/kwerle/ruby_language_server'
   spec.license       = 'MIT'
-  spec.required_ruby_version = '>=3.1.0'
+  spec.required_ruby_version = '>=3.3.0'
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
   # to allow pushing to a single host or delete this section to allow pushing to any host.
@@ -35,27 +35,30 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Normally the system will have these - but not if it's a stripped down docker image
-  spec.add_dependency 'activerecord', '~>8.0'
+  spec.add_dependency 'activerecord', '~>8.1'
   spec.add_dependency 'amatch'      # in c
   spec.add_dependency 'bundler'
   spec.add_dependency 'etc'
   spec.add_dependency 'fuzzy_match' # completion matching
   spec.add_dependency 'json'
   spec.add_dependency 'ostruct'
+  spec.add_dependency 'prism'
   spec.add_dependency 'sqlite3'
 
   spec.add_development_dependency 'debug'
-  spec.add_development_dependency 'guard'
+  spec.add_development_dependency 'guard' # as of ruby 4: Sorry, you can't use Pry without Readline or a compatible library.
   spec.add_development_dependency 'guard-minitest'
   spec.add_development_dependency 'guard-rubocop'
   spec.add_development_dependency 'minitest'
   spec.add_development_dependency 'minitest-reporters'
   spec.add_development_dependency 'rake' # required by guard :-(
+  spec.add_development_dependency 'rb-readline'
   spec.add_development_dependency 'rubocop', '>1.38.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_development_dependency 'rubocop-ast', '>1.32.0' # Something broke in 1.38.0.  Move to rubocop --server?
   spec.add_development_dependency 'rubocop-minitest'
   spec.add_development_dependency 'rubocop-performance' # Linter - no longer needed - use additional gems?
   spec.add_development_dependency 'rubocop-rake'
   spec.add_development_dependency 'rubocop-rspec'       # Linter - no longer needed - use additional gems?
+  spec.add_development_dependency 'simplecov'
   spec.metadata['rubygems_mfa_required'] = 'true'
 end
