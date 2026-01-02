@@ -32,7 +32,8 @@ jobs:
           exit 1
         fi
         
-        COVERAGE=$(grep -oP '"coverage":\K[0-9.]+' coverage/.last_run.json | head -1 || echo "")
+        # Use sed for better portability instead of grep -P
+        COVERAGE=$(sed -n 's/.*"coverage":\([0-9.]*\).*/\1/p' coverage/.last_run.json | head -1)
         if [ -z "$COVERAGE" ]; then
           echo "Error: Could not extract coverage percentage"
           exit 1
