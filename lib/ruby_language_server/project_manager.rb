@@ -162,7 +162,27 @@ module RubyLanguageServer
       name = word_at_location(uri, position)
       return {} if name.blank?
 
+      # Special case: "new" should find "initialize" (instance method, not class method)
       name = 'initialize' if name == 'new'
+
+      context = context_at_location(uri, position)
+
+      # If context has more than one element it's a method call on a receiver
+      if context.length > 1
+        receiver = context.first
+        # Determine if it's a class method call (Foo.method) or instance method call (foo.method)
+        class_method_filter = name != 'initialize'
+        return project_definitions_for(name, class_method_filter) if likely_class_name?(receiver)
+
+        # Class method call or MyClass.new (which finds initialize as instance method)
+        # initialize is weird because it's defined as an instance method but called on the class via new.
+
+        # Instance method call (e.g., foo.bar, @foo.bar, FOO.bar)
+        return project_definitions_for(name, false)
+
+      end
+
+      # No receiver - search in scope chain first, then project-wide
       scope = scopes_at(uri, position).first
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?
@@ -176,7 +196,7 @@ module RubyLanguageServer
       check_scope = scope
       return_array = []
       while check_scope
-        scope.variables.each do |variable|
+        check_scope.variables.each do |variable|
           return_array << Location.hash(uri, variable.line, 1) if variable.name == name
         end
         check_scope = check_scope.parent
@@ -185,8 +205,12 @@ module RubyLanguageServer
       return_array.uniq
     end
 
-    def project_definitions_for(name)
+    def project_definitions_for(name, class_method_filter = nil)
       scopes = RubyLanguageServer::ScopeData::Scope.where(name:)
+
+      # Filter by class_method attribute if specified
+      scopes = scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+
       variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name:)
       (scopes + variables).reject { |scope| scope.code_file.nil? }.map do |scope|
         Location.hash(scope.code_file.uri, scope.top_line, 1)
@@ -194,6 +218,18 @@ module RubyLanguageServer
     end
 
     private
+
+    # Guess if a receiver name is likely a class name based on idiomatic Ruby conventions.
+    # This is a heuristic and not 100% accurate (e.g., FOO could be a constant holding an instance).
+    # Returns true for names like "Foo" or "FooBar" (starts with uppercase, has lowercase letters).
+    # Returns false for "FOO" (all uppercase constant) or "foo" (variable/method).
+    def likely_class_name?(name)
+      # Must start with uppercase letter
+      return false unless /[A-Z]/.match?(name[0])
+
+      # Must contain at least one lowercase letter to distinguish from constants like FOO
+      name =~ /[a-z]/
+    end
 
     def code_file_for_uri(uri)
       CodeFile.find_by_uri(uri) || CodeFile.build(uri, nil)

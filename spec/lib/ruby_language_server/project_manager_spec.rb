@@ -194,6 +194,7 @@ describe RubyLanguageServer::ProjectManager do
       CODE_FILE
 
       project_manager.update_document_content('new_uri', file_with_new)
+      project_manager.tags_for_uri('new_uri') # Force load of tags
 
       # Position on "new"
       position = OpenStruct.new(line: 6, character: 17)
@@ -238,6 +239,77 @@ describe RubyLanguageServer::ProjectManager do
       other_class_result = results.find { |r| r[:uri] == 'other_uri' }
       refute_nil other_class_result
       assert_equal 0, other_class_result[:range][:start][:line]
+    end
+
+    describe 'parameter vs method name resolution' do
+      let(:file_with_param_shadowing) do
+        <<~CODE_FILE
+          class Ack
+            def meaningful                    # line 1: instance method in Ack
+              puts "method in Ack"
+            end
+          end
+
+          class Foo
+            def meaningful                    # line 7: instance method in Foo
+              puts "instance method in Foo"
+            end
+
+            def self.meaningful               # line 11: class method in Foo
+              puts "class method in Foo"
+            end
+          end
+
+          class Bar
+            def some_method(meaningful)       # line 17: parameter declaration
+              meaningful.do_something
+              foo.meaningful
+              Foo.meaningful
+            end
+          end
+        CODE_FILE
+      end
+
+      before(:each) do
+        project_manager.update_document_content('param_uri', file_with_param_shadowing)
+        project_manager.tags_for_uri('param_uri') # Force load of tags
+      end
+
+      it 'finds method parameter definition when parameter shadows method names' do
+        # Position on "meaningful" parameter usage inside some_method (line 18, character 4)
+        position = OpenStruct.new(line: 18, character: 4)
+        results = project_manager.possible_definitions('param_uri', position)
+
+        # Should find the parameter definition on line 17, not the methods on line 1, 7, or 11
+        assert_equal 1, results.length
+        assert_equal 'param_uri', results.first[:uri]
+        assert_equal 17, results.first[:range][:start][:line]
+      end
+
+      it 'finds method definitions when called on receiver object' do
+        # Position on "meaningful" method call on foo (line 19, character 12)
+        position = OpenStruct.new(line: 19, character: 12)
+        results = project_manager.possible_definitions('param_uri', position)
+
+        # Should find instance method definitions (both Ack and Foo) because it's called on foo
+        # Without type inference, we can't determine foo's type, so both are valid
+        # Currently also includes class method on line 11, but ideally should only return instance methods
+        result_lines = results.map { |r| r[:range][:start][:line] }.sort
+        assert_operator results.length, :>=, 2
+        assert_includes result_lines, 1  # Ack instance method
+        assert_includes result_lines, 7  # Foo instance method
+        # Note: Currently also returns line 11 (class method) - future improvement would filter this out
+      end
+
+      it 'finds only class method when called on class name' do
+        # Position on "meaningful" method call on Foo (line 20, character 12)
+        position = OpenStruct.new(line: 20, character: 12)
+        results = project_manager.possible_definitions('param_uri', position)
+        assert_equal 1, results.length
+        assert_equal 'param_uri', results.first[:uri]
+        # Should find class method on line 11
+        assert_equal 11, results.first[:range][:start][:line]
+      end
     end
   end
 end
