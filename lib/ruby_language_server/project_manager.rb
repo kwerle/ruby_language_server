@@ -168,7 +168,7 @@ module RubyLanguageServer
       # If context has more than one element and the receiver is not a constant (class),
       # it's an instance method call (e.g., foo.bar, not Foo.bar)
       # In that case, skip scope chain search and go straight to project definitions
-      if context && context.length > 1 && context.first && context.first[0] =~ /[a-z_@]/
+      if context && context.length > 1 && context.first && context.first[0] =~ /[a-z_@]/ # rubocop:disable Style/IfUnlessModifier
         return project_definitions_for(name)
       end
 
