@@ -173,7 +173,7 @@ module RubyLanguageServer
         # Determine if it's a class method call (Foo.method) or instance method call (foo.method)
         if likely_class_name?(receiver)
           # Class method call or MyClass.new (which finds initialize as instance method)
-          # initialize is weird because it's defined as an instance method but called on the class.
+          # initialize is weird because it's defined as an instance method but called on the class via new.
           return project_definitions_for(name, name == 'initialize' ? false : true)
         else
           # Instance method call (e.g., foo.bar, @foo.bar, FOO.bar)
