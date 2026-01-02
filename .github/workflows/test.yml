@@ -4,6 +4,12 @@
 # documentation.
 # This workflow will download a prebuilt Ruby version, install dependencies and run tests with Rake
 # For more information see: https://github.com/marketplace/actions/setup-ruby-jruby-and-truffleruby
+#
+# Code Coverage Setup:
+# To enable coverage badge, repository maintainer needs to:
+# 1. Sign up at https://codecov.io (free for open-source)
+# 2. Add CODECOV_TOKEN as a GitHub repository secret (Settings > Secrets and variables > Actions)
+# 3. After first workflow run, the badge in README.md will display coverage percentage
 
 name: Ruby
 
