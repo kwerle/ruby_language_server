@@ -171,14 +171,15 @@ module RubyLanguageServer
       if context.length > 1
         receiver = context.first
         # Determine if it's a class method call (Foo.method) or instance method call (foo.method)
-        if likely_class_name?(receiver)
-          # Class method call or MyClass.new (which finds initialize as instance method)
-          # initialize is weird because it's defined as an instance method but called on the class via new.
-          return project_definitions_for(name, name == 'initialize' ? false : true)
-        else
-          # Instance method call (e.g., foo.bar, @foo.bar, FOO.bar)
-          return project_definitions_for(name, false)
-        end
+        class_method_filter = name != 'initialize'
+        return project_definitions_for(name, class_method_filter) if likely_class_name?(receiver)
+
+        # Class method call or MyClass.new (which finds initialize as instance method)
+        # initialize is weird because it's defined as an instance method but called on the class via new.
+
+        # Instance method call (e.g., foo.bar, @foo.bar, FOO.bar)
+        return project_definitions_for(name, false)
+
       end
 
       # No receiver - search in scope chain first, then project-wide
@@ -208,9 +209,7 @@ module RubyLanguageServer
       scopes = RubyLanguageServer::ScopeData::Scope.where(name:)
 
       # Filter by class_method attribute if specified
-      unless class_method_filter.nil?
-        scopes = scopes.where(class_method: class_method_filter)
-      end
+      scopes = scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
 
       variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name:)
       (scopes + variables).reject { |scope| scope.code_file.nil? }.map do |scope|
@@ -226,7 +225,7 @@ module RubyLanguageServer
     # Returns false for "FOO" (all uppercase constant) or "foo" (variable/method).
     def likely_class_name?(name)
       # Must start with uppercase letter
-      return false unless name[0] =~ /[A-Z]/
+      return false unless /[A-Z]/.match?(name[0])
 
       # Must contain at least one lowercase letter to distinguish from constants like FOO
       name =~ /[a-z]/

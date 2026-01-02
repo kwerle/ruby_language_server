@@ -19,7 +19,7 @@ module Schema
           t.string  :path
           t.string  :class_type, null: false
           t.text    :parameters      # JSON string of method parameters
-          t.boolean :class_method, default: false  # true for class methods (def self.method)
+          t.boolean :class_method, default: false # true for class methods (def self.method)
         end
 
         add_index :scopes, :name

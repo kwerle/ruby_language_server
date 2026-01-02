@@ -276,7 +276,6 @@ describe RubyLanguageServer::ProjectManager do
       end
 
       it 'finds method parameter definition when parameter shadows method names' do
-
         # Position on "meaningful" parameter usage inside some_method (line 18, character 4)
         position = OpenStruct.new(line: 18, character: 4)
         results = project_manager.possible_definitions('param_uri', position)
@@ -288,7 +287,6 @@ describe RubyLanguageServer::ProjectManager do
       end
 
       it 'finds method definitions when called on receiver object' do
-
         # Position on "meaningful" method call on foo (line 19, character 12)
         position = OpenStruct.new(line: 19, character: 12)
         results = project_manager.possible_definitions('param_uri', position)
@@ -304,15 +302,9 @@ describe RubyLanguageServer::ProjectManager do
       end
 
       it 'finds only class method when called on class name' do
-
         # Position on "meaningful" method call on Foo (line 20, character 12)
         position = OpenStruct.new(line: 20, character: 12)
         results = project_manager.possible_definitions('param_uri', position)
-
-        # Should find only the class method, not instance methods or parameters
-        result_lines = results.map { |r| r[:range][:start][:line] }.sort
-        # TODO: This test documents desired behavior but does not pass until the implementation
-        # properly distinguishes between class methods (def self.method) and instance methods (def method)
         assert_equal 1, results.length
         assert_equal 'param_uri', results.first[:uri]
         # Should find class method on line 11
