@@ -30,7 +30,7 @@ test: image
 	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "bundle exec rake test && bundle exec rubocop"
 
 coverage: image
-	./bin/run_in_shell "COVERAGE=true bundle exec rake test"
+	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "COVERAGE=true bundle exec rake test"
 
 rubocop: image
 	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "bundle exec rubocop"
