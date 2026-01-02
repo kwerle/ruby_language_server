@@ -54,7 +54,12 @@ describe RubyLanguageServer::Completion do
     it 'does the right thing' do
       context = ['bar', 'ba']
       completions = RubyLanguageServer::Completion.completion(context, nar_naz_scope, all_scopes)
-      assert_equal([{label: "Bar", kind: 7}, {label: "baz", kind: 2}], completions[:items][0..1])
+      # Methods with parameters now include insertText, insertTextFormat, label with params, and detail
+      expected_items = [
+        {label: "Bar", kind: 7},
+        {label: "baz(bing, zing)", kind: 2, insertText: "baz(${1:bing}, ${2:zing})", insertTextFormat: 2, detail: "bing (required), zing (required)"}
+      ]
+      assert_equal(expected_items, completions[:items][0..1])
     end
   end
 
@@ -142,6 +147,18 @@ describe RubyLanguageServer::Completion do
       assert_equal('method_with_keyword(name: ${1:value}, age: ${2:value})', snippet)
     end
 
+    it 'should generate snippet for method with mixed parameter types' do
+      snippet = RubyLanguageServer::Completion.send(:generate_method_snippet, 'method_mixed', [
+                                                      { 'name' => 'required', 'type' => 'required' },
+                                                      { 'name' => 'optional', 'type' => 'optional' },
+                                                      { 'name' => '*rest', 'type' => 'rest' },
+                                                      { 'name' => 'keyword:', 'type' => 'keyword' },
+                                                      { 'name' => '**kwargs', 'type' => 'keyword_rest' },
+                                                      { 'name' => '&block', 'type' => 'block' }
+                                                    ])
+      assert_equal('method_mixed(${1:required}, ${2:optional}, ${3:*rest}, keyword: ${4:value}, ${5:**kwargs}, ${6:&block})', snippet)
+    end
+
     it 'should store parameters and generate snippets for methods' do
       all_scopes = @parser.root_scope.self_and_descendants
       simple_method_scope = all_scopes.find_by_path('Foo#simple_method')
@@ -157,6 +174,24 @@ describe RubyLanguageServer::Completion do
       # Test 2: Verify snippet generation works with those parameters
       snippet = RubyLanguageServer::Completion.send(:generate_method_snippet, 'simple_method', params)
       assert_equal('simple_method(${1:arg1}, ${2:arg2})', snippet)
+    end
+
+    it 'should include parameter information in completion items' do
+      all_scopes = @parser.root_scope.self_and_descendants
+      foo_scope = all_scopes.find_by_path('Foo')
+
+      # Get completions for 'simple_method'
+      completions = RubyLanguageServer::Completion.completion(['simp'], foo_scope, all_scopes)
+
+      # Find the simple_method completion (label now includes parameters)
+      simple_method_item = completions[:items].find { |item| item[:label].start_with?('simple_method') }
+
+      assert simple_method_item, 'simple_method should be in completions'
+      assert_equal(2, simple_method_item[:kind], 'should be method kind')
+      assert_equal('simple_method(arg1, arg2)', simple_method_item[:label], 'should include parameters in label')
+      assert_equal('simple_method(${1:arg1}, ${2:arg2})', simple_method_item[:insertText], 'should include parameter snippet')
+      assert_equal(2, simple_method_item[:insertTextFormat], 'should be snippet format')
+      assert_equal('arg1 (required), arg2 (required)', simple_method_item[:detail], 'should include parameter details')
     end
   end
 end

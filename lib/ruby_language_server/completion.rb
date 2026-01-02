@@ -41,10 +41,12 @@ module RubyLanguageServer
               kind: COMPLETION_ITEM_KIND[hash[:type]&.to_sym]
             }
 
-            # Add snippet for methods with parameters
+            # Add snippet and parameter info for methods with parameters
             if hash[:type] == 'method' && hash[:parameters]&.any?
+              item[:label] = generate_method_label(word, hash[:parameters])
               item[:insertText] = generate_method_snippet(word, hash[:parameters])
               item[:insertTextFormat] = 2 # Snippet format
+              item[:detail] = format_parameter_details(hash[:parameters])
             end
 
             item
@@ -53,6 +55,47 @@ module RubyLanguageServer
       end
 
       private
+
+      def generate_method_label(method_name, parameters)
+        return method_name if parameters.empty?
+
+        param_labels = parameters.map do |param|
+          case param['type']
+          when 'keyword'
+            "#{param['name'].delete_suffix(':')}:"
+          when 'optional'
+            "[#{param['name']}]"
+          else
+            # rest, keyword_rest, block, and required params all use the name as-is
+            param['name']
+          end
+        end
+
+        "#{method_name}(#{param_labels.join(', ')})"
+      end
+
+      def format_parameter_details(parameters)
+        return '' if parameters.empty?
+
+        param_details = parameters.map do |param|
+          case param['type']
+          when 'keyword'
+            "#{param['name'].delete_suffix(':')}: (keyword)"
+          when 'optional'
+            "#{param['name']} = ... (optional)"
+          when 'rest'
+            "#{param['name']} (rest)"
+          when 'keyword_rest'
+            "#{param['name']} (keyword_rest)"
+          when 'block'
+            "#{param['name']} (block)"
+          else
+            "#{param['name']} (required)"
+          end
+        end
+
+        param_details.join(', ')
+      end
 
       def generate_method_snippet(method_name, parameters)
         return method_name if parameters.empty?
@@ -65,9 +108,12 @@ module RubyLanguageServer
           param_snippets << case param['type']
                             when 'keyword'
                               # Keyword args with placeholder for value
-                              "#{param['name']} ${#{tab_index}:value}"
+                              # Remove trailing colon from param['name'] if present, then add it back
+                              key_name = param['name'].delete_suffix(':')
+                              "#{key_name}: ${#{tab_index}:value}"
                             else
-                              # All other param types use the parameter name
+                              # For all other types (rest, keyword_rest, block, required, optional)
+                              # use the parameter name with a snippet placeholder
                               "${#{tab_index}:#{param['name']}}"
                             end
           tab_index += 1
@@ -94,11 +140,6 @@ module RubyLanguageServer
 
       def module_completions(word)
         class_and_module_types = [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE]
-
-        # scope_words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).sort_by(&:depth).map { |scope| [scope.name, scope] }
-        # words = scope_words.to_h
-        # good_words = FuzzyMatch.new(words.keys, threshold: 0.01).find_all(word).slice(0..10) || []
-        # words = good_words.each_with_object({}) { |w, hash| hash[w] = {depth: words[w].depth, type: words[w].class_type} }.to_h
 
         words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).closest_to(word).limit(20)
         RubyLanguageServer.logger.error("module_completions: #{words.as_json}")
