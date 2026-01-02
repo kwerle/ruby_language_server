@@ -194,6 +194,7 @@ describe RubyLanguageServer::ProjectManager do
       CODE_FILE
 
       project_manager.update_document_content('new_uri', file_with_new)
+      project_manager.tags_for_uri('new_uri') # Force load of tags
 
       # Position on "new"
       position = OpenStruct.new(line: 6, character: 17)
@@ -303,7 +304,6 @@ describe RubyLanguageServer::ProjectManager do
       end
 
       it 'finds only class method when called on class name' do
-        skip "Class method vs instance method distinction not yet implemented"
 
         # Position on "meaningful" method call on Foo (line 20, character 12)
         position = OpenStruct.new(line: 20, character: 12)
