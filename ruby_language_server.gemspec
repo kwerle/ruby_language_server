@@ -60,5 +60,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop-rake'
   spec.add_development_dependency 'rubocop-rspec'       # Linter - no longer needed - use additional gems?
   spec.add_development_dependency 'simplecov'
+  spec.add_development_dependency 'simplecov_json_formatter'
   spec.metadata['rubygems_mfa_required'] = 'true'
 end

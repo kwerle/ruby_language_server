@@ -18,12 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Run tests
-      run: make test
     - name: Run tests with coverage
       run: make coverage
       env:
         CI: true
+    - name: Run rubocop
+      run: docker run --rm -v $(pwd):/tmp/src -w /tmp/src ruby_language_server sh -c "bundle exec rubocop"
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
