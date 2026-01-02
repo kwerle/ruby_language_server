@@ -33,7 +33,7 @@ coverage: image
 	./bin/run_in_shell "COVERAGE=true bundle exec rake test"
 
 rubocop: image
-	./bin/run_in_shell bundle exec rubocop
+	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "bundle exec rubocop"
 
 shell: image
 	./bin/run_in_shell sh
