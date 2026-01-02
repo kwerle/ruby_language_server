@@ -16,6 +16,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v2
     - name: Run tests with coverage
@@ -25,7 +27,17 @@ jobs:
     - name: Extract and update coverage badge
       run: |
         # Extract coverage percentage from SimpleCov's .last_run.json
-        COVERAGE=$(grep -oP '"coverage":\K[0-9.]+' coverage/.last_run.json | head -1)
+        if [ ! -f coverage/.last_run.json ]; then
+          echo "Error: coverage/.last_run.json not found"
+          exit 1
+        fi
+        
+        COVERAGE=$(grep -oP '"coverage":\K[0-9.]+' coverage/.last_run.json | head -1 || echo "")
+        if [ -z "$COVERAGE" ]; then
+          echo "Error: Could not extract coverage percentage"
+          exit 1
+        fi
+        
         COVERAGE_INT=$(printf "%.0f" "$COVERAGE")
         echo "Coverage: $COVERAGE_INT%"
         
@@ -63,5 +75,10 @@ jobs:
           echo "No changes to coverage badge"
         else
           git commit -m "Update coverage badge: ${COVERAGE_INT}%"
-          git push
+          # Pull any changes before pushing
+          git pull --rebase origin ${{ github.ref_name }} || true
+          git push || {
+            echo "Warning: Failed to push badge update"
+            exit 0
+          }
         fi
