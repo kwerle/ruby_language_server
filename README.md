@@ -1,5 +1,5 @@
 ![Build Status](https://github.com/kwerle/ruby_language_server/actions/workflows/test.yml/badge.svg)
-[![codecov](https://codecov.io/gh/kwerle/ruby_language_server/branch/master/graph/badge.svg)](https://codecov.io/gh/kwerle/ruby_language_server)
+![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/kwerle/ruby_language_server/master/.github/badges/coverage.json)
 # Overview
 
 https://github.com/kwerle/ruby_language_server

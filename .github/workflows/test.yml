@@ -4,12 +4,6 @@
 # documentation.
 # This workflow will download a prebuilt Ruby version, install dependencies and run tests with Rake
 # For more information see: https://github.com/marketplace/actions/setup-ruby-jruby-and-truffleruby
-#
-# Code Coverage Setup:
-# To enable coverage badge, repository maintainer needs to:
-# 1. Sign up at https://codecov.io (free for open-source)
-# 2. Add CODECOV_TOKEN as a GitHub repository secret (Settings > Secrets and variables > Actions)
-# 3. After first workflow run, the badge in README.md will display coverage percentage
 
 name: Ruby
 
@@ -26,13 +20,48 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run tests with coverage
       run: make coverage
-      env:
-        CI: true
     - name: Run rubocop
       run: make rubocop
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./coverage/coverage.json
-        fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Extract and update coverage badge
+      run: |
+        # Extract coverage percentage from SimpleCov's .last_run.json
+        COVERAGE=$(grep -oP '"coverage":\K[0-9.]+' coverage/.last_run.json | head -1)
+        COVERAGE_INT=$(printf "%.0f" "$COVERAGE")
+        echo "Coverage: $COVERAGE_INT%"
+        
+        # Determine badge color based on coverage
+        if [ "$COVERAGE_INT" -ge 90 ]; then
+          COLOR="brightgreen"
+        elif [ "$COVERAGE_INT" -ge 80 ]; then
+          COLOR="green"
+        elif [ "$COVERAGE_INT" -ge 70 ]; then
+          COLOR="yellowgreen"
+        elif [ "$COVERAGE_INT" -ge 60 ]; then
+          COLOR="yellow"
+        else
+          COLOR="red"
+        fi
+        
+        # Create badge JSON for shields.io endpoint
+        mkdir -p .github/badges
+        cat > .github/badges/coverage.json << EOF
+        {
+          "schemaVersion": 1,
+          "label": "coverage",
+          "message": "${COVERAGE_INT}%",
+          "color": "$COLOR"
+        }
+        EOF
+        
+        # Configure git
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Commit and push if changed
+        git add .github/badges/coverage.json
+        if git diff --staged --quiet; then
+          echo "No changes to coverage badge"
+        else
+          git commit -m "Update coverage badge: ${COVERAGE_INT}%"
+          git push
+        fi
