@@ -2,12 +2,13 @@
 
 if ENV['COVERAGE']
   require 'simplecov'
-  require 'simplecov_json_formatter'
+  if ENV['CI']
+    require 'simplecov_json_formatter'
+    SimpleCov.formatter = SimpleCov::Formatter::JSONFormatter
+  end
   SimpleCov.start do
     add_filter '/spec/'
     add_filter '/vendor/'
-    # Use JSON formatter for CI/Codecov integration
-    formatter SimpleCov::Formatter::JSONFormatter if ENV['CI']
   end
 end
 

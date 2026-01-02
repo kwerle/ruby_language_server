@@ -1,4 +1,4 @@
- .PHONY: image guard continuous_development console test shell run_in_shell server gem gem_release publish_cross_platform_image
+ .PHONY: image guard continuous_development console test coverage rubocop shell run_in_shell server gem gem_release publish_cross_platform_image
 PROJECT_NAME=ruby_language_server
 LOCAL_LINK=-v $(PWD):/tmp/src -w /tmp/src
 
@@ -31,6 +31,9 @@ test: image
 
 coverage: image
 	./bin/run_in_shell "COVERAGE=true bundle exec rake test"
+
+rubocop: image
+	./bin/run_in_shell bundle exec rubocop
 
 shell: image
 	./bin/run_in_shell sh
