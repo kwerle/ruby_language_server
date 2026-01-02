@@ -1,4 +1,5 @@
 ![Build Status](https://github.com/kwerle/ruby_language_server/actions/workflows/test.yml/badge.svg)
+[![codecov](https://codecov.io/gh/kwerle/ruby_language_server/branch/master/graph/badge.svg)](https://codecov.io/gh/kwerle/ruby_language_server)
 # Overview
 
 https://github.com/kwerle/ruby_language_server
