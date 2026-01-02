@@ -176,7 +176,7 @@ module RubyLanguageServer
       check_scope = scope
       return_array = []
       while check_scope
-        scope.variables.each do |variable|
+        check_scope.variables.each do |variable|
           return_array << Location.hash(uri, variable.line, 1) if variable.name == name
         end
         check_scope = check_scope.parent

@@ -239,5 +239,34 @@ describe RubyLanguageServer::ProjectManager do
       refute_nil other_class_result
       assert_equal 0, other_class_result[:range][:start][:line]
     end
+
+    it 'finds method parameter definitions instead of methods with same name' do
+      # This tests the issue where method parameters should be found first
+      file_with_param_shadowing = <<~CODE_FILE
+        class Foo
+          def meaningful
+            puts "method in Foo"
+          end
+        end
+
+        class Bar
+          def some_method(meaningful)
+            meaningful.do_something
+          end
+        end
+      CODE_FILE
+
+      project_manager.update_document_content('param_uri', file_with_param_shadowing)
+
+      # Position on "meaningful" parameter usage inside some_method (line 8, character 4)
+      position = OpenStruct.new(line: 8, character: 4)
+      results = project_manager.possible_definitions('param_uri', position)
+
+      # Should find the parameter definition on line 7, not the method on line 1
+      assert_equal 1, results.length
+      assert_equal 'param_uri', results.first[:uri]
+      assert_equal 7, results.first[:range][:start][:line]
+    end
+  end
   end
 end
