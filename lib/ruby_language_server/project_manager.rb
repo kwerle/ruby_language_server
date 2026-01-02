@@ -163,6 +163,15 @@ module RubyLanguageServer
       return {} if name.blank?
 
       name = 'initialize' if name == 'new'
+      context = context_at_location(uri, position)
+
+      # If context has more than one element and the receiver is not a constant (class),
+      # it's an instance method call (e.g., foo.bar, not Foo.bar)
+      # In that case, skip scope chain search and go straight to project definitions
+      if context && context.length > 1 && context.first && context.first[0] =~ /[a-z_@]/
+        return project_definitions_for(name)
+      end
+
       scope = scopes_at(uri, position).first
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?

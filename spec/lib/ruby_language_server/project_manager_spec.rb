@@ -243,6 +243,12 @@ describe RubyLanguageServer::ProjectManager do
     it 'finds method parameter definitions instead of methods with same name' do
       # This tests the issue where method parameters should be found first
       file_with_param_shadowing = <<~CODE_FILE
+        class Ack
+          def meaningful
+            puts "method in Ack"
+          end
+        end
+
         class Foo
           def meaningful
             puts "method in Foo"
@@ -252,21 +258,32 @@ describe RubyLanguageServer::ProjectManager do
         class Bar
           def some_method(meaningful)
             meaningful.do_something
+            foo.meaningful
           end
         end
       CODE_FILE
 
       project_manager.update_document_content('param_uri', file_with_param_shadowing)
 
-      # Position on "meaningful" parameter usage inside some_method (line 8, character 4)
-      position = OpenStruct.new(line: 8, character: 4)
+      # Position on "meaningful" parameter usage inside some_method (line 14, character 4)
+      position = OpenStruct.new(line: 14, character: 4)
       results = project_manager.possible_definitions('param_uri', position)
 
-      # Should find the parameter definition on line 7, not the method on line 1
+      # Should find the parameter definition on line 13, not the methods on line 1 or 7
       assert_equal 1, results.length
       assert_equal 'param_uri', results.first[:uri]
-      assert_equal 7, results.first[:range][:start][:line]
+      assert_equal 13, results.first[:range][:start][:line]
+
+      position = OpenStruct.new(line: 15, character: 8)
+      results = project_manager.possible_definitions('param_uri', position)
+
+      # Should find method definitions (both Ack and Foo) because it's called on foo
+      # Without type inference, we can't determine foo's type, so both are valid
+      assert_equal 2, results.length
+      assert_equal 'param_uri', results.first[:uri]
+      # Should find methods on line 1 and 7, not the parameter on line 13
+      result_lines = results.map { |r| r[:range][:start][:line] }.sort
+      assert_equal [1, 7], result_lines
     end
-  end
   end
 end
