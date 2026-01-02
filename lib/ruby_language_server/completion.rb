@@ -65,9 +65,20 @@ module RubyLanguageServer
           param_snippets << case param['type']
                             when 'keyword'
                               # Keyword args with placeholder for value
-                              "#{param['name']} ${#{tab_index}:value}"
+                              # Remove trailing colon from param['name'] if present, then add it back
+                              key_name = param['name'].delete_suffix(':')
+                              "#{key_name}: ${#{tab_index}:value}"
+                            when 'rest'
+                              # *args - the name already includes the asterisk
+                              "${#{tab_index}:#{param['name']}}"
+                            when 'keyword_rest'
+                              # **kwargs - the name already includes the double asterisk
+                              "${#{tab_index}:#{param['name']}}"
+                            when 'block'
+                              # &block - the name already includes the ampersand
+                              "${#{tab_index}:#{param['name']}}"
                             else
-                              # All other param types use the parameter name
+                              # Required and optional params use the parameter name
                               "${#{tab_index}:#{param['name']}}"
                             end
           tab_index += 1
