@@ -26,6 +26,7 @@ continuous_development: image
 console: image
 	./bin/run_in_shell bin/console
 
+# Note that we don't use run_in_shell because those are interactive and CI won't like that.
 test: image
 	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "bundle exec rake test && bundle exec rubocop"
 
