@@ -82,6 +82,10 @@ Metrics/ClassLength:
   Exclude:
     - 'lib/ruby_language_server/scope_parser.rb'
 
+# Configuration parameters: CountComments.
+Metrics/ModuleLength:
+  Max: 200
+
 Metrics/CyclomaticComplexity:
   Max: 26
 

@@ -37,7 +37,7 @@ module RubyLanguageServer
       # RubyLanguageServer::ScopeData::Scope.connection.exec_query("SELECT LEVENSHTEIN( 'This is not correct', 'This is correct' )")
 
       def method?
-        type == TYPE_METHOD
+        class_type == TYPE_METHOD
       end
     end
   end

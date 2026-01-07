@@ -1,4 +1,5 @@
 ![Build Status](https://github.com/kwerle/ruby_language_server/actions/workflows/test.yml/badge.svg)
+![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/kwerle/ruby_language_server/copilot/add-test-coverage-badge/.github/badges/coverage.json)
 # Overview
 
 https://github.com/kwerle/ruby_language_server

@@ -71,8 +71,11 @@ module RubyLanguageServer
       line = node.location.start_line
       end_line = node.location.end_line
       column = node.location.start_column
+      is_class_method = node.receiver.is_a?(Prism::SelfNode)
 
       scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
+      scope.class_method = is_class_method
+      scope.save!
 
       # Extract and store parameters
       if node.parameters

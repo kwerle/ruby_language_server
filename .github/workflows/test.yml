@@ -16,7 +16,73 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v2
-    - name: Run tests
-      run: make test
+    - name: Run tests with coverage
+      run: make coverage
+    - name: Run rubocop
+      run: make rubocop
+    - name: Extract and update coverage badge
+      run: |
+        # Extract coverage percentage from SimpleCov's .last_run.json
+        if [ ! -f coverage/.last_run.json ]; then
+          echo "Error: coverage/.last_run.json not found"
+          exit 1
+        fi
+        
+        # Use sed for better portability - account for optional spaces after colon
+        # SimpleCov format: { "result": { "line": 87.63 } }
+        COVERAGE=$(sed -n 's/.*"line": *\([0-9.]*\).*/\1/p' coverage/.last_run.json | head -1)
+        if [ -z "$COVERAGE" ]; then
+          echo "Error: Could not extract coverage percentage"
+          echo "Contents of coverage/.last_run.json:"
+          cat coverage/.last_run.json
+          exit 1
+        fi
+        
+        COVERAGE_INT=$(printf "%.0f" "$COVERAGE")
+        echo "Coverage: $COVERAGE_INT%"
+        
+        # Determine badge color based on coverage
+        if [ "$COVERAGE_INT" -ge 90 ]; then
+          COLOR="brightgreen"
+        elif [ "$COVERAGE_INT" -ge 80 ]; then
+          COLOR="green"
+        elif [ "$COVERAGE_INT" -ge 70 ]; then
+          COLOR="yellowgreen"
+        elif [ "$COVERAGE_INT" -ge 60 ]; then
+          COLOR="yellow"
+        else
+          COLOR="red"
+        fi
+        
+        # Create badge JSON for shields.io endpoint
+        mkdir -p .github/badges
+        cat > .github/badges/coverage.json << EOF
+        {
+          "schemaVersion": 1,
+          "label": "coverage",
+          "message": "${COVERAGE_INT}%",
+          "color": "$COLOR"
+        }
+        EOF
+        
+        # Configure git
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Commit and push if changed
+        git add .github/badges/coverage.json
+        if git diff --staged --quiet; then
+          echo "No changes to coverage badge"
+        else
+          git commit -m "Update coverage badge: ${COVERAGE_INT}%"
+          # Pull any changes before pushing
+          git pull --rebase origin ${{ github.ref_name }} || true
+          git push || {
+            echo "Warning: Failed to push badge update"
+            exit 0
+          }
+        fi
