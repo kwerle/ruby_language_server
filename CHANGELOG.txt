@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.9.1 Tue Jan  6 19:32:44 PST 2026
+
+* Method parameters
+* Better class method handling
+
 #### 0.9.0 Wed Dec 31 08:35:27 PST 2025
 
 * Add socket support for IPC communication (alpha)
