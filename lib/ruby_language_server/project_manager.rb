@@ -244,13 +244,18 @@ module RubyLanguageServer
       line = lines[position.line]
       return false if line.nil?
 
-      # Get the substring up to the cursor position
-      line_up_to_cursor = line[0..position.character]
-
-      # Check if the line contains :: before the cursor position
-      # and all context parts appear with :: separators
+      # Build the expected pattern with :: separators
       context_pattern = context.join('::')
-      line_up_to_cursor.include?('::') && line_up_to_cursor.include?(context_pattern)
+      
+      # LineContext extracts the full word under the cursor and works backward.
+      # We need to check if the pattern with :: separators appears in the line
+      # at a position that could reasonably contain the cursor.
+      # Look for the pattern starting before or at the cursor position.
+      pattern_start = line.rindex(context_pattern, position.character + context.last.length)
+      
+      # If we found the pattern and it's near the cursor position, it's a namespace reference
+      !pattern_start.nil? && pattern_start <= position.character && 
+        (position.character <= pattern_start + context_pattern.length)
     end
 
     # Guess if a receiver name is likely a class name based on idiomatic Ruby conventions.
