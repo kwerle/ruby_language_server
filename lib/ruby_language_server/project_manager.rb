@@ -233,35 +233,13 @@ module RubyLanguageServer
     private
 
     # Check if the context represents a namespace reference (Foo::Bar) rather than a method call (Foo.bar)
-    # by examining the actual line text to see if :: is used as the separator
-    def namespace_reference?(uri, position, context)
+    # Class/module lookups always start with uppercase letters, method calls never do
+    def namespace_reference?(_uri, _position, context)
       return false if context.length < 2
 
-      code_file = code_file_for_uri(uri)
-      return false if code_file.nil?
-
-      lines = code_file.text.split("\n")
-      line = lines[position.line]
-      return false if line.nil?
-
-      # Build the expected pattern with :: separators
-      context_pattern = context.join('::')
-
-      # LineContext extracts the full word under the cursor and works backward.
-      # We need to check if the pattern with :: separators appears in the line
-      # containing the cursor position. Search in a reasonable range around the cursor.
-      search_start = [0, position.character - context_pattern.length].max
-      search_end = [line.length, position.character + context.last.length].min
-      search_range = line[search_start...search_end]
-
-      # Check if the pattern appears in this range
-      pattern_index = search_range.index(context_pattern)
-      return false if pattern_index.nil?
-
-      # Verify the pattern contains the cursor position
-      pattern_start = search_start + pattern_index
-      pattern_end = pattern_start + context_pattern.length
-      position.character.between?(pattern_start, pattern_end)
+      # If all parts start with uppercase, it's a namespace reference (Foo::Bar)
+      # If first part is lowercase, it's a method call (foo.bar)
+      context.all? { |part| /\A[A-Z]/.match?(part) }
     end
 
     # Guess if a receiver name is likely a class name based on idiomatic Ruby conventions.
