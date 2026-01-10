@@ -31,7 +31,7 @@ ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT=/project/
 COPY Gemfile* ruby_language_server.gemspec ./
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
-RUN bundle install -j 8
+RUN bundle install
 
 COPY . ./
 
