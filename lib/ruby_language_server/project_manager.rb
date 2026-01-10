@@ -215,11 +215,11 @@ module RubyLanguageServer
     def project_definitions_for(name, class_method_filter = nil)
       # Check if name contains namespace separator (e.g., "Foo::Bar")
       # If so, search by path instead of name
-      if name.include?('::')
-        scopes = RubyLanguageServer::ScopeData::Scope.where(path: name)
-      else
-        scopes = RubyLanguageServer::ScopeData::Scope.where(name:)
-      end
+      scopes = if name.include?('::')
+                 RubyLanguageServer::ScopeData::Scope.where(path: name)
+               else
+                 RubyLanguageServer::ScopeData::Scope.where(name:)
+               end
 
       # Filter by class_method attribute if specified
       scopes = scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
@@ -261,7 +261,7 @@ module RubyLanguageServer
       # Verify the pattern contains the cursor position
       pattern_start = search_start + pattern_index
       pattern_end = pattern_start + context_pattern.length
-      pattern_start <= position.character && position.character <= pattern_end
+      position.character.between?(pattern_start, pattern_end)
     end
 
     # Guess if a receiver name is likely a class name based on idiomatic Ruby conventions.
