@@ -241,6 +241,54 @@ describe RubyLanguageServer::ProjectManager do
       assert_equal 0, other_class_result[:range][:start][:line]
     end
 
+    describe 'namespaced class lookup' do
+      let(:file_with_namespaced_class) do
+        <<~CODE_FILE
+          module Foo
+            class Bar
+              def import
+                puts "import method"
+              end
+            end
+          end
+
+          # In a spec file:
+          describe Foo::Bar, "#import" do
+            # When clicking on Bar in Foo::Bar
+          end
+        CODE_FILE
+      end
+
+      before(:each) do
+        project_manager.update_document_content('namespace_uri', file_with_namespaced_class)
+        project_manager.tags_for_uri('namespace_uri') # Force load of tags
+      end
+
+      it 'finds namespaced class definition when clicking on the class name' do
+        # Position on "Bar" in "Foo::Bar" (line 9, around character 16-18)
+        # The line is: "describe Foo::Bar, \"#import\" do"
+        # Character 16 is on 'B' of Bar
+        position = OpenStruct.new(line: 9, character: 16)
+        results = project_manager.possible_definitions('namespace_uri', position)
+
+        # Should find the Bar class definition on line 1 (0-indexed)
+        assert_equal 1, results.length
+        assert_equal 'namespace_uri', results.first[:uri]
+        assert_equal 1, results.first[:range][:start][:line]
+      end
+
+      it 'finds namespaced class definition when clicking on the module name' do
+        # Position on "Foo" in "Foo::Bar" (line 9, around character 11)
+        position = OpenStruct.new(line: 9, character: 11)
+        results = project_manager.possible_definitions('namespace_uri', position)
+
+        # Should find the Foo module definition on line 0
+        assert_equal 1, results.length
+        assert_equal 'namespace_uri', results.first[:uri]
+        assert_equal 0, results.first[:range][:start][:line]
+      end
+    end
+
     describe 'parameter vs method name resolution' do
       let(:file_with_param_shadowing) do
         <<~CODE_FILE

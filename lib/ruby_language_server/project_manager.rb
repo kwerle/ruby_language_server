@@ -167,8 +167,15 @@ module RubyLanguageServer
 
       context = context_at_location(uri, position)
 
-      # If context has more than one element it's a method call on a receiver
+      # If context has more than one element it could be a method call or namespace reference
       if context.length > 1
+        # Check if this is a namespace reference (Foo::Bar) vs method call (Foo.bar)
+        if namespace_reference?(uri, position, context)
+          # Join the context with :: to form the full class/module name
+          full_name = context.join('::')
+          return project_definitions_for(full_name)
+        end
+
         receiver = context.first
         # Determine if it's a class method call (Foo.method) or instance method call (foo.method)
         class_method_filter = name != 'initialize'
@@ -206,7 +213,13 @@ module RubyLanguageServer
     end
 
     def project_definitions_for(name, class_method_filter = nil)
-      scopes = RubyLanguageServer::ScopeData::Scope.where(name:)
+      # Check if name contains namespace separator (e.g., "Foo::Bar")
+      # If so, search by path instead of name
+      scopes = if name.include?('::')
+                 RubyLanguageServer::ScopeData::Scope.where(path: name)
+               else
+                 RubyLanguageServer::ScopeData::Scope.where(name:)
+               end
 
       # Filter by class_method attribute if specified
       scopes = scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
@@ -218,6 +231,16 @@ module RubyLanguageServer
     end
 
     private
+
+    # Check if the context represents a namespace reference (Foo::Bar) rather than a method call (Foo.bar)
+    # Class/module lookups always start with uppercase letters, method calls never do
+    def namespace_reference?(_uri, _position, context)
+      return false if context.length < 2
+
+      # If all parts start with uppercase, it's a namespace reference (Foo::Bar)
+      # If first part is lowercase, it's a method call (foo.bar)
+      context.all? { |part| /\A[A-Z]/.match?(part) }
+    end
 
     # Guess if a receiver name is likely a class name based on idiomatic Ruby conventions.
     # This is a heuristic and not 100% accurate (e.g., FOO could be a constant holding an instance).
