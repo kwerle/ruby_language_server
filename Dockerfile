@@ -2,10 +2,10 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:3.3-alpine
+FROM ruby:4.0-alpine
 LABEL maintainer="kurt@CircleW.org"
 
-RUN gem update bundler
+# RUN gem update bundler - Skipping as Ruby 4.0 comes with compatible bundler
 
 # Needed for byebug and some other gems
 RUN apk update

@@ -1,5 +1,9 @@
 # Changelog
 
+#### Unreleased
+
+* Update to Ruby 4.0 - resolves gem build issues mentioned in 0.9.0
+
 #### 0.9.1 Tue Jan  6 19:32:44 PST 2026
 
 * Method parameters
