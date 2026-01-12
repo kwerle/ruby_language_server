@@ -173,7 +173,7 @@ describe RubyLanguageServer::ScopeParser do
         <<-RUBY
         module Foo
           module Bar
-          end 
+          end
           module Baz
           end
         end
@@ -205,7 +205,7 @@ describe RubyLanguageServer::ScopeParser do
         <<-RUBY
         module Foo
           class Bar
-          end 
+          end
           class Baz
           end
         end
