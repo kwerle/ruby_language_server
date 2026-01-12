@@ -167,5 +167,69 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal('item', scope_parser.root_scope.self_and_descendants.last.variables.first.name)
       end
     end
+
+    describe 'sibling modules' do
+      let(:sibling_modules_source) do
+        <<-RUBY
+        module Foo
+          module Bar
+          end 
+          module Baz
+          end
+        end
+        RUBY
+      end
+      let(:scope_parser) { RubyLanguageServer::ScopeParser.new(sibling_modules_source) }
+
+      it 'should place sibling modules at the same level' do
+        foo = scope_parser.root_scope.children.first
+        assert_equal('Foo', foo.name)
+        
+        # Both Bar and Baz should be children of Foo, not Bar containing Baz
+        children = foo.children
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
+        
+        bar = children.detect { |c| c.name == 'Bar' }
+        baz = children.detect { |c| c.name == 'Baz' }
+        
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
+        
+        # Verify Baz is not a child of Bar
+        assert_equal(0, bar.children.size, "Bar should have no children, but has #{bar.children.size}")
+      end
+    end
+
+    describe 'sibling classes' do
+      let(:sibling_classes_source) do
+        <<-RUBY
+        module Foo
+          class Bar
+          end 
+          class Baz
+          end
+        end
+        RUBY
+      end
+      let(:scope_parser) { RubyLanguageServer::ScopeParser.new(sibling_classes_source) }
+
+      it 'should place sibling classes at the same level' do
+        foo = scope_parser.root_scope.children.first
+        assert_equal('Foo', foo.name)
+        
+        # Both Bar and Baz should be children of Foo, not Bar containing Baz
+        children = foo.children
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
+        
+        bar = children.detect { |c| c.name == 'Bar' }
+        baz = children.detect { |c| c.name == 'Baz' }
+        
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
+        
+        # Verify Baz is not a child of Bar
+        assert_equal(0, bar.children.size, "Bar should have no children, but has #{bar.children.size}")
+      end
+    end
   end
 end
