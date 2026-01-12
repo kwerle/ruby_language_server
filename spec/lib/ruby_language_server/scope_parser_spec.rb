@@ -168,90 +168,100 @@ describe RubyLanguageServer::ScopeParser do
       end
     end
 
-    describe 'siblings' do
-      shared_examples 'sibling scopes' do |type|
-        it "should place sibling #{type}s at the same level" do
-          foo = scope_parser.root_scope.children.first
-          assert_equal('Foo', foo.name)
-
-          # Both Bar and Baz should be children of Foo, not Bar containing Baz
-          children = foo.children
-          assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
-
-          bar = children.detect { |c| c.name == 'Bar' }
-          baz = children.detect { |c| c.name == 'Baz' }
-
-          assert_not_nil(bar, "Bar should be a child of Foo")
-          assert_not_nil(baz, "Baz should be a child of Foo")
-
-          # Verify Baz is not a child of Bar
-          assert_equal(0, bar.children.size, "Bar should have no children, but has #{bar.children.size}")
-        end
-      end
-
-      describe 'modules' do
-        let(:scope_parser) do
-          RubyLanguageServer::ScopeParser.new(<<-RUBY)
+    describe 'sibling modules' do
+      before do
+        @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
           module Foo
             module Bar
             end
             module Baz
             end
           end
-          RUBY
-        end
-
-        include_examples 'sibling scopes', 'module'
+        RUBY
       end
 
-      describe 'classes' do
-        let(:scope_parser) do
-          RubyLanguageServer::ScopeParser.new(<<-RUBY)
+      it 'should place sibling modules at the same level' do
+        foo = @parser.root_scope.children.first
+        assert_equal('Foo', foo.name)
+
+        # Both Bar and Baz should be children of Foo, not Bar containing Baz
+        children = foo.children
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
+
+        bar = children.detect { |c| c.name == 'Bar' }
+        baz = children.detect { |c| c.name == 'Baz' }
+
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
+
+        # Verify Baz is not a child of Bar
+        assert_equal(0, bar.children.size, "Bar should have no children, but has #{bar.children.size}")
+      end
+    end
+
+    describe 'sibling classes' do
+      before do
+        @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
           module Foo
             class Bar
             end
             class Baz
             end
           end
-          RUBY
-        end
-
-        include_examples 'sibling scopes', 'class'
+        RUBY
       end
 
-      describe 'mixed (class and module)' do
-        let(:scope_parser) do
-          RubyLanguageServer::ScopeParser.new(<<-RUBY)
+      it 'should place sibling classes at the same level' do
+        foo = @parser.root_scope.children.first
+        assert_equal('Foo', foo.name)
+
+        # Both Bar and Baz should be children of Foo, not Bar containing Baz
+        children = foo.children
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
+
+        bar = children.detect { |c| c.name == 'Bar' }
+        baz = children.detect { |c| c.name == 'Baz' }
+
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
+
+        # Verify Baz is not a child of Bar
+        assert_equal(0, bar.children.size, "Bar should have no children, but has #{bar.children.size}")
+      end
+    end
+
+    describe 'mixed siblings (class and module)' do
+      before do
+        @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
           module Foo
             class Bar
             end
             module Baz
             end
           end
-          RUBY
-        end
+        RUBY
+      end
 
-        it 'should place sibling class and module at the same level' do
-          foo = scope_parser.root_scope.children.first
-          assert_equal('Foo', foo.name)
+      it 'should place sibling class and module at the same level' do
+        foo = @parser.root_scope.children.first
+        assert_equal('Foo', foo.name)
 
-          # Both Bar (class) and Baz (module) should be children of Foo
-          children = foo.children
-          assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
+        # Both Bar (class) and Baz (module) should be children of Foo
+        children = foo.children
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
 
-          bar = children.detect { |c| c.name == 'Bar' }
-          baz = children.detect { |c| c.name == 'Baz' }
+        bar = children.detect { |c| c.name == 'Bar' }
+        baz = children.detect { |c| c.name == 'Baz' }
 
-          assert_not_nil(bar, "Bar should be a child of Foo")
-          assert_not_nil(baz, "Baz should be a child of Foo")
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
 
-          # Verify types are different
-          assert_equal(:class, bar.type, "Bar should be a class")
-          assert_equal(:module, baz.type, "Baz should be a module")
+        # Verify types are different
+        assert_equal(:class, bar.type, "Bar should be a class")
+        assert_equal(:module, baz.type, "Baz should be a module")
 
-          # Verify Baz is not a child of Bar
-          assert_equal(0, bar.children.size, "Bar should have no children, but has #{bar.children.size}")
-        end
+        # Verify Baz is not a child of Bar
+        assert_equal(0, bar.children.size, "Bar should have no children, but has #{bar.children.size}")
       end
     end
   end
