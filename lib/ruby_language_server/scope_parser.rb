@@ -41,7 +41,7 @@ module RubyLanguageServer
       end_line = node.location.end_line
       column = node.location.start_column
 
-      scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column, end_line)
+      scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column, end_line, false)
 
       # Handle superclass
       if node.superclass
@@ -60,7 +60,7 @@ module RubyLanguageServer
       end_line = node.location.end_line
       column = node.location.start_column
 
-      push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line)
+      push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line, false)
       super
       pop_scope
     end
