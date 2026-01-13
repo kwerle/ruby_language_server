@@ -190,8 +190,8 @@ describe RubyLanguageServer::ScopeParser do
         bar = children.detect { |c| c.name == 'Bar' }
         baz = children.detect { |c| c.name == 'Baz' }
 
-        assert_not_nil(bar, "Bar should be a child of Foo")
-        assert_not_nil(baz, "Baz should be a child of Foo")
+        refute_nil(bar, "Bar should be a child of Foo")
+        refute_nil(baz, "Baz should be a child of Foo")
         assert_equal(0, bar.children.size, "Bar should have no children")
       end
     end
@@ -218,8 +218,8 @@ describe RubyLanguageServer::ScopeParser do
         bar = children.detect { |c| c.name == 'Bar' }
         baz = children.detect { |c| c.name == 'Baz' }
 
-        assert_not_nil(bar, "Bar should be a child of Foo")
-        assert_not_nil(baz, "Baz should be a child of Foo")
+        refute_nil(bar, "Bar should be a child of Foo")
+        refute_nil(baz, "Baz should be a child of Foo")
         assert_equal(0, bar.children.size, "Bar should have no children")
       end
     end
@@ -246,8 +246,8 @@ describe RubyLanguageServer::ScopeParser do
         bar = children.detect { |c| c.name == 'Bar' }
         baz = children.detect { |c| c.name == 'Baz' }
 
-        assert_not_nil(bar, "Bar should be a child of Foo")
-        assert_not_nil(baz, "Baz should be a child of Foo")
+        refute_nil(bar, "Bar should be a child of Foo")
+        refute_nil(baz, "Baz should be a child of Foo")
         assert_equal(:class, bar.type, "Bar should be a class")
         assert_equal(:module, baz.type, "Baz should be a module")
         assert_equal(0, bar.children.size, "Bar should have no children")
