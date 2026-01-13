@@ -19,7 +19,7 @@ RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip
 RUN unzip master.zip
 WORKDIR /usr/local/src/SQLite-Levenshtein-master
 RUN ./configure
-RUN make -j 8 install
+RUN make install
 
 WORKDIR /app
 RUN rm -rf /usr/local/src
@@ -31,7 +31,7 @@ ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT=/project/
 COPY Gemfile* ruby_language_server.gemspec ./
 COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 
-RUN bundle install -j 8
+RUN bundle install
 
 COPY . ./
 
