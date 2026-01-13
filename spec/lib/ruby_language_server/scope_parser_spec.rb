@@ -185,14 +185,14 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal('Foo', foo.name)
 
         children = foo.children
-        assert_equal(2, children.size)
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
 
         bar = children.detect { |c| c.name == 'Bar' }
         baz = children.detect { |c| c.name == 'Baz' }
 
-        assert_not_nil(bar)
-        assert_not_nil(baz)
-        assert_equal(0, bar.children.size)
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
+        assert_equal(0, bar.children.size, "Bar should have no children")
       end
     end
 
@@ -213,14 +213,14 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal('Foo', foo.name)
 
         children = foo.children
-        assert_equal(2, children.size)
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
 
         bar = children.detect { |c| c.name == 'Bar' }
         baz = children.detect { |c| c.name == 'Baz' }
 
-        assert_not_nil(bar)
-        assert_not_nil(baz)
-        assert_equal(0, bar.children.size)
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
+        assert_equal(0, bar.children.size, "Bar should have no children")
       end
     end
 
@@ -241,16 +241,16 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal('Foo', foo.name)
 
         children = foo.children
-        assert_equal(2, children.size)
+        assert_equal(2, children.size, "Foo should have 2 children, but has #{children.size}")
 
         bar = children.detect { |c| c.name == 'Bar' }
         baz = children.detect { |c| c.name == 'Baz' }
 
-        assert_not_nil(bar)
-        assert_not_nil(baz)
-        assert_equal(:class, bar.type)
-        assert_equal(:module, baz.type)
-        assert_equal(0, bar.children.size)
+        assert_not_nil(bar, "Bar should be a child of Foo")
+        assert_not_nil(baz, "Baz should be a child of Foo")
+        assert_equal(:class, bar.type, "Bar should be a class")
+        assert_equal(:module, baz.type, "Baz should be a module")
+        assert_equal(0, bar.children.size, "Bar should have no children")
       end
     end
   end
