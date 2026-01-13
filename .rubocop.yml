@@ -14,7 +14,7 @@ plugins:
   - rubocop-rake
 
 AllCops:
-  TargetRubyVersion: 3.3 # 4.0 not yet afailable Tue Dec 30 15:07:23 PST 2025
+  TargetRubyVersion: 4.0
   NewCops: enable
   Exclude:
     - 'spec/fixture_files/**/*'

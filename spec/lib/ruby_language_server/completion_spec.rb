@@ -42,12 +42,12 @@ describe RubyLanguageServer::Completion do
   let(:all_scopes) { @scope_parser.root_scope.self_and_descendants }
   let(:nar_naz_scope) { all_scopes.find_by_path('Foo::Nar#naz') }
 
-  def scope_completions(*args)
-    RubyLanguageServer::Completion.send(:scope_completions, *args)
+  def scope_completions(*)
+    RubyLanguageServer::Completion.send(:scope_completions, *)
   end
 
-  def scope_completions_in_target_context(*args)
-    RubyLanguageServer::Completion.send(:scope_completions_in_target_context, *args)
+  def scope_completions_in_target_context(*)
+    RubyLanguageServer::Completion.send(:scope_completions_in_target_context, *)
   end
 
   describe '.completion' do
