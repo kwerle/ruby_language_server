@@ -25,7 +25,10 @@ module RubyLanguageServer
         TYPE_VARIABLE => '^'
       }.freeze
 
-      attr_accessor :type # Type of this scope (module, class, block)
+      # Return the class_type as a symbol for easier testing
+      def type
+        class_type&.to_sym
+      end
 
       # bar should be closer to Bar than Far.  Adding the UPPER version accomplishes this.
       scope :with_distance_from, lambda { |word|
