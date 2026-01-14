@@ -115,7 +115,7 @@ module RubyLanguageServer
           begin
             ActiveRecord::Base.connection_pool.with_connection do |_connection|
               update_document_content(host_uri, text)
-              code_file_for_uri(host_uri).refresh_scopes_if_needed(shallow: true)
+              code_file_for_uri(host_uri).refresh_scopes_if_needed(shallow: false)
             end
           rescue StandardError => e
             RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
