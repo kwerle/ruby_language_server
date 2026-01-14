@@ -9,30 +9,16 @@ describe RubyLanguageServer::ScopeParser do
   end
 
   describe 'Small file' do
-    describe 'shallow parsing' do
-      before do
-        @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines, true)
-      end
-
-      # Life is unfair.  `private` does not start a block - it just sets a flag.  So I may circle back to this.
-      # it 'does not find private methods' do
-      #   bar = @parser.root_scope.children.first.children.detect { |child| child.full_name == 'Foo::Bar' }
-      #   assert_equal(%w[baz], bar.children.map(&:name).sort)
-      # end
-      it 'does not add any variables at any scope' do
-        assert_equal(RubyLanguageServer::ScopeData::Variable.all.count, 0)
-      end
-    end
-
     describe 'normal parsing' do
       before do
         @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
       end
 
-      it 'records all the variables (as opposed to shallow)' do
-        assert_equal(RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name), [
-                       "@biz", "@bottom", "@niz", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"
-                     ])
+      it 'records all the variables' do
+        assert_equal(
+          RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name),
+          ["@biz", "@bottom", "@niz", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"]
+        )
       end
 
       describe 'class << self' do
