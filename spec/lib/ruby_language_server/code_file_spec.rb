@@ -125,6 +125,18 @@ describe RubyLanguageServer::CodeFile do
           assert_equal(expected_initialize_range, initialize_tag[:location][:range])
           assert_equal(expected_foo_method_range, foo_method_tag[:location][:range])
         end
+
+        it 'should have correct start and end lines for constants' do
+          tag = cf.tags.detect { |t| t[:name] == 'FOO_CONSTANT' }
+
+          # The constant is on line 9 (1-indexed), which should be line 8 (0-indexed) in LSP
+          # FOO_CONSTANT = 1 is on line 9 of the source
+          expected_range = {
+            start: { line: 8, character: 2 },
+            end: { line: 8, character: 2 }
+          }
+          assert_equal(expected_range, tag[:location][:range])
+        end
       end
     end
   end
