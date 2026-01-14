@@ -18,9 +18,8 @@ module RubyLanguageServer
 
     attr_reader :current_scope, :lines
 
-    def initialize(lines = 1, shallow = false)
+    def initialize(lines = 1)
       @lines = lines
-      @shallow = shallow
       @root_scope = nil
       @current_scope = nil
       @block_names = {}
@@ -87,12 +86,7 @@ module RubyLanguageServer
       # Process parameters (adds them as variables in scope)
       visit_parameters(node.parameters) if node.parameters
 
-      # Process body only if not shallow
-      if @shallow
-        # Skip body processing
-      else
-        super
-      end
+      super
 
       pop_scope
       scope
@@ -418,7 +412,6 @@ module RubyLanguageServer
     end
 
     def add_variable(name, line, column, scope = @current_scope)
-      return if @shallow
       return if scope.nil?
 
       scope.variables.where(name:).first_or_create!(
@@ -467,18 +460,18 @@ module RubyLanguageServer
   class ScopeParser
     attr_reader :root_scope
 
-    def initialize(text, shallow = false)
+    def initialize(text)
       text ||= '' # empty is the same as nil - but it doesn't crash
       begin
         result = Prism.parse(text)
-        processor = PrismProcessor.new(text.split("\n").length, shallow)
+        processor = PrismProcessor.new(text.split("\n").length)
         processor.root_scope # Initialize root scope
         result.value.accept(processor)
         @root_scope = processor.root_scope
       rescue StandardError => e
         RubyLanguageServer.logger.error("Exception in prism parsing: #{e} for text: #{text}")
         # Create an empty root scope on error
-        processor = PrismProcessor.new(text.split("\n").length, shallow)
+        processor = PrismProcessor.new(text.split("\n").length)
         @root_scope = processor.root_scope
       end
     end
