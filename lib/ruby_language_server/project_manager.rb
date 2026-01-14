@@ -167,34 +167,61 @@ module RubyLanguageServer
 
       context = context_at_location(uri, position)
 
+      # Get current scopes for context
+      current_scopes = scopes_at(uri, position)
+
       # If context has more than one element it could be a method call or namespace reference
       if context.length > 1
-        # Check if this is a namespace reference (Foo::Bar) vs method call (Foo.bar)
-        if namespace_reference?(uri, position, context)
-          # Join the context with :: to form the full class/module name
-          full_name = context.join('::')
-          return project_definitions_for(full_name)
+        # Find the rightmost class/module reference in the context (excluding the last element which is the name)
+        # Examples:
+        # - foo.Bar::Baz.something -> find Baz (index 2), build scope from Bar::Baz
+        # - Bar.foo.Baz.something -> find Baz (index 2), use Baz as scope
+        class_module_indices = []
+        (0...(context.length - 1)).each do |i|
+          class_module_indices << i if likely_class_name?(context[i])
         end
 
-        receiver = context.first
-        # Determine if it's a class method call (Foo.method) or instance method call (foo.method)
-        class_method_filter = name != 'initialize'
-        return project_definitions_for(name, class_method_filter) if likely_class_name?(receiver)
+        if class_module_indices.any?
+          # Use the rightmost class/module and build the path from there to just before the name
+          rightmost_class_index = class_module_indices.last
+          scope_path_parts = context[rightmost_class_index..-2]
 
-        # Class method call or MyClass.new (which finds initialize as instance method)
-        # initialize is weird because it's defined as an instance method but called on the class via new.
+          if scope_path_parts.empty?
+            # This shouldn't happen, but handle it gracefully
+            return project_definitions_for(name, current_scopes)
+          elsif scope_path_parts.length == 1
+            # Single class/module like Bar.something or Foo::Bar
+            parent_scope = find_scope_by_path(scope_path_parts.first)
+          else
+            # Multiple parts like Bar::Baz.something or after finding Bar in foo.Bar::Baz.something
+            scope_path = scope_path_parts.join('::')
+            parent_scope = find_scope_by_path(scope_path)
+          end
 
-        # Instance method call (e.g., foo.bar, @foo.bar, FOO.bar)
-        return project_definitions_for(name, false)
+          # Determine if it's a class/module lookup or a method call
+          # If the name also looks like a class/module name, it's a namespace lookup (Foo::Bar)
+          # Otherwise it's a method call (Foo.method or Foo::Bar.method)
+          return project_definitions_for(name, parent_scope ? [parent_scope] : []) if likely_class_name?(name) || constant_name?(name)
 
+          # Namespace lookup like Foo::Bar or Foo::BAR - no method type filtering
+
+          # Method call - determine if it's a class method or instance method
+          class_method_filter = name != 'initialize'
+          return project_definitions_for(name, parent_scope ? [parent_scope] : [], class_method_filter)
+
+        end
+
+        # No class/module found in chain, treat as instance method call on unknown type
+        # Search project-wide for all instance methods with this name
+        return project_definitions_for(name, [], false)
       end
 
       # No receiver - search in scope chain first, then project-wide
-      scope = scopes_at(uri, position).first
+      scope = current_scopes.first
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?
 
-      project_definitions_for(name)
+      project_definitions_for(name, current_scopes)
     end
 
     # Return variables found in the current scope.  After all, those are the important ones.
@@ -212,25 +239,64 @@ module RubyLanguageServer
       return_array.uniq
     end
 
-    def project_definitions_for(name, class_method_filter = nil)
-      # Check if name contains namespace separator (e.g., "Foo::Bar")
-      # If so, search by path instead of name
-      scopes = if name.include?('::')
-                 RubyLanguageServer::ScopeData::Scope.where(path: name)
-               else
-                 RubyLanguageServer::ScopeData::Scope.where(name:)
-               end
+    # class_method_filter is for new -> initialize
+    def project_definitions_for(name, parent_scopes = [], class_method_filter = nil)
+      results = []
 
-      # Filter by class_method attribute if specified
-      scopes = scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+      if parent_scopes.empty?
+        # No parent scopes provided - search all top-level scopes
+        all_scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
+        all_scopes = all_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+        results.concat(all_scopes.to_a)
 
-      variables = RubyLanguageServer::ScopeData::Variable.constant_variables.where(name:)
-      (scopes + variables).reject { |scope| scope.code_file.nil? }.map do |scope|
-        Location.hash(scope.code_file.uri, scope.top_line, 1)
+        # Also search for constants at root level
+        all_variables = RubyLanguageServer::ScopeData::Variable.where(name: name)
+        results.concat(all_variables.to_a)
+      else
+        # Start with the deepest (first) scope and search upward through parent chain
+        current_scope = parent_scopes.first
+        while current_scope
+          # Search for child scopes with matching name in current scope
+          child_scopes = current_scope.children.where(name: name)
+          child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+          results.concat(child_scopes.to_a)
+
+          # Search for variables with matching name in current scope
+          matching_variables = current_scope.variables.where(name: name)
+          results.concat(matching_variables.to_a)
+
+          # If we found results, stop searching (most specific scope wins)
+          break unless results.empty?
+
+          # Move up to parent scope
+          current_scope = current_scope.parent
+        end
+      end
+
+      # Return locations for all matching scopes and variables
+      results.reject { |item| item.code_file.nil? }.map do |item|
+        line = item.respond_to?(:top_line) ? item.top_line : item.line
+        Location.hash(item.code_file.uri, line, 1)
       end
     end
 
     private
+
+    # Find a scope by its path (e.g., "Foo::Bar")
+    # Returns nil if path is nil or empty (for root scope searches)
+    def find_scope_by_path(path)
+      return nil if path.nil? || path.empty?
+
+      RubyLanguageServer::ScopeData::Scope.find_by(path: path)
+    end
+
+    # Check if a name looks like a constant (all uppercase)
+    def constant_name?(name)
+      # Must start with uppercase letter and contain no lowercase letters
+      return false unless /\A[A-Z]/.match?(name)
+
+      !/[a-z]/.match?(name)
+    end
 
     # Check if the context represents a namespace reference (Foo::Bar) rather than a method call (Foo.bar)
     # Class/module lookups always start with uppercase letters, method calls never do
