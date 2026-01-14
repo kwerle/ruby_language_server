@@ -15,9 +15,10 @@ describe RubyLanguageServer::ScopeParser do
       end
 
       it 'records all the variables' do
-        assert_equal(RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name), [
-                       "@biz", "@bottom", "@niz", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"
-                     ])
+        assert_equal(
+          RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name),
+          ["@biz", "@bottom", "@niz", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"],
+        )
       end
 
       describe 'class << self' do
