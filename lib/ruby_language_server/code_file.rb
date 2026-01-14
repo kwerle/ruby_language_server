@@ -71,7 +71,7 @@ module RubyLanguageServer
         scope_hash = {
           name: scope.name,
           kind:,
-          location: Location.hash(uri, scope.top_line)
+          location: Location.hash(uri, scope.top_line, scope.column, scope.bottom_line)
         }
         container_name = ancestor_scope_name(scope)
         scope_hash[:containerName] = container_name unless container_name.blank?
@@ -82,7 +82,7 @@ module RubyLanguageServer
         {
           name:,
           kind: SYMBOL_KIND[:constant],
-          location: Location.hash(uri, variable.line - 1),
+          location: Location.hash(uri, variable.line - 1, variable.column),
           containerName: variable.scope.name
         }
       end

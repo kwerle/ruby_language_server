@@ -253,5 +253,26 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal(0, bar.children.size, "Bar should have no children")
       end
     end
+
+    describe 'module with single constant' do
+      before do
+        @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
+          module MyModule
+            MY_CONSTANT = 42
+          end
+        RUBY
+      end
+
+      it 'should have the constant as a variable child of the module' do
+        my_module = @parser.root_scope.children.first
+        assert_equal('MyModule', my_module.name)
+        assert_equal(:module, my_module.type, "MyModule should be a module")
+
+        # The constant should be a variable within the module scope
+        constant_vars = my_module.variables
+        assert_equal(1, constant_vars.size, "MyModule should have 1 constant variable")
+        assert_equal('MY_CONSTANT', constant_vars.first.name, "The constant should be named MY_CONSTANT")
+      end
+    end
   end
 end
