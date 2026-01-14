@@ -42,7 +42,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'fuzzy_match' # completion matching
   spec.add_dependency 'json'
   spec.add_dependency 'ostruct'
-  spec.add_dependency 'prism'
+  spec.add_dependency 'prism', '>=1.8.0'
   spec.add_dependency 'sqlite3'
 
   spec.add_development_dependency 'debug'
