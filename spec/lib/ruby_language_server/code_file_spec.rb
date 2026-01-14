@@ -6,7 +6,7 @@ require 'minitest/autorun'
 describe RubyLanguageServer::CodeFile do
   describe 'CodeFile' do
     let(:source) do
-      <<-SOURCE
+      <<~SOURCE
         class Foo
           def self.foo_class_method
           end
