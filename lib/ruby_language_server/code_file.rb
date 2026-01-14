@@ -82,7 +82,7 @@ module RubyLanguageServer
         {
           name:,
           kind: SYMBOL_KIND[:constant],
-          location: Location.hash(uri, variable.line - 1, variable.column),
+          location: Location.hash(uri, variable.line, variable.column),
           containerName: variable.scope.name
         }
       end
