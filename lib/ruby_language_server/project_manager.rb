@@ -203,8 +203,6 @@ module RubyLanguageServer
           # Otherwise it's a method call (Foo.method or Foo::Bar.method)
           return project_definitions_for(name, parent_scope ? [parent_scope] : []) if likely_class_name?(name) || constant_name?(name)
 
-          # Namespace lookup like Foo::Bar or Foo::BAR - no method type filtering
-
           # Method call - determine if it's a class method or instance method
           class_method_filter = name != 'initialize'
           return project_definitions_for(name, parent_scope ? [parent_scope] : [], class_method_filter)
