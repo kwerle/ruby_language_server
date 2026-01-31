@@ -2,10 +2,10 @@
 #
 # For development:
 # docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
-FROM ruby:3.3-alpine
+FROM ruby:4.0-alpine
 LABEL maintainer="kurt@CircleW.org"
 
-RUN gem update bundler
+# RUN gem update bundler - Skipping as Ruby 4.0 comes with compatible bundler
 
 # Needed for byebug and some other gems
 RUN apk update
@@ -19,7 +19,7 @@ RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip
 RUN unzip master.zip
 WORKDIR /usr/local/src/SQLite-Levenshtein-master
 RUN ./configure
-RUN make -j 8 install
+RUN make install
 
 WORKDIR /app
 RUN rm -rf /usr/local/src

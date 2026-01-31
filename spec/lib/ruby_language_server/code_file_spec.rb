@@ -5,13 +5,8 @@ require 'minitest/autorun'
 
 describe RubyLanguageServer::CodeFile do
   describe 'CodeFile' do
-    it 'must init' do
-      RubyLanguageServer::CodeFile.build('uri', "class Foo\nend\n")
-    end
-
-    describe 'tags' do
-      let(:source) do
-        <<-SOURCE
+    let(:source) do
+      <<~SOURCE
         class Foo
           def self.foo_class_method
           end
@@ -22,14 +17,19 @@ describe RubyLanguageServer::CodeFile do
           end
           FOO_CONSTANT = 1
         end
-        SOURCE
-      end
+      SOURCE
+    end
 
+    def code_file(text)
+      RubyLanguageServer::CodeFile.build('uri', text)
+    end
+
+    it 'must init' do
+      RubyLanguageServer::CodeFile.build('uri', "class Foo\nend\n")
+    end
+
+    describe 'tags' do
       let(:tags) { code_file(source).tags }
-
-      def code_file(text)
-        RubyLanguageServer::CodeFile.build('uri', text)
-      end
 
       it 'should find classes' do
         code_file = code_file("class Foo\nend\n")
@@ -71,6 +71,72 @@ describe RubyLanguageServer::CodeFile do
       it 'should do the right thing with initialize' do
         tag = tags.detect { |t| t[:name] == 'initialize' }
         assert_equal(9, tag[:kind])
+      end
+
+      describe 'location ranges' do
+        let(:cf) { code_file(source) }
+
+        it 'should have correct start and end lines for a simple class' do
+          tag = cf.tags.detect { |t| t[:name] == 'Foo' }
+
+          # Line numbers are 0-indexed in LSP
+          expected_range = {
+            start: { line: 0, character: 0 },
+            end: { line: 9, character: 0 }
+          }
+          assert_equal(expected_range, tag[:location][:range])
+        end
+
+        it 'should have correct start and end lines for a method' do
+          tag = cf.tags.detect { |t| t[:name] == 'foo_method' }
+
+          expected_range = {
+            start: { line: 5, character: 2 },
+            end: { line: 7, character: 2 }
+          }
+          assert_equal(expected_range, tag[:location][:range])
+        end
+
+        it 'should have correct start and end lines for multiple methods' do
+          foo_tag = cf.tags.detect { |t| t[:name] == 'Foo' }
+          foo_class_method_tag = cf.tags.detect { |t| t[:name] == 'foo_class_method' }
+          initialize_tag = cf.tags.detect { |t| t[:name] == 'initialize' }
+          foo_method_tag = cf.tags.detect { |t| t[:name] == 'foo_method' }
+
+          expected_foo_range = {
+            start: { line: 0, character: 0 },
+            end: { line: 9, character: 0 }
+          }
+          expected_foo_class_method_range = {
+            start: { line: 1, character: 2 },
+            end: { line: 2, character: 2 }
+          }
+          expected_initialize_range = {
+            start: { line: 3, character: 2 },
+            end: { line: 4, character: 2 }
+          }
+          expected_foo_method_range = {
+            start: { line: 5, character: 2 },
+            end: { line: 7, character: 2 }
+          }
+
+          assert_equal(expected_foo_range, foo_tag[:location][:range])
+          assert_equal(expected_foo_class_method_range, foo_class_method_tag[:location][:range])
+          assert_equal(expected_initialize_range, initialize_tag[:location][:range])
+          assert_equal(expected_foo_method_range, foo_method_tag[:location][:range])
+        end
+
+        it 'should have correct start and end lines for constants' do
+          tag = cf.tags.detect { |t| t[:name] == 'FOO_CONSTANT' }
+
+          # The constant is on line 9 (1-indexed), which should be line 8 (0-indexed) in LSP
+          # FOO_CONSTANT = 1 is on line 9 of the source
+          expected_range = {
+            start: { line: 8, character: 2 },
+            end: { line: 8, character: 2 }
+          }
+          assert_equal(expected_range, tag[:location][:range])
+        end
       end
     end
   end

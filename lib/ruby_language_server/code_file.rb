@@ -71,7 +71,7 @@ module RubyLanguageServer
         scope_hash = {
           name: scope.name,
           kind:,
-          location: Location.hash(uri, scope.top_line)
+          location: Location.hash(uri, scope.top_line, scope.column, scope.bottom_line)
         }
         container_name = ancestor_scope_name(scope)
         scope_hash[:containerName] = container_name unless container_name.blank?
@@ -82,7 +82,7 @@ module RubyLanguageServer
         {
           name:,
           kind: SYMBOL_KIND[:constant],
-          location: Location.hash(uri, variable.line - 1),
+          location: Location.hash(uri, variable.line, variable.column),
           containerName: variable.scope.name
         }
       end
@@ -108,7 +108,7 @@ module RubyLanguageServer
       update(text: new_text, refresh_root_scope: true)
     end
 
-    def refresh_scopes_if_needed(shallow: false)
+    def refresh_scopes_if_needed
       return unless refresh_root_scope
 
       RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
@@ -117,7 +117,7 @@ module RubyLanguageServer
           self.class.transaction do
             scopes.clear
             variables.clear
-            new_root = ScopeParser.new(text, shallow).root_scope
+            new_root = ScopeParser.new(text).root_scope
             RubyLanguageServer.logger.debug("new_root.children #{new_root.children.as_json}") if new_root&.children
             raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
 

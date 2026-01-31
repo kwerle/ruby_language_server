@@ -9,30 +9,16 @@ describe RubyLanguageServer::ScopeParser do
   end
 
   describe 'Small file' do
-    describe 'shallow parsing' do
-      before do
-        @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines, true)
-      end
-
-      # Life is unfair.  `private` does not start a block - it just sets a flag.  So I may circle back to this.
-      # it 'does not find private methods' do
-      #   bar = @parser.root_scope.children.first.children.detect { |child| child.full_name == 'Foo::Bar' }
-      #   assert_equal(%w[baz], bar.children.map(&:name).sort)
-      # end
-      it 'does not add any variables at any scope' do
-        assert_equal(RubyLanguageServer::ScopeData::Variable.all.count, 0)
-      end
-    end
-
     describe 'normal parsing' do
       before do
         @parser = RubyLanguageServer::ScopeParser.new(@code_file_lines)
       end
 
-      it 'records all the variables (as opposed to shallow)' do
-        assert_equal(RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name), [
-                       "@biz", "@bottom", "@niz", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"
-                     ])
+      it 'records all the variables' do
+        assert_equal(
+          RubyLanguageServer::ScopeData::Variable.order(:name).pluck(:name),
+          ["@biz", "@bottom", "@niz", "bing", "bogus", "ning", "paf", "par", "par", "pax", "zang", "zing"]
+        )
       end
 
       describe 'class << self' do
@@ -251,6 +237,27 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal(:class, bar.type, "Bar should be a class")
         assert_equal(:module, baz.type, "Baz should be a module")
         assert_equal(0, bar.children.size, "Bar should have no children")
+      end
+    end
+
+    describe 'module with single constant' do
+      before do
+        @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
+          module MyModule
+            MY_CONSTANT = 42
+          end
+        RUBY
+      end
+
+      it 'should have the constant as a variable child of the module' do
+        my_module = @parser.root_scope.children.first
+        assert_equal('MyModule', my_module.name)
+        assert_equal(:module, my_module.type, "MyModule should be a module")
+
+        # The constant should be a variable within the module scope
+        constant_vars = my_module.variables
+        assert_equal(1, constant_vars.size, "MyModule should have 1 constant variable")
+        assert_equal('MY_CONSTANT', constant_vars.first.name, "The constant should be named MY_CONSTANT")
       end
     end
   end

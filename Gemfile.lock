@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_language_server (0.9.3)
+    ruby_language_server (0.9.4)
       activerecord (~> 8.1)
       amatch
       bundler
@@ -9,19 +9,19 @@ PATH
       fuzzy_match
       json
       ostruct
-      prism
+      prism (>= 1.8.0)
       sqlite3
 
 GEM
   remote: https://rubygems.org/
   specs:
-    activemodel (8.1.1)
-      activesupport (= 8.1.1)
-    activerecord (8.1.1)
-      activemodel (= 8.1.1)
-      activesupport (= 8.1.1)
+    activemodel (8.1.2)
+      activesupport (= 8.1.2)
+    activerecord (8.1.2)
+      activemodel (= 8.1.2)
+      activesupport (= 8.1.2)
       timeout (>= 0.4.0)
-    activesupport (8.1.1)
+    activesupport (8.1.2)
       base64
       bigdecimal
       concurrent-ruby (~> 1.0, >= 1.3.1)
@@ -111,7 +111,7 @@ GEM
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
-    prism (1.7.0)
+    prism (1.8.0)
     pry (0.16.0)
       coderay (~> 1.1)
       method_source (~> 1.0)
@@ -126,7 +126,7 @@ GEM
     rb-inotify (0.11.1)
       ffi (~> 1.0)
     rb-readline (0.5.5)
-    rdoc (7.0.3)
+    rdoc (7.1.0)
       erb
       psych (>= 4.0.0)
       tsort
@@ -160,7 +160,7 @@ GEM
     rubocop-rake (0.7.1)
       lint_roller (~> 1.1)
       rubocop (>= 1.72.1)
-    rubocop-rspec (3.8.0)
+    rubocop-rspec (3.9.0)
       lint_roller (~> 1.1)
       rubocop (~> 1.81)
     ruby-progressbar (1.13.0)
@@ -175,7 +175,7 @@ GEM
     sqlite3 (2.9.0-aarch64-linux-musl)
     stringio (3.2.0)
     sync (0.5.0)
-    thor (1.4.0)
+    thor (1.5.0)
     timeout (0.6.0)
     tins (1.51.0)
       bigdecimal
@@ -213,9 +213,9 @@ DEPENDENCIES
   simplecov_json_formatter
 
 CHECKSUMS
-  activemodel (8.1.1) sha256=8b7e2496b9e333ced06248c16a43217b950192c98e0fe3aa117eee21501c6fbd
-  activerecord (8.1.1) sha256=e32c3a03e364fd803498eb4150c21bedc995aa83bc27122a94d480ab1dcb3d17
-  activesupport (8.1.1) sha256=5e92534e8d0c8b8b5e6b16789c69dbea65c1d7b752269f71a39422e9546cea67
+  activemodel (8.1.2) sha256=e21358c11ce68aed3f9838b7e464977bc007b4446c6e4059781e1d5c03bcf33e
+  activerecord (8.1.2) sha256=acfbe0cadfcc50fa208011fe6f4eb01cae682ebae0ef57145ba45380c74bcc44
+  activesupport (8.1.2) sha256=88842578ccd0d40f658289b0e8c842acfe9af751afee2e0744a7873f50b6fdae
   amatch (0.6.0) sha256=247996bdce87754a42ed38ce8b22a4b8162e1699a8d353bc36bc96b544bd509d
   ansi (1.5.0) sha256=5408253274e33d9d27d4a98c46d2998266fd51cba58a7eb9d08f50e57ed23592
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
@@ -258,7 +258,7 @@ CHECKSUMS
   parser (3.3.10.0) sha256=ce3587fa5cc55a88c4ba5b2b37621b3329aadf5728f9eafa36bbd121462aabd6
   pp (0.6.3) sha256=2951d514450b93ccfeb1df7d021cae0da16e0a7f95ee1e2273719669d0ab9df6
   prettyprint (0.2.0) sha256=2bc9e15581a94742064a3cc8b0fb9d45aae3d03a1baa6ef80922627a0766f193
-  prism (1.7.0) sha256=10062f734bf7985c8424c44fac382ac04a58124ea3d220ec3ba9fe4f2da65103
+  prism (1.8.0) sha256=84453a16ef5530ea62c5f03ec16b52a459575ad4e7b9c2b360fd8ce2c39c1254
   pry (0.16.0) sha256=d76c69065698ed1f85e717bd33d7942c38a50868f6b0673c636192b3d1b6054e
   psych (5.3.1) sha256=eb7a57cef10c9d70173ff74e739d843ac3b2c019a003de48447b2963d81b1974
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
@@ -267,7 +267,7 @@ CHECKSUMS
   rb-fsevent (0.11.2) sha256=43900b972e7301d6570f64b850a5aa67833ee7d87b458ee92805d56b7318aefe
   rb-inotify (0.11.1) sha256=a0a700441239b0ff18eb65e3866236cd78613d6b9f78fea1f9ac47a85e47be6e
   rb-readline (0.5.5) sha256=9e9bd7e198bdef0822c46902f6c592b882c1f9777894a4c3dcf5b320824a8793
-  rdoc (7.0.3) sha256=dfe3d0981d19b7bba71d9dbaeb57c9f4e3a7a4103162148a559c4fc687ea81f9
+  rdoc (7.1.0) sha256=494899df0706c178596ca6e1d50f1b7eb285a9b2aae715be5abd742734f17363
   readline (0.0.4) sha256=6138eef17be2b98298b672c3ea63bf9cb5158d401324f26e1e84f235879c1d6a
   regexp_parser (2.11.3) sha256=ca13f381a173b7a93450e53459075c9b76a10433caadcb2f1180f2c741fc55a4
   reline (0.6.3) sha256=1198b04973565b36ec0f11542ab3f5cfeeec34823f4e54cebde90968092b1835
@@ -276,9 +276,9 @@ CHECKSUMS
   rubocop-minitest (0.38.2) sha256=5a9dfb5a538973d0601aa51e59637d3998bb8df81233edf1ff421504c6280068
   rubocop-performance (1.26.1) sha256=cd19b936ff196df85829d264b522fd4f98b6c89ad271fa52744a8c11b8f71834
   rubocop-rake (0.7.1) sha256=3797f2b6810c3e9df7376c26d5f44f3475eda59eb1adc38e6f62ecf027cbae4d
-  rubocop-rspec (3.8.0) sha256=28440dccb3f223a9938ca1f946bd3438275b8c6c156dab909e2cb8bc424cab33
+  rubocop-rspec (3.9.0) sha256=8fa70a3619408237d789aeecfb9beef40576acc855173e60939d63332fdb55e2
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
-  ruby_language_server (0.9.3)
+  ruby_language_server (0.9.4)
   securerandom (0.4.1) sha256=cc5193d414a4341b6e225f0cb4446aceca8e50d5e1888743fac16987638ea0b1
   shellany (0.0.1) sha256=0e127a9132698766d7e752e82cdac8250b6adbd09e6c0a7fbbb6f61964fedee7
   simplecov (0.22.0) sha256=fe2622c7834ff23b98066bb0a854284b2729a569ac659f82621fc22ef36213a5
@@ -287,7 +287,7 @@ CHECKSUMS
   sqlite3 (2.9.0-aarch64-linux-musl) sha256=56a35cb2d70779afc2ac191baf2c2148242285ecfed72f9b021218c5c4917913
   stringio (3.2.0) sha256=c37cb2e58b4ffbd33fe5cd948c05934af997b36e0b6ca6fdf43afa234cf222e1
   sync (0.5.0) sha256=668356cc07c59ac7ed9ecf34fec3929831f179c07adb1f3e1c3b7a1609a638fd
-  thor (1.4.0) sha256=8763e822ccb0f1d7bee88cde131b19a65606657b847cc7b7b4b82e772bcd8a3d
+  thor (1.5.0) sha256=e3a9e55fe857e44859ce104a84675ab6e8cd59c650a49106a05f55f136425e73
   timeout (0.6.0) sha256=6d722ad619f96ee383a0c557ec6eb8c4ecb08af3af62098a0be5057bf00de1af
   tins (1.51.0) sha256=9f83c534bfca23973c5e641308828d71d5ffa79fc32c0ef90996efa699d0696f
   tsort (0.2.0) sha256=9650a793f6859a43b6641671278f79cfead60ac714148aabe4e3f0060480089f

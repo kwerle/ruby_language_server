@@ -359,5 +359,62 @@ describe RubyLanguageServer::ProjectManager do
         assert_equal 11, results.first[:range][:start][:line]
       end
     end
+
+    describe 'constant lookup with namespace' do
+      let(:file_with_namespaced_constant) do
+        <<~CODE_FILE
+          module Foo
+            BAR = "bar constant"
+
+            class Baz
+              QUUX = "quux constant"
+            end
+          end
+
+          # Using the constant
+          puts Foo::BAR
+          puts Foo::Baz::QUUX
+        CODE_FILE
+      end
+
+      before(:each) do
+        project_manager.update_document_content('const_uri', file_with_namespaced_constant)
+        project_manager.tags_for_uri('const_uri') # Force load of tags
+      end
+
+      it 'finds constant definition when clicking on constant in Foo::BAR' do
+        # Position on "BAR" in "Foo::BAR" (line 9, character 10)
+        # The line is: "puts Foo::BAR"
+        position = OpenStruct.new(line: 9, character: 10)
+        results = project_manager.possible_definitions('const_uri', position)
+
+        # Should find the BAR constant definition on line 1
+        assert_equal 1, results.length, "Expected to find 1 definition for Foo::BAR, but got #{results.length}"
+        assert_equal 'const_uri', results.first[:uri]
+        assert_equal 1, results.first[:range][:start][:line]
+      end
+
+      it 'finds constant definition when clicking on nested constant in Foo::Baz::QUUX' do
+        # Position on "QUUX" in "Foo::Baz::QUUX" (line 10, character 16)
+        position = OpenStruct.new(line: 10, character: 16)
+        results = project_manager.possible_definitions('const_uri', position)
+
+        # Should find the QUUX constant definition on line 4
+        assert_equal 1, results.length, "Expected to find 1 definition for Foo::Baz::QUUX, but got #{results.length}"
+        assert_equal 'const_uri', results.first[:uri]
+        assert_equal 4, results.first[:range][:start][:line]
+      end
+
+      it 'finds module definition when clicking on Foo in Foo::BAR' do
+        # Position on "Foo" in "Foo::BAR" (line 9, character 5)
+        position = OpenStruct.new(line: 9, character: 5)
+        results = project_manager.possible_definitions('const_uri', position)
+
+        # Should find the Foo module definition on line 0
+        assert_equal 1, results.length
+        assert_equal 'const_uri', results.first[:uri]
+        assert_equal 0, results.first[:range][:start][:line]
+      end
+    end
   end
 end
