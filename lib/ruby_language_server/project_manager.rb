@@ -186,14 +186,15 @@ module RubyLanguageServer
           # For "Foo::Bar.method", we want both Foo and Bar, not just Bar
           # For "foo.Bar::Baz.method", we want Bar and Baz, not just Baz
           rightmost_class_index = class_module_indices.last
-          
+
           # Find the leftmost index of the continuous chain ending at rightmost_class_index
           leftmost_continuous_index = rightmost_class_index
           class_module_indices.reverse.each_cons(2) do |right, left|
-            break unless right == left + 1  # Break if not continuous
+            break unless right == left + 1 # Break if not continuous
+
             leftmost_continuous_index = left
           end
-          
+
           scope_path_parts = context[leftmost_continuous_index..-2]
 
           if scope_path_parts.empty?

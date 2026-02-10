@@ -54,6 +54,7 @@ GEM
     erb (6.0.1)
     etc (1.4.6)
     ffi (1.17.3-aarch64-linux-musl)
+    ffi (1.17.3-x86_64-linux-gnu)
     formatador (1.2.3)
       reline
     fuzzy_match (2.1.0)
@@ -173,6 +174,7 @@ GEM
     simplecov-html (0.13.2)
     simplecov_json_formatter (0.1.4)
     sqlite3 (2.9.0-aarch64-linux-musl)
+    sqlite3 (2.9.0-x86_64-linux-gnu)
     stringio (3.2.0)
     sync (0.5.0)
     thor (1.5.0)
@@ -192,6 +194,7 @@ GEM
 
 PLATFORMS
   aarch64-linux-musl
+  x86_64-linux
 
 DEPENDENCIES
   debug
@@ -232,6 +235,7 @@ CHECKSUMS
   erb (6.0.1) sha256=28ecdd99c5472aebd5674d6061e3c6b0a45c049578b071e5a52c2a7f13c197e5
   etc (1.4.6) sha256=0f7e9e7842ea5e3c3bd9bc81746ebb8c65ea29e4c42a93520a0d638129c7de01
   ffi (1.17.3-aarch64-linux-musl) sha256=020b33b76775b1abacc3b7d86b287cef3251f66d747092deec592c7f5df764b2
+  ffi (1.17.3-x86_64-linux-gnu)
   formatador (1.2.3) sha256=19fa898133c2c26cdbb5d09f6998c1e137ad9427a046663e55adfe18b950d894
   fuzzy_match (2.1.0) sha256=e97e25d0eaee48a5f77ed970d007c7b6ff3c6a6858303fead2d1986859204dfc
   guard (2.19.1) sha256=b8bc52694be3d8b26730280de7dcec7fe92ea1cff3414246fe96af3f23580f3d
@@ -285,6 +289,7 @@ CHECKSUMS
   simplecov-html (0.13.2) sha256=bd0b8e54e7c2d7685927e8d6286466359b6f16b18cb0df47b508e8d73c777246
   simplecov_json_formatter (0.1.4) sha256=529418fbe8de1713ac2b2d612aa3daa56d316975d307244399fa4838c601b428
   sqlite3 (2.9.0-aarch64-linux-musl) sha256=56a35cb2d70779afc2ac191baf2c2148242285ecfed72f9b021218c5c4917913
+  sqlite3 (2.9.0-x86_64-linux-gnu)
   stringio (3.2.0) sha256=c37cb2e58b4ffbd33fe5cd948c05934af997b36e0b6ca6fdf43afa234cf222e1
   sync (0.5.0) sha256=668356cc07c59ac7ed9ecf34fec3929831f179c07adb1f3e1c3b7a1609a638fd
   thor (1.5.0) sha256=e3a9e55fe857e44859ce104a84675ab6e8cd59c650a49106a05f55f136425e73
