@@ -314,7 +314,7 @@ describe RubyLanguageServer::ProjectManager do
       end
 
       it 'finds namespaced class when clicking on Bar in Foo::Bar' do
-        # Position on "Bar" in "Foo::Bar" on line 11
+        # Position on "Bar" in "Foo::Bar" (0-indexed line 11)
         # The line is: "Foo::Bar # clicking on Bar should find the class"
         # Character 5 is on 'B' of Bar
         position = OpenStruct.new(line: 11, character: 5)
@@ -327,7 +327,7 @@ describe RubyLanguageServer::ProjectManager do
       end
 
       it 'finds class method when clicking on class_method in Foo::Bar.class_method' do
-        # Position on "class_method" in "Foo::Bar.class_method" on line 12
+        # Position on "class_method" in "Foo::Bar.class_method" (0-indexed line 12)
         # The line is: "Foo::Bar.class_method # clicking on class_method should find the method"
         # Character 9 is on 'c' of class_method
         position = OpenStruct.new(line: 12, character: 9)
