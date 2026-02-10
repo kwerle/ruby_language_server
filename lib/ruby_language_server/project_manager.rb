@@ -182,9 +182,19 @@ module RubyLanguageServer
         end
 
         if class_module_indices.any?
-          # Use the rightmost class/module and build the path from there to just before the name
+          # Find the continuous chain of class/module names ending at the rightmost one
+          # For "Foo::Bar.method", we want both Foo and Bar, not just Bar
+          # For "foo.Bar::Baz.method", we want Bar and Baz, not just Baz
           rightmost_class_index = class_module_indices.last
-          scope_path_parts = context[rightmost_class_index..-2]
+          
+          # Find the leftmost index of the continuous chain ending at rightmost_class_index
+          leftmost_continuous_index = rightmost_class_index
+          class_module_indices.reverse.each_cons(2) do |right, left|
+            break unless right == left + 1  # Break if not continuous
+            leftmost_continuous_index = left
+          end
+          
+          scope_path_parts = context[leftmost_continuous_index..-2]
 
           if scope_path_parts.empty?
             # This shouldn't happen, but handle it gracefully

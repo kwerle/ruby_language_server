@@ -289,6 +289,57 @@ describe RubyLanguageServer::ProjectManager do
       end
     end
 
+    describe 'namespaced class method lookup' do
+      let(:file_with_namespaced_class_method) do
+        <<~CODE_FILE
+          module Foo
+            class Bar
+              def self.class_method
+                puts "class method"
+              end
+              def some_method
+                puts "instance method"
+              end
+            end
+          end
+
+          Foo::Bar # clicking on Bar should find the class
+          Foo::Bar.class_method # clicking on class_method should find the method
+        CODE_FILE
+      end
+
+      before(:each) do
+        project_manager.update_document_content('namespace_method_uri', file_with_namespaced_class_method)
+        project_manager.tags_for_uri('namespace_method_uri') # Force load of tags
+      end
+
+      it 'finds namespaced class when clicking on Bar in Foo::Bar' do
+        # Position on "Bar" in "Foo::Bar" on line 11
+        # The line is: "Foo::Bar # clicking on Bar should find the class"
+        # Character 5 is on 'B' of Bar
+        position = OpenStruct.new(line: 11, character: 5)
+        results = project_manager.possible_definitions('namespace_method_uri', position)
+
+        # Should find the Bar class definition on line 1 (0-indexed)
+        assert_equal 1, results.length
+        assert_equal 'namespace_method_uri', results.first[:uri]
+        assert_equal 1, results.first[:range][:start][:line]
+      end
+
+      it 'finds class method when clicking on class_method in Foo::Bar.class_method' do
+        # Position on "class_method" in "Foo::Bar.class_method" on line 12
+        # The line is: "Foo::Bar.class_method # clicking on class_method should find the method"
+        # Character 9 is on 'c' of class_method
+        position = OpenStruct.new(line: 12, character: 9)
+        results = project_manager.possible_definitions('namespace_method_uri', position)
+
+        # Should find the class_method definition on line 2 (0-indexed)
+        assert_equal 1, results.length
+        assert_equal 'namespace_method_uri', results.first[:uri]
+        assert_equal 2, results.first[:range][:start][:line]
+      end
+    end
+
     describe 'parameter vs method name resolution' do
       let(:file_with_param_shadowing) do
         <<~CODE_FILE
