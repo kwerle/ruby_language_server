@@ -56,8 +56,8 @@ describe RubyLanguageServer::Completion do
       completions = RubyLanguageServer::Completion.completion(context, nar_naz_scope, all_scopes)
       # Methods with parameters now include insertText, insertTextFormat, label with params, and detail
       expected_items = [
-        {label: "Bar", kind: 7},
-        {label: "baz(bing, zing)", kind: 2, insertText: "baz(${1:bing}, ${2:zing})", insertTextFormat: 2, detail: "bing (required), zing (required)"}
+        {label: "baz(bing, zing)", kind: 2, insertText: "baz(${1:bing}, ${2:zing})", insertTextFormat: 2, detail: "bing (required), zing (required)"},
+        {label: "Bar", kind: 7}
       ]
       assert_equal(expected_items, completions[:items][0..1])
     end

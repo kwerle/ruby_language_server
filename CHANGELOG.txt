@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.9.5 Tue Feb 10 22:04:44 PST 2026
+
+* Fix some scope lookups
+* Update the Gemfile
+
 #### 0.9.4 Fri Jan 30 21:09:57 PST 2026
 
 * Enhance constant lookup to support namespaced constants in ProjectManager
