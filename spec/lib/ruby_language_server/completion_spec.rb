@@ -194,4 +194,69 @@ describe RubyLanguageServer::Completion do
       assert_equal('arg1 (required), arg2 (required)', simple_method_item[:detail], 'should include parameter details')
     end
   end
+
+  describe 'module inclusion' do
+    before do
+      @code_with_include = <<-SOURCE
+      module FooModule
+        def foo_method
+        end
+
+        def another_foo_method(param1)
+        end
+      end
+
+      class BarClass
+        include FooModule
+
+        def bar_method
+          foo # completion should find foo_method from included FooModule module
+        end
+      end
+      SOURCE
+      @include_parser = RubyLanguageServer::ScopeParser.new(@code_with_include)
+    end
+
+    it 'should track included modules in scope' do
+      all_scopes = @include_parser.root_scope.self_and_descendants
+      bar_class = all_scopes.find_by_path('BarClass')
+      
+      assert bar_class, 'BarClass should exist'
+      included_modules = bar_class.parsed_included_modules
+      assert_equal(['FooModule'], included_modules, 'BarClass should have FooModule in its included modules')
+    end
+
+    it 'should include methods from included modules in completions' do
+      all_scopes = @include_parser.root_scope.self_and_descendants
+      bar_method_scope = all_scopes.find_by_path('BarClass#bar_method')
+      
+      assert bar_method_scope, 'bar_method scope should exist'
+      
+      # Get completions for 'foo' prefix within BarClass#bar_method
+      context = ['foo']
+      position_scopes = @include_parser.root_scope.self_and_descendants.for_line(bar_method_scope.top_line + 1)
+      completions = scope_completions(context.last, position_scopes)
+      
+      # Should include foo_method from the included FooModule module
+      completion_names = completions.map(&:first)
+      assert_includes(completion_names, 'foo_method', 'Should find foo_method from included module FooModule')
+      assert_includes(completion_names, 'another_foo_method', 'Should find another_foo_method from included module FooModule')
+    end
+
+    it 'should include method parameters from included modules' do
+      all_scopes = @include_parser.root_scope.self_and_descendants
+      bar_method_scope = all_scopes.find_by_path('BarClass#bar_method')
+      
+      # Get completions for 'another_foo' prefix
+      context = ['another_foo']
+      completions = RubyLanguageServer::Completion.completion(context, bar_method_scope, all_scopes)
+      
+      # Find the another_foo_method completion
+      another_foo_item = completions[:items].find { |item| item[:label].start_with?('another_foo_method') }
+      
+      assert another_foo_item, 'another_foo_method should be in completions'
+      assert_equal('another_foo_method(param1)', another_foo_item[:label], 'should include parameters in label')
+      assert_equal('another_foo_method(${1:param1})', another_foo_item[:insertText], 'should include parameter snippet')
+    end
+  end
 end
