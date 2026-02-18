@@ -153,6 +153,13 @@ module RubyLanguageServer
 
         scope_ids = scopes.map(&:id)
         word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids).closest_to(word).limit(5)
+
+        # Add methods from included modules
+        scopes.each do |scope|
+          included_module_scopes = get_included_module_scopes(scope)
+          word_scopes += included_module_scopes
+        end
+
         scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map { |scope| [scope.name, scope] }
         variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).closest_to(word).limit(5).map { |variable| [variable.name, variable.scope] }
         words = (scope_words + variable_words).to_h
@@ -162,6 +169,41 @@ module RubyLanguageServer
           hash[w] = {depth: scope.depth, type: scope.class_type}
           # Include parameters for methods
           hash[w][:parameters] = scope.parsed_parameters if scope.method? && scope.parameters.present?
+        end
+      end
+
+      # Get all scopes from included modules
+      def get_included_module_scopes(scope)
+        included_scopes = []
+        module_names = scope.parsed_included_modules
+
+        module_names.each do |module_name|
+          # Try to find the module by full path first
+          full_module_path = resolve_module_path(module_name, scope)
+          module_scope = RubyLanguageServer::ScopeData::Scope.find_by(path: full_module_path, class_type: RubyLanguageServer::ScopeData::Base::TYPE_MODULE)
+
+          # If not found by full path, try searching by name
+          module_scope ||= RubyLanguageServer::ScopeData::Scope.where(name: module_name, class_type: RubyLanguageServer::ScopeData::Base::TYPE_MODULE).first
+
+          if module_scope
+            # Get all methods defined in the module
+            included_scopes += module_scope.children.where(class_type: RubyLanguageServer::ScopeData::Base::TYPE_METHOD).to_a
+          end
+        end
+
+        included_scopes
+      end
+
+      # Resolve the full module path considering the current scope
+      def resolve_module_path(module_name, scope)
+        # If it starts with ::, it's an absolute path
+        return module_name.sub(/^::/, '') if module_name.start_with?('::')
+
+        # Try to resolve relative to current scope
+        if scope.parent && scope.parent.path.present?
+          "#{scope.parent.path}::#{module_name}"
+        else
+          module_name
         end
       end
     end
