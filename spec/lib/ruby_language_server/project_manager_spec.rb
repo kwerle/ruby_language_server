@@ -543,42 +543,6 @@ describe RubyLanguageServer::ProjectManager do
         assert_equal 1, results.first[:range][:start][:line]
       end
 
-      it 'finds constants/variables defined elsewhere when not in local scope' do
-        # Define constants in a class
-        constants_file = <<~CODE_FILE
-          class AppConfig
-            DATABASE_URL = 'postgres://localhost/db'
-            MAX_RETRIES = 3
-          end
-        CODE_FILE
-
-        # Reference from another module
-        usage_file = <<~CODE_FILE
-          module Application
-            class Config
-              def load_config
-                DATABASE_URL
-              end
-            end
-          end
-        CODE_FILE
-
-        project_manager.update_document_content('constants_uri', constants_file)
-        project_manager.tags_for_uri('constants_uri')
-
-        project_manager.update_document_content('usage_uri', usage_file)
-        project_manager.tags_for_uri('usage_uri')
-
-        # Position on "DATABASE_URL" (line 3, character 8)
-        position = OpenStruct.new(line: 3, character: 8)
-        results = project_manager.possible_definitions('usage_uri', position)
-
-        # Should find the constant via global fallback
-        assert_equal 1, results.length
-        assert_equal 'constants_uri', results.first[:uri]
-        assert_equal 1, results.first[:range][:start][:line]
-      end
-
       it 'returns empty array when nothing exists anywhere' do
         reference_file = <<~CODE_FILE
           module MyModule

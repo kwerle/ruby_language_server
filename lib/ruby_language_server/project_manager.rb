@@ -286,10 +286,6 @@ module RubyLanguageServer
           all_scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
           all_scopes = all_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
           results.concat(all_scopes.to_a)
-
-          # Also search for constants/variables globally
-          all_variables = RubyLanguageServer::ScopeData::Variable.where(name: name)
-          results.concat(all_variables.to_a)
         end
       end
 
