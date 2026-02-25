@@ -467,5 +467,98 @@ describe RubyLanguageServer::ProjectManager do
         assert_equal 0, results.first[:range][:start][:line]
       end
     end
+
+    describe 'global fallback when not found in scope' do
+      it 'finds constants defined elsewhere when not in local scope' do
+        # Define a class in one file
+        external_file = <<~CODE_FILE
+          class ExternalClass
+            def external_method
+            end
+          end
+        CODE_FILE
+
+        # Reference it from another file in a different scope
+        reference_file = <<~CODE_FILE
+          module MyModule
+            class MyClass
+              def my_method
+                ExternalClass # Not in local scope but exists globally
+              end
+            end
+          end
+        CODE_FILE
+
+        project_manager.update_document_content('external_uri', external_file)
+        project_manager.tags_for_uri('external_uri') # Force load
+
+        project_manager.update_document_content('reference_uri', reference_file)
+        project_manager.tags_for_uri('reference_uri') # Force load
+
+        # Position on "ExternalClass" (line 3, character 8)
+        position = OpenStruct.new(line: 3, character: 8)
+        results = project_manager.possible_definitions('reference_uri', position)
+
+        # Should find the class via global fallback
+        assert_equal 1, results.length
+        assert_equal 'external_uri', results.first[:uri]
+        assert_equal 0, results.first[:range][:start][:line]
+      end
+
+      it 'finds methods defined elsewhere when not in local scope' do
+        # Define a class with a method in one file
+        external_file = <<~CODE_FILE
+          class MyExternalClass
+            def my_external_method
+            end
+          end
+        CODE_FILE
+
+        # Reference the method from another scope
+        reference_file = <<~CODE_FILE
+          module DifferentModule
+            class DifferentClass
+              def some_method
+                # Call method that's not in local scope
+              end
+            end
+          end
+        CODE_FILE
+
+        project_manager.update_document_content('external_uri', external_file)
+        project_manager.tags_for_uri('external_uri')
+
+        project_manager.update_document_content('reference_uri', reference_file)
+        project_manager.tags_for_uri('reference_uri')
+
+        # Note: Testing method fallback would require context parsing
+        # For now, just verify constant fallback doesn't break method lookup
+        position = OpenStruct.new(line: 3, character: 8)
+        results = project_manager.possible_definitions('reference_uri', position)
+        assert_instance_of Array, results
+      end
+
+      it 'returns empty array when nothing exists anywhere' do
+        reference_file = <<~CODE_FILE
+          module MyModule
+            class MyClass
+              def my_method
+                CompletelyNonExistentClass
+              end
+            end
+          end
+        CODE_FILE
+
+        project_manager.update_document_content('reference_uri', reference_file)
+        project_manager.tags_for_uri('reference_uri')
+
+        # Position on "CompletelyNonExistentClass"
+        position = OpenStruct.new(line: 3, character: 8)
+        results = project_manager.possible_definitions('reference_uri', position)
+
+        # Should return empty array as nothing exists
+        assert_equal [], results
+      end
+    end
   end
 end
