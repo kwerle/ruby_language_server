@@ -506,36 +506,77 @@ describe RubyLanguageServer::ProjectManager do
       end
 
       it 'finds methods defined elsewhere when not in local scope' do
-        # Define a class with a method in one file
-        external_file = <<~CODE_FILE
-          class MyExternalClass
-            def my_external_method
+        # Define a helper module with utility methods
+        helper_file = <<~CODE_FILE
+          module Helpers
+            def self.format_text(text)
+              text.upcase
             end
           end
         CODE_FILE
 
-        # Reference the method from another scope
-        reference_file = <<~CODE_FILE
-          module DifferentModule
-            class DifferentClass
-              def some_method
-                # Call method that's not in local scope
+        # Use the method from a different module
+        usage_file = <<~CODE_FILE
+          module Application
+            class TextService
+              def process
+                format_text
               end
             end
           end
         CODE_FILE
 
-        project_manager.update_document_content('external_uri', external_file)
-        project_manager.tags_for_uri('external_uri')
+        project_manager.update_document_content('helper_uri', helper_file)
+        project_manager.tags_for_uri('helper_uri')
 
-        project_manager.update_document_content('reference_uri', reference_file)
-        project_manager.tags_for_uri('reference_uri')
+        project_manager.update_document_content('usage_uri', usage_file)
+        project_manager.tags_for_uri('usage_uri')
 
-        # Note: Testing method fallback would require context parsing
-        # For now, just verify constant fallback doesn't break method lookup
+        # Position on "format_text" method call (line 3, character 8)
         position = OpenStruct.new(line: 3, character: 8)
-        results = project_manager.possible_definitions('reference_uri', position)
-        assert_instance_of Array, results
+        results = project_manager.possible_definitions('usage_uri', position)
+
+        # Should find the method definition via global fallback
+        # Note: This finds the class method Helpers.format_text
+        assert_equal 1, results.length
+        assert_equal 'helper_uri', results.first[:uri]
+        assert_equal 1, results.first[:range][:start][:line]
+      end
+
+      it 'finds constants/variables defined elsewhere when not in local scope' do
+        # Define constants in a class
+        constants_file = <<~CODE_FILE
+          class AppConfig
+            DATABASE_URL = 'postgres://localhost/db'
+            MAX_RETRIES = 3
+          end
+        CODE_FILE
+
+        # Reference from another module
+        usage_file = <<~CODE_FILE
+          module Application
+            class Config
+              def load_config
+                DATABASE_URL
+              end
+            end
+          end
+        CODE_FILE
+
+        project_manager.update_document_content('constants_uri', constants_file)
+        project_manager.tags_for_uri('constants_uri')
+
+        project_manager.update_document_content('usage_uri', usage_file)
+        project_manager.tags_for_uri('usage_uri')
+
+        # Position on "DATABASE_URL" (line 3, character 8)
+        position = OpenStruct.new(line: 3, character: 8)
+        results = project_manager.possible_definitions('usage_uri', position)
+
+        # Should find the constant via global fallback
+        assert_equal 1, results.length
+        assert_equal 'constants_uri', results.first[:uri]
+        assert_equal 1, results.first[:range][:start][:line]
       end
 
       it 'returns empty array when nothing exists anywhere' do
