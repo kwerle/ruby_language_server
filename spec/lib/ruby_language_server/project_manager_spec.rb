@@ -467,5 +467,103 @@ describe RubyLanguageServer::ProjectManager do
         assert_equal 0, results.first[:range][:start][:line]
       end
     end
+
+    describe 'global fallback when not found in scope' do
+      it 'finds constants defined elsewhere when not in local scope' do
+        # Define a class in one file
+        external_file = <<~CODE_FILE
+          class ExternalClass
+            def external_method
+            end
+          end
+        CODE_FILE
+
+        # Reference it from another file in a different scope
+        reference_file = <<~CODE_FILE
+          module MyModule
+            class MyClass
+              def my_method
+                ExternalClass # Not in local scope but exists globally
+              end
+            end
+          end
+        CODE_FILE
+
+        project_manager.update_document_content('external_uri', external_file)
+        project_manager.tags_for_uri('external_uri') # Force load
+
+        project_manager.update_document_content('reference_uri', reference_file)
+        project_manager.tags_for_uri('reference_uri') # Force load
+
+        # Position on "ExternalClass" (line 3, character 8)
+        position = OpenStruct.new(line: 3, character: 8)
+        results = project_manager.possible_definitions('reference_uri', position)
+
+        # Should find the class via global fallback
+        assert_equal 1, results.length
+        assert_equal 'external_uri', results.first[:uri]
+        assert_equal 0, results.first[:range][:start][:line]
+      end
+
+      it 'finds methods defined elsewhere when not in local scope' do
+        # Define a helper module with utility methods
+        helper_file = <<~CODE_FILE
+          module Helpers
+            def self.format_text(text)
+              text.upcase
+            end
+          end
+        CODE_FILE
+
+        # Use the method from a different module
+        usage_file = <<~CODE_FILE
+          module Application
+            class TextService
+              def process
+                format_text
+              end
+            end
+          end
+        CODE_FILE
+
+        project_manager.update_document_content('helper_uri', helper_file)
+        project_manager.tags_for_uri('helper_uri')
+
+        project_manager.update_document_content('usage_uri', usage_file)
+        project_manager.tags_for_uri('usage_uri')
+
+        # Position on "format_text" method call (line 3, character 8)
+        position = OpenStruct.new(line: 3, character: 8)
+        results = project_manager.possible_definitions('usage_uri', position)
+
+        # Should find the method definition via global fallback
+        # Note: This finds the class method Helpers.format_text
+        assert_equal 1, results.length
+        assert_equal 'helper_uri', results.first[:uri]
+        assert_equal 1, results.first[:range][:start][:line]
+      end
+
+      it 'returns empty array when nothing exists anywhere' do
+        reference_file = <<~CODE_FILE
+          module MyModule
+            class MyClass
+              def my_method
+                CompletelyNonExistentClass
+              end
+            end
+          end
+        CODE_FILE
+
+        project_manager.update_document_content('reference_uri', reference_file)
+        project_manager.tags_for_uri('reference_uri')
+
+        # Position on "CompletelyNonExistentClass"
+        position = OpenStruct.new(line: 3, character: 8)
+        results = project_manager.possible_definitions('reference_uri', position)
+
+        # Should return empty array as nothing exists
+        assert_equal [], results
+      end
+    end
   end
 end
