@@ -139,15 +139,6 @@ module RubyLanguageServer
       # diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
     end
 
-    # def updated_diagnostics_for_codefile(code_file)
-    #   # Maybe we should be sharing this GoodCop across instances
-    #   RubyLanguageServer.logger.debug("updated_diagnostics_for_codefile: #{code_file.uri}")
-    #   project_relative_filename = filename_relative_to_project(code_file.uri)
-    #   # code_file.diagnostics = GoodCop.instance&.diagnostics(code_file.text, project_relative_filename)
-    #   RubyLanguageServer.logger.debug("code_file.diagnostics: #{code_file.diagnostics}")
-    #   code_file.diagnostics
-    # end
-
     # Returns the context of what is being typed in the given line
     def context_at_location(uri, position)
       code_file = code_file_for_uri(uri)
@@ -160,7 +151,7 @@ module RubyLanguageServer
 
     def possible_definitions(uri, position)
       name = word_at_location(uri, position)
-      return {} if name.blank?
+      return [] if name.blank?
 
       # Special case: "new" should find "initialize" (instance method, not class method)
       name = 'initialize' if name == 'new'
@@ -230,66 +221,105 @@ module RubyLanguageServer
       results = scope_definitions_for(name, scope, uri)
       return results unless results.empty?
 
-      project_definitions_for(name, current_scopes)
+      # Always return an array
+      project_definitions_for(name, current_scopes) || []
     end
 
     # Return variables found in the current scope.  After all, those are the important ones.
     # Should probably be private...
     def scope_definitions_for(name, scope, uri)
       check_scope = scope
-      return_array = []
+      matches = []
       while check_scope
         check_scope.variables.each do |variable|
-          return_array << Location.hash(uri, variable.line, 1) if variable.name == name
+          matches << Location.hash(uri, variable.line, 1) if variable.name == name
         end
         check_scope = check_scope.parent
       end
-      RubyLanguageServer.logger.debug("==============>> scope_definitions_for(#{name}, #{scope.to_json}, #{uri}: #{return_array.uniq})")
-      return_array.uniq
+      RubyLanguageServer.logger.debug("==============>> scope_definitions_for(#{name}, #{scope.to_json}, #{uri}: #{matches.inspect} )")
+      matches
     end
 
     # class_method_filter is for new -> initialize
     def project_definitions_for(name, parent_scopes = [], class_method_filter = nil)
-      results = []
+      # If no parent scope, search project-wide
+      return search_project_wide(name, class_method_filter) if parent_scopes.empty?
 
-      if parent_scopes.empty?
-        # No parent scopes provided - search all top-level scopes
-        all_scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
-        all_scopes = all_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
-        results.concat(all_scopes.to_a)
+      supplied_scope = parent_scopes.first
 
-        # Also search for constants at root level
-        all_variables = RubyLanguageServer::ScopeData::Variable.where(name: name)
-        results.concat(all_variables.to_a)
-      else
-        # Start with the deepest (first) scope and search upward through parent chain
-        current_scope = parent_scopes.first
-        while current_scope
-          # Search for child scopes with matching name in current scope
-          child_scopes = current_scope.children.where(name: name)
-          child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
-          results.concat(child_scopes.to_a)
+      # First pass: Look for variables (constants) in the scope chain
+      result = search_variables_in_scope_chain(name, supplied_scope)
+      return result if result.any?
 
-          # Search for variables with matching name in current scope
-          matching_variables = current_scope.variables.where(name: name)
-          results.concat(matching_variables.to_a)
+      # Second pass: Look for child scopes in the scope chain
+      result = search_child_scopes_in_chain(name, supplied_scope, class_method_filter)
+      return result if result.any?
 
-          # If we found results, stop searching (most specific scope wins)
-          break unless results.empty?
+      # Fall back to project-wide search
+      search_project_wide(name, class_method_filter)
+    end
 
-          # Move up to parent scope
-          current_scope = current_scope.parent
-        end
-      end
+    private
 
-      # Return locations for all matching scopes and variables
-      results.reject { |item| item.code_file.nil? }.map do |item|
+    # Convert a collection of scopes or variables to location hashes
+    def scope_or_variable_to_locations(items)
+      items.reject { |item| item.code_file.nil? }.map do |item|
         line = item.respond_to?(:top_line) ? item.top_line : item.line
         Location.hash(item.code_file.uri, line, 1)
       end
     end
 
-    private
+    # Search for a variable/constant up the scope chain (first pass)
+    # Variables in scope chain take priority over child scopes
+    def search_variables_in_scope_chain(name, supplied_scope)
+      current = supplied_scope
+      while current
+        # For constants, skip method scopes and keep searching up to class/module scopes
+        if current.class_type == RubyLanguageServer::ScopeData::Scope::TYPE_METHOD
+          current = current.parent
+          next
+        end
+
+        # Check variables (constants) in the current scope
+        matching_variable = current.variables.where(name: name).reject { |item| item.code_file.nil? }.first
+        if matching_variable
+          line = matching_variable.respond_to?(:top_line) ? matching_variable.top_line : matching_variable.line
+          return [Location.hash(matching_variable.code_file.uri, line, 1)]
+        end
+
+        current = current.parent
+      end
+      []
+    end
+
+    # Search for child scopes up the scope chain (second pass)
+    def search_child_scopes_in_chain(name, supplied_scope, class_method_filter)
+      current = supplied_scope
+      while current
+        # For constants, skip method scopes and keep searching up to class/module scopes
+        if current.class_type == RubyLanguageServer::ScopeData::Scope::TYPE_METHOD
+          current = current.parent
+          next
+        end
+
+        # Check child scopes (classes/modules/methods) with this name
+        child_scopes = current.children.where(name: name)
+        child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+        return scope_or_variable_to_locations(child_scopes) if child_scopes.any?
+
+        current = current.parent
+      end
+      []
+    end
+
+    # Search for a name project-wide (fallback)
+    def search_project_wide(name, class_method_filter)
+      all_scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
+      all_scopes = all_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+      all_variables = RubyLanguageServer::ScopeData::Variable.where(name: name)
+      all_matches = all_scopes.to_a + all_variables.to_a
+      scope_or_variable_to_locations(all_matches)
+    end
 
     # Find a scope by its path (e.g., "Foo::Bar")
     # Returns nil if path is nil or empty (for root scope searches)
