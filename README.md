@@ -54,7 +54,7 @@ For gem release
 * bump version in [version.rb](lib/ruby_language_server/version.rb) file and [Gemfile.lock](Gemfile.lock)
 * [CHANGELOG.txt](CHANGELOG.txt)
 * merge to master, etc
-* `make gem_release`
+* `make gem_release` # now done automagically by github action
 
 For docker release
 * `make publish_cross_platform_image`
