@@ -4,6 +4,72 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::ProjectManager do
+  describe 'scope prioritization for duplicate names' do
+    let(:file_with_nested_classes) do
+      <<~CODE_FILE
+        class Outer
+          VALUE = 'outer'
+          class Inner
+            VALUE = 'inner'
+            def show
+              puts VALUE
+            end
+          end
+          def after_inner
+            puts VALUE
+          end
+        end
+      CODE_FILE
+    end
+
+    before(:each) do
+      project_manager.update_document_content('dup_uri', file_with_nested_classes)
+      project_manager.tags_for_uri('dup_uri')
+    end
+
+    it 'returns the closest VALUE constant in the innermost scope' do
+      # Dynamically find the line and character offset of 'VALUE' in the line containing 'puts VALUE'
+      code_lines = file_with_nested_classes.lines
+      value_line_num = code_lines.find_index { |l| l.include?('puts VALUE') }
+      raise "No line with 'puts VALUE' found" if value_line_num.nil?
+
+      value_line = code_lines[value_line_num]
+      value_char = value_line.index('VALUE')
+      raise "'VALUE' not found in line: #{value_line.inspect}" if value_char.nil?
+
+      position = OpenStruct.new(line: value_line_num, character: value_char)
+      results = project_manager.possible_definitions('dup_uri', position)
+      assert_equal 2, results.length
+      assert_equal 'dup_uri', results.first[:uri]
+      assert_equal 'dup_uri', results.last[:uri]
+      # Should find VALUE defined on line 3 (Inner::VALUE) first, then Outer::VALUE on line 1
+      assert_equal 3, results.first[:range][:start][:line]
+      assert_equal 1, results.last[:range][:start][:line]
+    end
+
+    it 'returns the outer VALUE constant when in the outer scope' do
+      # Dynamically find the line and character offset of 'VALUE' in the after_inner method
+      project_manager.update_document_content('dup_uri', file_with_nested_classes)
+      code_lines = file_with_nested_classes.lines
+      value_line_num = code_lines.find_index { |l| l.include?('puts VALUE') && l.include?('after_inner').! }
+      # Find the second occurrence of 'puts VALUE' (after_inner)
+      occurrences = code_lines.each_with_index.select { |l, _i| l.include?('puts VALUE') }
+      raise "No line with 'puts VALUE' found" if occurrences.empty?
+
+      # The second occurrence is for after_inner
+      value_line_num = occurrences[1][1] if occurrences.size > 1
+      value_line = code_lines[value_line_num]
+      value_char = value_line.index('VALUE')
+      raise "'VALUE' not found in line: #{value_line.inspect}" if value_char.nil?
+
+      position = OpenStruct.new(line: value_line_num, character: value_char)
+      results = project_manager.possible_definitions('dup_uri', position)
+      assert_equal 1, results.length
+      assert_equal 'dup_uri', results.first[:uri]
+      # Should find VALUE defined on line 1 (Outer::VALUE)
+      assert_equal 1, results.first[:range][:start][:line]
+    end
+  end
   let(:rails_file_text) do
     <<~CODE_FILE
       class Foo < ActiveRecord::Base

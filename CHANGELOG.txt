@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.9.6 Sat Apr 11 12:40:46 PDT 2026
+
+* Better lookup - including climbing the current scopes and fallback to global search
+
 #### 0.9.5 Tue Feb 10 22:04:44 PST 2026
 
 * Fix some scope lookups

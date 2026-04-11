@@ -78,7 +78,7 @@ Metrics/BlockNesting:
 
 # Configuration parameters: CountComments.
 Metrics/ClassLength:
-  Max: 200
+  Max: 300
   Exclude:
     - 'lib/ruby_language_server/scope_parser.rb'
 
