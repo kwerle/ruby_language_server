@@ -260,5 +260,29 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal('MY_CONSTANT', constant_vars.first.name, "The constant should be named MY_CONSTANT")
       end
     end
+
+    describe 'forwarding parameters' do
+      before do
+        File.write('test.log', '')
+        @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
+          module RecurringWithConcurrencyJobs
+            def perform(...)
+            end
+          end
+        RUBY
+      end
+
+      it 'parses module and method scopes' do
+        mod = @parser.root_scope.children.first
+        refute_nil(mod)
+        assert_equal('RecurringWithConcurrencyJobs', mod.name)
+        assert_equal('perform', mod.children.first.name)
+      end
+
+      it 'does not log parsing exceptions' do
+        RubyLanguageServer.logger.instance_variable_get(:@logdev)&.dev&.flush
+        refute_match(/Exception in prism parsing/, File.read('test.log'))
+      end
+    end
   end
 end
