@@ -275,9 +275,7 @@ module RubyLanguageServer
       end
 
       # Keyword rest parameter
-      if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
-        params << { name: "**#{params_node.keyword_rest.name}", type: 'keyword_rest' }
-      end
+      params << { name: "**#{params_node.keyword_rest.name}", type: 'keyword_rest' } if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
 
       # Block parameter
       params << { name: "&#{params_node.block.name}", type: 'block' } if params_node.block&.name
@@ -314,9 +312,7 @@ module RubyLanguageServer
       end
 
       # Keyword rest parameter
-      if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
-        add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column)
-      end
+      add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column) if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
 
       # Block parameter
       add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column) if params_node.block&.name
