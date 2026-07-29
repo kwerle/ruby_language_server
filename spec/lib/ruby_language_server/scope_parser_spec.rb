@@ -260,5 +260,24 @@ describe RubyLanguageServer::ScopeParser do
         assert_equal('MY_CONSTANT', constant_vars.first.name, "The constant should be named MY_CONSTANT")
       end
     end
+
+    describe 'method with forwarding parameter' do
+      before do
+        @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
+          module Foo
+            def bar(...)
+            end
+          end
+        RUBY
+      end
+
+      it 'parses without raising errors' do
+        foo = @parser.root_scope.children.first
+        bar = foo.children.first
+
+        assert_equal('Foo', foo.name)
+        assert_equal('bar', bar.name)
+      end
+    end
   end
 end
