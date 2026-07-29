@@ -261,22 +261,27 @@ describe RubyLanguageServer::ScopeParser do
       end
     end
 
-    describe 'method with forwarding parameter' do
+    describe 'forwarding parameters' do
       before do
+        File.write('test.log', '')
         @parser = RubyLanguageServer::ScopeParser.new(<<-RUBY)
-          module Foo
-            def bar(...)
+          module RecurringWithConcurrencyJobs
+            def perform(...)
             end
           end
         RUBY
       end
 
-      it 'parses without raising errors' do
-        foo = @parser.root_scope.children.first
-        bar = foo.children.first
+      it 'parses module and method scopes' do
+        mod = @parser.root_scope.children.first
+        refute_nil(mod)
+        assert_equal('RecurringWithConcurrencyJobs', mod.name)
+        assert_equal('perform', mod.children.first.name)
+      end
 
-        assert_equal('Foo', foo.name)
-        assert_equal('bar', bar.name)
+      it 'does not log parsing exceptions' do
+        RubyLanguageServer.logger.instance_variable_get(:@logdev)&.dev&.flush
+        refute_match(/Exception in prism parsing/, File.read('test.log'))
       end
     end
   end

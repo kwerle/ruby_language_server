@@ -262,33 +262,25 @@ module RubyLanguageServer
 
       # Optional parameters
       params_node.optionals.each do |param|
-        next unless param.respond_to?(:name)
-
         params << { name: param.name.to_s, type: 'optional' }
       end
 
       # Rest parameter
-      if params_node.rest&.respond_to?(:name)
-        params << { name: "*#{params_node.rest.name}", type: 'rest' }
-      end
+      params << { name: "*#{params_node.rest.name}", type: 'rest' } if params_node.rest&.name
 
       # Keyword parameters
       params_node.keywords.each do |param|
-        next unless param.respond_to?(:name)
-
         name = param.name.to_s
         params << { name: "#{name}:", type: 'keyword' }
       end
 
       # Keyword rest parameter
-      if params_node.keyword_rest&.respond_to?(:name)
+      if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
         params << { name: "**#{params_node.keyword_rest.name}", type: 'keyword_rest' }
       end
 
       # Block parameter
-      if params_node.block&.respond_to?(:name)
-        params << { name: "&#{params_node.block.name}", type: 'block' }
-      end
+      params << { name: "&#{params_node.block.name}", type: 'block' } if params_node.block&.name
 
       params
     end
@@ -309,33 +301,25 @@ module RubyLanguageServer
 
       # Optional parameters
       params_node.optionals.each do |param|
-        next unless param.respond_to?(:name)
-
         add_variable(param.name.to_s, param.location.start_line, param.location.start_column)
       end
 
       # Rest parameter
-      if params_node.rest&.respond_to?(:name)
-        add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column)
-      end
+      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column) if params_node.rest&.name
 
       # Keyword parameters
       params_node.keywords.each do |param|
-        next unless param.respond_to?(:name)
-
         name = param.name.to_s
         add_variable(name, param.location.start_line, param.location.start_column)
       end
 
       # Keyword rest parameter
-      if params_node.keyword_rest&.respond_to?(:name)
+      if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
         add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column)
       end
 
       # Block parameter
-      if params_node.block&.respond_to?(:name)
-        add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column)
-      end
+      add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column) if params_node.block&.name
     end
 
     def visit_block_parameters(params_node)
