@@ -94,6 +94,22 @@ module RubyLanguageServer
         self.parameters = params_array.to_json if params_array.present?
       end
 
+      # Get included modules as an array of strings
+      def parsed_included_modules
+        return [] unless included_modules.present?
+
+        JSON.parse(included_modules)
+      rescue JSON::ParserError
+        []
+      end
+
+      # Add an included module name
+      def add_included_module(module_name)
+        current = parsed_included_modules
+        current << module_name unless current.include?(module_name)
+        self.included_modules = current.to_json
+      end
+
       # Called from ScopeParser to cleanup empty blocks.
       def close
         destroy! if block_scope? && variables.none?
