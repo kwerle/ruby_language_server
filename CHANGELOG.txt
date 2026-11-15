@@ -1,5 +1,10 @@
 # Changelog
 
+#### Unreleased
+
+* Fix Content-Length to count bytes, not characters, so replies with non-ASCII text no longer corrupt the LSP stream
+* In stdio mode, send stray $stdout output to stderr so it can't corrupt the LSP stream
+
 #### 0.9.7 Tue Jul 28 20:49:35 PDT 2026
 
 * Fix a parsing error

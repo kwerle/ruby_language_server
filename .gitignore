@@ -3,3 +3,4 @@
 .Trash*
 *.log
 coverage
+/plans/

@@ -3,6 +3,7 @@
 require_relative '../../test_helper'
 require 'stringio'
 require 'json'
+require 'tmpdir'
 
 class TestRubyLanguageServerIO < Minitest::Test
   def setup
@@ -61,6 +62,49 @@ class TestRubyLanguageServerIO < Minitest::Test
     assert_includes str, 'foo'
   end
 
+  def test_return_response_content_length_is_bytesize
+    io = RubyLanguageServer::IO.allocate
+    io.send(:out=, @fake_out)
+    io.send(:return_response, 1, { name: 'Café ☕' })
+    assert_content_length_matches_body_bytes(@fake_out.string, 'result')
+  end
+
+  def test_send_notification_content_length_is_bytesize
+    io = RubyLanguageServer::IO.allocate
+    io.send(:out=, @fake_out)
+    io.send(:send_notification, 'testMethod', { name: 'Café ☕' })
+    assert_content_length_matches_body_bytes(@fake_out.string, 'params')
+  end
+
+  def test_configure_io_stdio_redirects_stdout_to_stderr
+    assert_nil ENV.fetch('LSP_PORT', nil)
+    original_stdout = $stdout
+    original_stderr = $stderr
+    Dir.mktmpdir do |dir|
+      stdout_path = File.join(dir, 'stdout')
+      stderr_path = File.join(dir, 'stderr')
+      $stdout = File.open(stdout_path, 'w')
+      $stderr = File.open(stderr_path, 'w')
+      io = RubyLanguageServer::IO.allocate
+      io.send(:configure_io)
+      out = io.send(:out)
+      out.write 'protocol'
+      out.flush
+      $stdout.write 'stray'
+      $stdout.flush
+
+      assert out.binmode?
+      assert_equal 'protocol', File.read(stdout_path)
+      assert_equal 'stray', File.read(stderr_path)
+    ensure
+      out&.close
+      $stdout.close unless $stdout == original_stdout
+      $stderr.close unless $stderr == original_stderr
+      $stdout = original_stdout
+      $stderr = original_stderr
+    end
+  end
+
   def test_get_length_returns_correct_length
     io = RubyLanguageServer::IO.allocate
     assert_equal 42, io.send(:get_length, 'Content-Length: 42')
@@ -116,5 +160,16 @@ class TestRubyLanguageServerIO < Minitest::Test
     io.send(:in=, fake_in)
     io.instance_variable_set(:@server, server)
     assert_nil io.send(:process_request)
+  end
+
+  private
+
+  def assert_content_length_matches_body_bytes(output, key)
+    header, body = output.b.split("\r\n\r\n", 2)
+    declared = header[/Content-Length: (\d+)/, 1].to_i
+    assert_equal body.bytesize, declared
+    body = body.force_encoding(Encoding::UTF_8)
+    assert_operator declared, :>, body.length
+    assert_equal 'Café ☕', JSON.parse(body)[key]['name']
   end
 end
