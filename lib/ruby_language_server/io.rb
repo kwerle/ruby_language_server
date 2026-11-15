@@ -43,7 +43,7 @@ module RubyLanguageServer
       }
       body = JSON.generate(full_response)
       RubyLanguageServer.logger.info "send_notification body: #{body}"
-      io.write "Content-Length: #{body.length}\r\n"
+      io.write "Content-Length: #{body.bytesize}\r\n"
       io.write "\r\n"
       io.write body
       io.flush if io.respond_to?(:flush)
@@ -63,7 +63,11 @@ module RubyLanguageServer
         RubyLanguageServer.logger.info 'Accepted LSP socket connection'
       else
         self.in = $stdin
-        self.out = $stdout
+        # Keep the real stdout for protocol messages and send anything else written to
+        # $stdout (a stray puts, a gem warning) to stderr, so it can't corrupt the stream.
+        self.out = $stdout.dup
+        out.binmode
+        $stdout.reopen($stderr)
         @using_socket = false
       end
     end
@@ -77,7 +81,7 @@ module RubyLanguageServer
       }
       response_body = JSON.generate(full_response)
       RubyLanguageServer.logger.info "return_response body: #{response_body}"
-      io.write "Content-Length: #{response_body.length}\r\n"
+      io.write "Content-Length: #{response_body.bytesize}\r\n"
       io.write "\r\n"
       io.write response_body
       io.flush if io.respond_to?(:flush)
