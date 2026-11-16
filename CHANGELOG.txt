@@ -3,7 +3,8 @@
 #### Unreleased
 
 * Reply to requests the server doesn't handle with a MethodNotFound error, instead of never replying
-* Advertise only the capabilities the server implements: definitions, document symbols and completion
+* Advertise only the capabilities the server implements: definitions, document symbols and completion. Nothing a client could use was removed
+* The initialize result now includes serverInfo (name and version)
 * The Docker image runs as non-root UID 1000
 * The database and debug log moved to /data (set by RUBY_LANGUAGE_SERVER_DATA_DIR), so the container works with --read-only --tmpfs /data:uid=1000,gid=1000
 

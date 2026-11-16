@@ -44,6 +44,18 @@ docker run --rm -i --read-only --tmpfs /data:uid=1000,gid=1000 \
 Docker mounts a plain `--tmpfs` as root-owned and not writable by other users, so the
 `uid=1000,gid=1000` options are needed.
 
+# Compatibility
+
+The server stays backward compatible with the protocol clients use today. Removing or
+changing a capability, a result's shape, or a default that clients rely on is a breaking
+change. Breaking changes get a major version bump, announced in advance in
+[CHANGELOG.txt](CHANGELOG.txt) and a GitHub issue. While the version is 0.x, the first
+breaking change will be 1.0.0, so clients can treat any 0.x release as compatible.
+
+Clients can read the running version from `serverInfo` in the `initialize` result, for example
+`{ "name": "ruby_language_server", "version": "0.9.8" }`. Servers older than the release
+that added it don't send `serverInfo`.
+
 # Development
 
 Master branch is for releases.  Develop branch is for ongoing development.  Fork off develop;
