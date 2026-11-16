@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			// Runs until the server exits. "Debug server" attaches once rdbg is listening.
+			"label": "debug_server",
+			"type": "shell",
+			"command": "make debug_server",
+			"isBackground": true,
+			"presentation": {
+				"panel": "dedicated",
+				"reveal": "always"
+			},
+			"problemMatcher": {
+				"owner": "rdbg",
+				"pattern": {
+					"regexp": "^__never_matches__$"
+				},
+				"background": {
+					"activeBegins": true,
+					"beginsPattern": "docker",
+					"endsPattern": "Debugger can attach"
+				}
+			}
+		}
+	]
+}

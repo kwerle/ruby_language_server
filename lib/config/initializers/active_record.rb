@@ -14,7 +14,7 @@ ActiveRecord::Base.establish_connection(
   adapter: 'sqlite3',
   database: File.join(data_dir, 'database'),
   pool: 5,
-  timeout: 30.seconds, # does not seem to help
+  timeout: 5000, # milliseconds SQLite waits for a lock held by the background scanner
   extensions: [extension_path]
 )
 

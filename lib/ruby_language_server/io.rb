@@ -26,6 +26,13 @@ module RubyLanguageServer
     # JSON-RPC error codes.
     INVALID_REQUEST = -32_600 # used for requests that arrive after shutdown
     METHOD_NOT_FOUND = -32_601
+    INTERNAL_ERROR = -32_603 # used when a request handler raises
+
+    # The background scanner (ProjectManager#scan_all_project_files) writes to the same SQLite
+    # database. SQLite waits up to the connection's busy timeout for a lock; these cover the rare
+    # BUSY it returns without waiting.
+    BUSY_RETRIES = 2
+    BUSY_RETRY_DELAY = 0.1 # seconds
 
     def send_notification(message, params)
       body = write_message(jsonrpc: '2.0', method: message, params:)
@@ -106,24 +113,42 @@ module RubyLanguageServer
         return nil
       end
       if @server.respond_to? method_name
-        response = ActiveRecord::Base.connection_pool.with_connection do
-          retries = 3
-          begin
-            @server.send(method_name, params)
-          rescue StandardError => e
-            RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
-            sleep 5
-            retries -= 1
-            retry unless retries <= 0
-          end
+        begin
+          [id, call_handler(method_name, params)]
+        rescue StandardError => e
+          RubyLanguageServer.logger.error("Error in #{lsp_method}: #{e.class}: #{e.message}\n#{e.backtrace * "\n"}")
+          # A request gets an error reply, so the client doesn't mistake it for an empty result.
+          # Notifications get none.
+          return_error(id, INTERNAL_ERROR, "#{e.class}: #{e.message}") unless id.nil?
+          nil
         end
-        [id, response]
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
         # Every request needs a reply, or the client waits forever. Notifications get none.
         return_error(id, METHOD_NOT_FOUND, "Method not found: #{lsp_method}") unless id.nil?
         nil
       end
+    end
+
+    # Calls the handler, retrying only when the database is locked.
+    def call_handler(method_name, params)
+      ActiveRecord::Base.connection_pool.with_connection do
+        attempts = 0
+        begin
+          @server.send(method_name, params)
+        rescue ActiveRecord::StatementTimeout => e
+          attempts += 1
+          raise if attempts > BUSY_RETRIES
+
+          RubyLanguageServer.logger.warn("Database busy in #{method_name}, retrying: #{e.message}")
+          sleep busy_retry_delay
+          retry
+        end
+      end
+    end
+
+    def busy_retry_delay
+      BUSY_RETRY_DELAY
     end
 
     def get_request # rubocop:disable Naming/AccessorMethodName
