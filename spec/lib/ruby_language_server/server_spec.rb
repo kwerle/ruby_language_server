@@ -36,6 +36,12 @@ describe RubyLanguageServer::Server do
       assert_equal true, capabilities[:documentSymbolProvider]
     end
 
+    it 'reports serverInfo with the gem version' do
+      result = server.on_initialize(params)
+
+      assert_equal({ name: 'ruby_language_server', version: RubyLanguageServer::VERSION }, result[:serverInfo])
+    end
+
     it 'sets up completion provider without resolve' do
       result = server.on_initialize(params)
 

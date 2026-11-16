@@ -29,6 +29,10 @@ module RubyLanguageServer
           completionProvider: {
             triggerCharacters: ['.', '::']
           }
+        },
+        serverInfo: {
+          name: 'ruby_language_server',
+          version: RubyLanguageServer::VERSION
         }
       }
     end
