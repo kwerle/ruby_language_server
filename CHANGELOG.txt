@@ -1,5 +1,11 @@
 # Changelog
 
+#### 0.9.8 Sun Nov 15 17:10:46 PST 2026
+
+* Fix Content-Length to count bytes, not characters, so replies with non-ASCII text no longer corrupt the LSP stream
+* In stdio mode, send stray $stdout output to stderr so it can't corrupt the LSP stream
+* Docker images are now published only by CI on v* release tags, and signed with cosign
+
 #### 0.9.7 Tue Jul 28 20:49:35 PDT 2026
 
 * Fix a parsing error
