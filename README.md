@@ -30,6 +30,20 @@ You probably want to use one of the developed integrations:
 
 `ruby_language_server` will start the program and wait for activity using LSP's STDIO interface
 
+The Docker image runs as an unprivileged user (UID 1000) and writes only to `/data`
+(the SQLite database, and the ActiveRecord log when `LOG_LEVEL=DEBUG`). Set
+`RUBY_LANGUAGE_SERVER_DATA_DIR` to use a different directory. So it can run locked down,
+with the project mounted read-only:
+
+```sh
+docker run --rm -i --read-only --tmpfs /data:uid=1000,gid=1000 \
+  --mount type=bind,source="$PWD",target=/project,readonly \
+  kwerle/ruby_language_server
+```
+
+Docker mounts a plain `--tmpfs` as root-owned and not writable by other users, so the
+`uid=1000,gid=1000` options are needed.
+
 # Development
 
 Master branch is for releases.  Develop branch is for ongoing development.  Fork off develop;
