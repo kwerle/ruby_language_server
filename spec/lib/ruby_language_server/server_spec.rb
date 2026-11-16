@@ -29,39 +29,35 @@ describe RubyLanguageServer::Server do
       assert_includes result.keys, :capabilities
 
       capabilities = result[:capabilities]
+      assert_equal %i[textDocumentSync definitionProvider documentSymbolProvider completionProvider].sort,
+                   capabilities.keys.sort
       assert_equal 1, capabilities[:textDocumentSync]
-      assert_equal true, capabilities[:hoverProvider]
       assert_equal true, capabilities[:definitionProvider]
-      assert_equal true, capabilities[:referencesProvider]
       assert_equal true, capabilities[:documentSymbolProvider]
-      assert_equal true, capabilities[:workspaceSymbolProvider]
-      assert_equal true, capabilities[:codeActionProvider]
-      assert_equal true, capabilities[:renameProvider]
     end
 
-    it 'sets up signature help provider' do
-      result = server.on_initialize(params)
-
-      signature_help = result[:capabilities][:signatureHelpProvider]
-      refute_nil(signature_help)
-      assert_equal ['(', ','], signature_help[:triggerCharacters]
-    end
-
-    it 'sets up completion provider' do
+    it 'sets up completion provider without resolve' do
       result = server.on_initialize(params)
 
       completion = result[:capabilities][:completionProvider]
       refute_nil(completion)
-      assert_equal true, completion[:resolveProvider]
+      refute completion.key?(:resolveProvider), 'there is no completionItem/resolve handler'
       assert_equal ['.', '::'], completion[:triggerCharacters]
     end
 
-    it 'sets up execute command provider' do
-      result = server.on_initialize(params)
-
-      execute_command = result[:capabilities][:executeCommandProvider]
-      refute_nil(execute_command)
-      assert_equal [], execute_command[:commands]
+    it 'has a handler for every advertised capability' do
+      handlers = {
+        textDocumentSync: %i[on_textDocument_didOpen on_textDocument_didChange],
+        definitionProvider: %i[on_textDocument_definition],
+        documentSymbolProvider: %i[on_textDocument_documentSymbol],
+        completionProvider: %i[on_textDocument_completion]
+      }
+      server.on_initialize(params)[:capabilities].each_key do |capability|
+        assert handlers.key?(capability), "#{capability} is advertised; add its handlers to this test"
+        handlers[capability].each do |handler|
+          assert server.respond_to?(handler), "#{capability} is advertised but Server has no #{handler}"
+        end
+      end
     end
 
     it 'initializes project manager with root path and uri' do
@@ -82,7 +78,7 @@ describe RubyLanguageServer::Server do
   end
 
   describe '#on_workspace_didChangeWatchedFiles' do
-    it 'returns empty hash' do
+    it 'returns nil' do
       params = { 'changes' => [] }
       result = server.on_workspace_didChangeWatchedFiles(params)
 
@@ -98,7 +94,7 @@ describe RubyLanguageServer::Server do
       }
       result = server.on_textDocument_hover(params)
 
-      assert_equal({}, result)
+      assert_nil result
     end
   end
 

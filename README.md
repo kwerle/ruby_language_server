@@ -16,6 +16,7 @@ Help welcome.
 
 * Definitions
 * Completions
+* Document symbols
 * Please see the [FAQ_ROADMAP.md](./FAQ_ROADMAP.md)
 
 # Editor Integrations

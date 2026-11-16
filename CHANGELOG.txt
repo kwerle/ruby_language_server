@@ -1,5 +1,10 @@
 # Changelog
 
+#### Unreleased
+
+* Reply to requests the server doesn't handle with a MethodNotFound error, instead of never replying
+* Advertise only the capabilities the server implements: definitions, document symbols and completion
+
 #### 0.9.8 Sun Nov 15 17:10:46 PST 2026
 
 * Fix Content-Length to count bytes, not characters, so replies with non-ASCII text no longer corrupt the LSP stream

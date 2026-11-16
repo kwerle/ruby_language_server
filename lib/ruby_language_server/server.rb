@@ -20,29 +20,15 @@ module RubyLanguageServer
       @project_manager = ProjectManager.new(root_path, root_uri)
       @project_manager.scan_all_project_files
       {
+        # Advertise only capabilities that have an on_* handler. Requests for anything
+        # else get a MethodNotFound error (see IO#process_request).
         capabilities: {
           textDocumentSync: 1,
-          hoverProvider: true,
-          signatureHelpProvider: {
-            triggerCharacters: ['(', ',']
-          },
           definitionProvider: true,
-          referencesProvider: true,
           documentSymbolProvider: true,
-          workspaceSymbolProvider: true,
-          xworkspaceReferencesProvider: true,
-          xdefinitionProvider: true,
-          xdependenciesProvider: true,
           completionProvider: {
-            resolveProvider: true,
             triggerCharacters: ['.', '::']
-          },
-          codeActionProvider: true,
-          renameProvider: true,
-          executeCommandProvider: {
-            commands: []
-          },
-          xpackagesProvider: true
+          }
         }
       }
     end
@@ -60,7 +46,7 @@ module RubyLanguageServer
     def on_textDocument_hover(params)
       RubyLanguageServer.logger.debug('on_textDocument_hover')
       RubyLanguageServer.logger.debug(params)
-      {}
+      nil # Not implemented, and not advertised. null is a valid "no hover" result.
     end
 
     def on_textDocument_documentSymbol(params)
