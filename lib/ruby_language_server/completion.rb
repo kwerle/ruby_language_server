@@ -145,7 +145,7 @@ module RubyLanguageServer
         RubyLanguageServer.logger.error("module_completions: #{words.as_json}")
         # words.to_a.sort_by(&:depth).each_with_object({}){|a_word, hash| hash[a_word.name] = {depth: a_word.depth, type: a_word.class_type} }
         good_words = FuzzyMatch.new(words.to_a, read: :name, threshold: 0.01).find_all(word).slice(0..10) || []
-        good_words.each_with_object({}) { |w, hash| hash[w.name] = {depth: w.depth, type: w.class_type} }.to_h
+        good_words.to_h { |w| [w.name, {depth: w.depth, type: w.class_type}] }
       end
 
       def scope_completions(word, scopes)
