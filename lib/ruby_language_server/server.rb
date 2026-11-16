@@ -101,8 +101,21 @@ module RubyLanguageServer
       completions
     end
 
+    # LSP shutdown request: stop serving, but don't exit until the exit notification.
     def on_shutdown(_params)
       RubyLanguageServer.logger.info('on_shutdown')
+      @shutdown_requested = true
+      nil
+    end
+
+    # LSP exit notification: exit 0 if shutdown came first, 1 otherwise.
+    def on_exit(_params)
+      RubyLanguageServer.logger.info("on_exit (shutdown requested: #{shutdown_requested?})")
+      exit(shutdown_requested? ? 0 : 1)
+    end
+
+    def shutdown_requested?
+      @shutdown_requested == true
     end
 
     private

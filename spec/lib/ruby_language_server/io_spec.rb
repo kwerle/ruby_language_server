@@ -177,7 +177,66 @@ class TestRubyLanguageServerIO < Minitest::Test
                    'error' => { 'code' => -32_601, 'message' => 'Method not found: café' } }, message)
   end
 
+  def test_shutdown_then_exit_exits_zero
+    io = io_for_session([{ jsonrpc: '2.0', id: 1, method: 'shutdown', params: nil },
+                         { jsonrpc: '2.0', method: 'exit' }])
+    error = assert_raises(SystemExit) { io.send(:run_loop) }
+
+    assert_equal 0, error.status
+    assert_equal [{ 'jsonrpc' => '2.0', 'id' => 1, 'result' => nil }], parse_written_messages(@fake_out.string)
+  end
+
+  def test_exit_without_shutdown_exits_one
+    io = io_for_session([{ jsonrpc: '2.0', method: 'exit' }])
+    error = assert_raises(SystemExit) { io.send(:run_loop) }
+
+    assert_equal 1, error.status
+    assert_equal '', @fake_out.string
+  end
+
+  def test_request_after_shutdown_gets_invalid_request
+    io = io_for_session([{ jsonrpc: '2.0', id: 1, method: 'shutdown', params: nil },
+                         { jsonrpc: '2.0', id: 2, method: 'textDocument/documentSymbol', params: {} },
+                         { jsonrpc: '2.0', method: 'textDocument/didClose', params: {} },
+                         { jsonrpc: '2.0', method: 'exit' }])
+    error = assert_raises(SystemExit) { io.send(:run_loop) }
+
+    assert_equal 0, error.status
+    replies = parse_written_messages(@fake_out.string)
+    assert_equal([1, 2], replies.map { |m| m['id'] })
+    assert_equal(-32_600, replies[1]['error']['code'])
+    assert_includes replies[1]['error']['message'], 'textDocument/documentSymbol'
+  end
+
   private
+
+  # An IO wired to a real Server, reading the given messages framed as a client sends them.
+  # If the loop runs out of input, get_request calls exit!(1), which would kill the test
+  # process, so make that raise instead.
+  def io_for_session(messages)
+    input = messages.map do |m|
+      json = m.to_json
+      "Content-Length: #{json.bytesize}\r\n\r\n#{json}"
+    end.join
+    io = RubyLanguageServer::IO.allocate
+    io.send(:in=, StringIO.new(input))
+    io.send(:out=, @fake_out)
+    io.instance_variable_set(:@server, RubyLanguageServer::Server.new(Mutex.new))
+    io.define_singleton_method(:exit!) { |status = 1| raise "ran out of input (exit!(#{status}))" }
+    io
+  end
+
+  def parse_written_messages(output)
+    data = output.b
+    messages = []
+    until data.empty?
+      header, rest = data.split("\r\n\r\n", 2)
+      length = header[/Content-Length: (\d+)/, 1].to_i
+      messages << JSON.parse(rest.byteslice(0, length).force_encoding(Encoding::UTF_8))
+      data = rest.byteslice(length..) || ''.b
+    end
+    messages
+  end
 
   def io_for_request(request)
     json = request.to_json

@@ -278,10 +278,23 @@ describe RubyLanguageServer::Server do
   end
 
   describe '#on_shutdown' do
-    it 'logs shutdown' do
+    it 'returns nil and records the shutdown' do
+      refute server.shutdown_requested?
+      assert_nil server.on_shutdown({})
+      assert server.shutdown_requested?
+    end
+  end
+
+  describe '#on_exit' do
+    it 'exits 0 after shutdown' do
       server.on_shutdown({})
-      # Just verify it doesn't raise an error
-      assert true
+      error = assert_raises(SystemExit) { server.on_exit(nil) }
+      assert_equal 0, error.status
+    end
+
+    it 'exits 1 without shutdown' do
+      error = assert_raises(SystemExit) { server.on_exit(nil) }
+      assert_equal 1, error.status
     end
   end
 
