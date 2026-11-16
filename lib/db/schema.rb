@@ -55,7 +55,7 @@ module Schema
     def already_initialized
       response = ActiveRecord::Base.connection_pool.with_connection { |con| con.exec_query "SELECT name  FROM sqlite_master WHERE type='table'" }
       response.rows.flatten.member?('code_files')
-    rescue ExceptionName
+    rescue ActiveRecord::StatementInvalid
       false
     end
 

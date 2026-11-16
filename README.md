@@ -16,6 +16,7 @@ Help welcome.
 
 * Definitions
 * Completions
+* Document symbols
 * Please see the [FAQ_ROADMAP.md](./FAQ_ROADMAP.md)
 
 # Editor Integrations
@@ -28,6 +29,20 @@ You probably want to use one of the developed integrations:
 # Running
 
 `ruby_language_server` will start the program and wait for activity using LSP's STDIO interface
+
+The Docker image runs as an unprivileged user (UID 1000) and writes only to `/data`
+(the SQLite database, and the ActiveRecord log when `LOG_LEVEL=DEBUG`). Set
+`RUBY_LANGUAGE_SERVER_DATA_DIR` to use a different directory. So it can run locked down,
+with the project mounted read-only:
+
+```sh
+docker run --rm -i --read-only --tmpfs /data:uid=1000,gid=1000 \
+  --mount type=bind,source="$PWD",target=/project,readonly \
+  kwerle/ruby_language_server
+```
+
+Docker mounts a plain `--tmpfs` as root-owned and not writable by other users, so the
+`uid=1000,gid=1000` options are needed.
 
 # Development
 
@@ -50,14 +65,26 @@ iteration.
 
 # Release instructions to self
 
-For gem release
+Images are published only by the [release workflow](.github/workflows/release.yml), when a
+`v*` tag is pushed for a commit on master. Never push `kwerle/ruby_language_server` from a
+laptop: the VS Code client runs `:latest` on every start.
+
 * bump version in [version.rb](lib/ruby_language_server/version.rb) file and [Gemfile.lock](Gemfile.lock)
 * [CHANGELOG.txt](CHANGELOG.txt)
-* merge to master, etc
-* `make gem_release` # now done automagically by github action
+* `git flow release start 0.9.8` ... `git flow release finish 0.9.8`
+  (with `git config gitflow.prefix.versiontag v`, this tags master as `v0.9.8`)
+* `git push origin master develop v0.9.8`
+* CI checks the tag matches `version.rb`, builds and pushes `:latest` and `:0.9.8`
+  for amd64 and arm64, signs the image with cosign, and creates the GitHub release.
+* The gem is still released by hand: `make gem_release`
 
-For docker release
-* `make publish_cross_platform_image`
+To verify a published image:
+
+```sh
+cosign verify kwerle/ruby_language_server:latest \
+  --certificate-identity-regexp '^https://github.com/kwerle/ruby_language_server/.github/workflows/release.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 # Authors
 

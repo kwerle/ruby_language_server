@@ -1,6 +1,8 @@
- .PHONY: image guard continuous_development console test coverage rubocop shell run_in_shell server gem gem_release publish_cross_platform_image
+ .PHONY: image guard continuous_development console test coverage rubocop shell run_in_shell server gem gem_release
 PROJECT_NAME=ruby_language_server
-LOCAL_LINK=-v $(PWD):/tmp/src -w /tmp/src
+# The image runs as UID 1000. Dev and test containers run as root, because they write
+# coverage/ and logs into the mounted checkout, which CI runners own under another UID.
+LOCAL_LINK=--user root -v $(PWD):/tmp/src -w /tmp/src
 
 image:
 	docker build -t $(PROJECT_NAME) .
@@ -53,8 +55,3 @@ gem: image
 # Requires rubygems be installed on host
 gem_release: gem
 	./bin/run_in_shell gem push $(PROJECT_NAME)*.gem
-
-publish_cross_platform_image:
-	(docker buildx ls | grep mybuilder) || ./bin/run_in_shell docker buildx create --name mybuilder
-	./bin/run_in_shell docker buildx use mybuilder
-	./bin/run_in_shell docker buildx build --push --platform linux/amd64,linux/arm64/v8 -t kwerle/$(PROJECT_NAME) .
