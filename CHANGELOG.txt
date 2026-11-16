@@ -1,5 +1,18 @@
 # Changelog
 
+#### Unreleased
+
+* Reply to requests the server doesn't handle with a MethodNotFound error, instead of never replying
+* Advertise only the capabilities the server implements: definitions, document symbols and completion
+* The Docker image runs as non-root UID 1000
+* The database and debug log moved to /data (set by RUBY_LANGUAGE_SERVER_DATA_DIR), so the container works with --read-only --tmpfs /data:uid=1000,gid=1000
+
+#### 0.9.8 Sun Nov 15 17:10:46 PST 2026
+
+* Fix Content-Length to count bytes, not characters, so replies with non-ASCII text no longer corrupt the LSP stream
+* In stdio mode, send stray $stdout output to stderr so it can't corrupt the LSP stream
+* Docker images are now published only by CI on v* release tags, and signed with cosign
+
 #### 0.9.7 Tue Jul 28 20:49:35 PDT 2026
 
 * Fix a parsing error

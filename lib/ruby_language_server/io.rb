@@ -34,19 +34,12 @@ module RubyLanguageServer
       end
     end
 
+    # JSON-RPC error code for a request whose method the server doesn't implement.
+    METHOD_NOT_FOUND = -32_601
+
     def send_notification(message, params)
-      io ||= out
-      full_response = {
-        jsonrpc: '2.0',
-        method: message,
-        params:
-      }
-      body = JSON.generate(full_response)
+      body = write_message(jsonrpc: '2.0', method: message, params:)
       RubyLanguageServer.logger.info "send_notification body: #{body}"
-      io.write "Content-Length: #{body.length}\r\n"
-      io.write "\r\n"
-      io.write body
-      io.flush if io.respond_to?(:flush)
     end
 
     private
@@ -63,24 +56,34 @@ module RubyLanguageServer
         RubyLanguageServer.logger.info 'Accepted LSP socket connection'
       else
         self.in = $stdin
-        self.out = $stdout
+        # Keep the real stdout for protocol messages and send anything else written to
+        # $stdout (a stray puts, a gem warning) to stderr, so it can't corrupt the stream.
+        self.out = $stdout.dup
+        out.binmode
+        $stdout.reopen($stderr)
         @using_socket = false
       end
     end
 
     def return_response(id, response)
-      io ||= out
-      full_response = {
-        jsonrpc: '2.0',
-        id:,
-        result: response
-      }
-      response_body = JSON.generate(full_response)
-      RubyLanguageServer.logger.info "return_response body: #{response_body}"
-      io.write "Content-Length: #{response_body.length}\r\n"
-      io.write "\r\n"
-      io.write response_body
-      io.flush if io.respond_to?(:flush)
+      body = write_message(jsonrpc: '2.0', id:, result: response)
+      RubyLanguageServer.logger.info "return_response body: #{body}"
+    end
+
+    def return_error(id, code, message)
+      body = write_message(jsonrpc: '2.0', id:, error: { code:, message: })
+      RubyLanguageServer.logger.info "return_error body: #{body}"
+    end
+
+    # Writes one framed LSP message and returns its JSON body.
+    # Content-Length is a byte count, not a character count.
+    def write_message(message)
+      body = JSON.generate(message)
+      out.write "Content-Length: #{body.bytesize}\r\n"
+      out.write "\r\n"
+      out.write body
+      out.flush if out.respond_to?(:flush)
+      body
     end
 
     def process_request
@@ -88,9 +91,9 @@ module RubyLanguageServer
       # RubyLanguageServer.logger.debug "request_body: #{request_body}"
       request_json = JSON.parse request_body
       id = request_json['id']
-      method_name = request_json['method']
+      lsp_method = request_json['method']
       params = request_json['params']
-      method_name = "on_#{method_name.gsub(/[^\w]/, '_')}"
+      method_name = "on_#{lsp_method.gsub(/[^\w]/, '_')}"
       if @server.respond_to? method_name
         response = ActiveRecord::Base.connection_pool.with_connection do
           retries = 3
@@ -107,6 +110,8 @@ module RubyLanguageServer
         [id, response]
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
+        # Every request needs a reply, or the client waits forever. Notifications get none.
+        return_error(id, METHOD_NOT_FOUND, "Method not found: #{lsp_method}") unless id.nil?
         nil
       end
     end
