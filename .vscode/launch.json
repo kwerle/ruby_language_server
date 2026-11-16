@@ -1,0 +1,16 @@
+{
+	// "Debug server" runs `make debug_server` (this checkout's code under rdbg, LSP on TCP port 7658)
+	// and attaches. Then start "Launch Client (debug server)" in vscode_ruby_language_server.
+	// See README "Debugging the server".
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "rdbg",
+			"request": "attach",
+			"name": "Debug server",
+			"debugPort": "localhost:12345",
+			"localfsMap": "/tmp/src:${workspaceFolder}",
+			"preLaunchTask": "debug_server"
+		}
+	]
+}

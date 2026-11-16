@@ -70,6 +70,30 @@ I use vscode with the "Ruby Language Server" extension install.  I edit the sett
 the docker image local_ruby_language_server.  Quitting and restarting vscode to load the next
 iteration.
 
+## Debugging the server
+
+You can debug this checkout's code with breakpoints, through a client in an Extension
+Development Host window. You need the [rdbg extension](https://marketplace.visualstudio.com/items?itemName=KoichiSasada.vscode-rdbg)
+and a checkout of [vscode_ruby_language_server](https://github.com/kwerle/vscode_ruby_language_server).
+
+1. In this repo's window, Run and Debug "Debug server". It runs `make debug_server`, which
+   starts the server in Docker with this checkout mounted (no image rebuild needed), LSP on
+   TCP port 7658 and rdbg on 12345, then attaches.
+2. Set breakpoints in `lib/`.
+3. In the client repo's window, Run and Debug "Launch Client (debug server)". It opens a window
+   on this repo, and the client connects to port 7658 instead of starting a container.
+4. Open a Ruby file in that window.
+
+Notes:
+
+* The project the client opens must be the one mounted at `/project`. Both default to this
+  repo; to use another, run `make debug_server PROJECT=/path/to/project` and open that folder.
+* The server accepts one connection per run and exits when it closes. After restarting the
+  client, start "Debug server" again.
+* The background scanner runs in a forked process, which isn't debugged
+  (`RUBY_DEBUG_FORK_MODE=parent`).
+* Rebuild the image (`make image`) only after changing the Gemfile.
+
 # Similar
 
 * [mtsmfm/language_server-ruby](https://github.com/mtsmfm/language_server-ruby)

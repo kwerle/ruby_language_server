@@ -167,6 +167,49 @@ class TestRubyLanguageServerIO < Minitest::Test
     assert_equal '', @fake_out.string
   end
 
+  def test_process_request_replies_internal_error_when_handler_raises
+    server = counting_server { raise 'boom' }
+    io = io_for_request({ jsonrpc: '2.0', id: 9, method: 'test_method', params: {} }, server)
+    assert_nil io.send(:process_request)
+
+    message = parse_written_message(@fake_out.string)
+    assert_equal 9, message['id']
+    assert_equal(-32_603, message['error']['code'])
+    assert_includes message['error']['message'], 'RuntimeError: boom'
+    refute message.key?('result')
+    assert_equal 1, server.calls # not retried
+  end
+
+  def test_process_request_notification_that_raises_sends_nothing
+    server = counting_server { raise 'boom' }
+    io = io_for_request({ jsonrpc: '2.0', method: 'test_method', params: {} }, server)
+    assert_nil io.send(:process_request)
+    assert_equal '', @fake_out.string
+  end
+
+  def test_process_request_retries_busy_database_then_succeeds
+    server = counting_server do |calls, _params|
+      raise ActiveRecord::StatementTimeout, 'database is locked' if calls == 1
+
+      'done'
+    end
+    io = io_for_request({ jsonrpc: '2.0', id: 3, method: 'test_method', params: {} }, server)
+    assert_equal [3, 'done'], io.send(:process_request)
+    assert_equal 2, server.calls
+    assert_equal '', @fake_out.string
+  end
+
+  def test_process_request_busy_database_gives_up_with_internal_error
+    server = counting_server { raise ActiveRecord::StatementTimeout, 'database is locked' }
+    io = io_for_request({ jsonrpc: '2.0', id: 4, method: 'test_method', params: {} }, server)
+    assert_nil io.send(:process_request)
+    assert_equal RubyLanguageServer::IO::BUSY_RETRIES + 1, server.calls
+
+    message = parse_written_message(@fake_out.string)
+    assert_equal(-32_603, message['error']['code'])
+    assert_includes message['error']['message'], 'ActiveRecord::StatementTimeout'
+  end
+
   def test_return_error_writes_jsonrpc_error
     io = RubyLanguageServer::IO.allocate
     io.send(:out=, @fake_out)
@@ -238,13 +281,27 @@ class TestRubyLanguageServerIO < Minitest::Test
     messages
   end
 
-  def io_for_request(request)
+  def io_for_request(request, server = Object.new)
     json = request.to_json
     io = RubyLanguageServer::IO.allocate
     io.send(:in=, StringIO.new("Content-Length: #{json.bytesize}\n#{json}\r\n"))
     io.send(:out=, @fake_out)
-    io.instance_variable_set(:@server, Object.new)
+    io.instance_variable_set(:@server, server)
+    def io.busy_retry_delay = 0 # keep the busy-retry tests fast
     io
+  end
+
+  # A server whose on_test_method runs the given block and counts its calls.
+  def counting_server(&block)
+    handler = block
+    server = Object.new
+    server.instance_variable_set(:@calls, 0)
+    server.define_singleton_method(:calls) { @calls }
+    server.define_singleton_method(:on_test_method) do |params|
+      @calls += 1
+      handler.call(@calls, params)
+    end
+    server
   end
 
   # Parses one framed message, checking that Content-Length is the body's byte count.

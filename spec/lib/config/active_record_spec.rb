@@ -11,4 +11,9 @@ describe 'ActiveRecord initializer' do
     assert_equal File.join(data_dir, 'database'), database
     refute_equal '/database', database
   end
+
+  it 'waits 5 seconds for a database lock' do
+    # The adapter reads :timeout as milliseconds. It used to be 30.seconds, which is 30 ms.
+    assert_equal 5000, ActiveRecord::Base.connection_db_config.configuration_hash[:timeout]
+  end
 end
