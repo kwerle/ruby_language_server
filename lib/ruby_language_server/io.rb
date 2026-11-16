@@ -13,18 +13,7 @@ module RubyLanguageServer
       server.io = self
 
       configure_io
-
-      loop do
-        (id, response) = process_request
-        return_response(id, response) unless id.nil?
-      rescue SignalException => e
-        RubyLanguageServer.logger.error "We received a signal.  Let's bail: #{e}"
-        exit
-      rescue Exception => e
-        RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
-        backtrace = e.backtrace * "\n"
-        RubyLanguageServer.logger.error "Backtrace:\n#{backtrace}"
-      end
+      run_loop
       return unless @using_socket
 
       begin
@@ -34,7 +23,8 @@ module RubyLanguageServer
       end
     end
 
-    # JSON-RPC error code for a request whose method the server doesn't implement.
+    # JSON-RPC error codes.
+    INVALID_REQUEST = -32_600 # used for requests that arrive after shutdown
     METHOD_NOT_FOUND = -32_601
 
     def send_notification(message, params)
@@ -45,6 +35,22 @@ module RubyLanguageServer
     private
 
     attr_accessor :in, :out
+
+    def run_loop
+      loop do
+        (id, response) = process_request
+        return_response(id, response) unless id.nil?
+      rescue SystemExit
+        raise # on_exit, or a signal below. Don't treat it as an error and keep looping.
+      rescue SignalException => e
+        RubyLanguageServer.logger.error "We received a signal.  Let's bail: #{e}"
+        exit
+      rescue Exception => e
+        RubyLanguageServer.logger.error "Something when horribly wrong: #{e}"
+        backtrace = e.backtrace * "\n"
+        RubyLanguageServer.logger.error "Backtrace:\n#{backtrace}"
+      end
+    end
 
     def configure_io
       if ENV['LSP_PORT']
@@ -94,6 +100,11 @@ module RubyLanguageServer
       lsp_method = request_json['method']
       params = request_json['params']
       method_name = "on_#{lsp_method.gsub(/[^\w]/, '_')}"
+      if !id.nil? && @server.respond_to?(:shutdown_requested?) && @server.shutdown_requested?
+        RubyLanguageServer.logger.warn "Request #{lsp_method} after shutdown"
+        return_error(id, INVALID_REQUEST, "Server is shutting down; received #{lsp_method}")
+        return nil
+      end
       if @server.respond_to? method_name
         response = ActiveRecord::Base.connection_pool.with_connection do
           retries = 3
@@ -106,7 +117,6 @@ module RubyLanguageServer
             retry unless retries <= 0
           end
         end
-        exit if response == 'EXIT'
         [id, response]
       else
         RubyLanguageServer.logger.warn "SERVER DOES NOT RESPOND TO #{method_name}"
