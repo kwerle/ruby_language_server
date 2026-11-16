@@ -1,7 +1,10 @@
 # docker build -t ruby_language_server .
 #
 # For development:
-# docker run -it -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
+# docker run -it --user root -v $PWD:/project -v $PWD:/tmp/src -w /tmp/src ruby_language_server sh -c 'bundle && guard'
+#
+# The server runs as UID 1000 and writes only to /data, so it can run locked down:
+# docker run --rm -i --read-only --tmpfs /data:uid=1000,gid=1000 --mount type=bind,source="$PWD",target=/project,readonly ruby_language_server
 FROM ruby:4.0-slim
 LABEL maintainer="kurt@CircleW.org"
 
@@ -35,6 +38,14 @@ COPY lib/ruby_language_server/version.rb lib/ruby_language_server/version.rb
 RUN bundle install
 
 COPY . ./
+
+# Everything the server writes goes here, so the rest of the filesystem can be read-only:
+# docker run --read-only --tmpfs /data:uid=1000,gid=1000 ...
+ENV RUBY_LANGUAGE_SERVER_DATA_DIR=/data
+RUN groupadd --gid 1000 rls \
+    && useradd --uid 1000 --gid rls --no-create-home --home-dir /data --shell /usr/sbin/nologin rls \
+    && mkdir -p /data && chown rls:rls /data
+USER 1000:1000
 
 # We must not use bundle exec, here - we are running in the
 CMD ["ruby", "/app/exe/ruby_language_server"]
