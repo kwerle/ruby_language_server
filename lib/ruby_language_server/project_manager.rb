@@ -322,10 +322,13 @@ module RubyLanguageServer
           next
         end
 
-        # Check child scopes (classes/modules/methods) with this name
-        child_scopes = current.children.where(name: name)
-        child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
-        return scope_or_variable_to_locations(child_scopes) if child_scopes.any?
+        # Check child scopes (classes/modules/methods) with this name, then, for a class,
+        # its superclasses' before moving out to the enclosing scope, as Ruby does.
+        [current, *(current.class_scope? ? current.ancestor_class_scopes : [])].each do |scope|
+          child_scopes = scope.children.where(name: name)
+          child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+          return scope_or_variable_to_locations(child_scopes) if child_scopes.any?
+        end
 
         current = current.parent
       end
