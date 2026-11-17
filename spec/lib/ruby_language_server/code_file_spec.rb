@@ -85,6 +85,11 @@ describe RubyLanguageServer::CodeFile do
         assert_equal([], code_file("# just a comment\n").tags)
       end
 
+      it 'leaves out symbols with blank names' do
+        assert_equal([], code_file("task '' do\nend\n").tags)
+        assert_equal(['A'], code_file("class A\n  attr_accessor ''\n  attr_writer ' '\n  has_one ''\nend\n").tags.map { |tag| tag[:name] })
+      end
+
       it 'should retain existing tags when text becomes unparsable' do
         code_file = code_file("def foo\nend\n")
         assert_equal('foo', code_file.tags.last[:name])

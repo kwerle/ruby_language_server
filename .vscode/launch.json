@@ -1,6 +1,8 @@
 {
-	// "Debug server" runs `make debug_server` (this checkout's code under rdbg, LSP on TCP port 7658)
-	// and attaches. Then start "Launch Client (debug server)" in vscode_ruby_language_server.
+	// "Debug server + client" is the one to run: it starts the server under rdbg in Docker
+	// (make debug_server, LSP on TCP port 7658), attaches the debugger, and opens a new
+	// Extension Development Host window whose client connects to that server.
+	// Needs a vscode_ruby_language_server checkout next to this one.
 	// See README "Debugging the server".
 	"version": "0.2.0",
 	"configurations": [
@@ -9,8 +11,32 @@
 			"request": "attach",
 			"name": "Debug server",
 			"debugPort": "localhost:12345",
+			// The extension checks `rdbg --version` on the host; answer from Docker instead.
+			"rdbgPath": "${workspaceFolder}/bin/rdbg",
 			"localfsMap": "/tmp/src:${workspaceFolder}",
 			"preLaunchTask": "debug_server"
+		},
+		{
+			// The client, connecting to the debug server instead of starting a container.
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch Client (debug server)",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/../vscode_ruby_language_server",
+				"${workspaceFolder}"
+			],
+			"env": { "RUBY_LANGUAGE_SERVER_DEV_PORT": "7658" },
+			"sourceMaps": true,
+			"outFiles": ["${workspaceFolder}/../vscode_ruby_language_server/dist/**/*.js"],
+			"preLaunchTask": "compile_client"
+		}
+	],
+	"compounds": [
+		{
+			"name": "Debug server + client",
+			"configurations": ["Debug server", "Launch Client (debug server)"],
+			"stopAll": true
 		}
 	]
 }

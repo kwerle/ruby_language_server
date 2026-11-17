@@ -6,7 +6,7 @@ module RubyLanguageServer
       # has_one :bar adds the methods bar and bar=.
       def rails_add_reference(node)
         name = command_arguments(node).first
-        return if name.nil?
+        return if name.blank?
 
         line = command_line(node)
         column = command_column(node)

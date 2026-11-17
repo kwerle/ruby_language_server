@@ -84,7 +84,8 @@ module RubyLanguageServer
           containerName: variable.scope.name
         }
       end
-      tags = tags.compact.reject { |tag| tag[:name].nil? || tag[:name] == RubyLanguageServer::ScopeData::Scope::TYPE_BLOCK }
+      # Clients reject a symbol with a blank name, and fail the whole request (task '', attr_accessor '').
+      tags = tags.compact.reject { |tag| tag[:name].blank? || tag[:name] == RubyLanguageServer::ScopeData::Scope::TYPE_BLOCK }
       # RubyLanguageServer.logger.debug("Raw tags for #{uri}: #{tags}")
       # If you don't reverse the list then atom? won't be able to find the
       # container and containers will get duplicated.
