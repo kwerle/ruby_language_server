@@ -70,11 +70,11 @@ module RubyLanguageServer
       line = node.location.start_line
       end_line = node.location.end_line
       column = node.location.start_column
-      # def self.name, or a plain def inside class << self
-      is_class_method = node.receiver.is_a?(Prism::SelfNode) || (node.receiver.nil? && @in_singleton_class)
+      is_class_method = node.receiver.is_a?(Prism::SelfNode)
 
       scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
-      scope.class_method = is_class_method
+      # def self.name, or a plain def inside class << self
+      scope.class_method = is_class_method || (node.receiver.nil? && @in_singleton_class)
       scope.save!
 
       # Extract and store parameters
