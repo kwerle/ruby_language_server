@@ -108,8 +108,14 @@ module RubyLanguageServer
       update(text: new_text, refresh_root_scope: true)
     end
 
+    # While someone types within a line, re-parse at most this often. An edit that
+    # changes the number of lines is re-parsed at once, so stored line ranges stay valid.
+    # 0 re-parses on every request (the specs use that).
+    REPARSE_INTERVAL = Float(ENV.fetch('RUBY_LANGUAGE_SERVER_REPARSE_INTERVAL', '1.0')) # seconds
+
     def refresh_scopes_if_needed
       return unless refresh_root_scope
+      return if reparse_can_wait?
 
       RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
       RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
@@ -121,11 +127,32 @@ module RubyLanguageServer
             RubyLanguageServer.logger.debug("new_root.children #{new_root.children.as_json}") if new_root&.children
             raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
 
-            update_attribute(:refresh_root_scope, false)
+            update_columns(refresh_root_scope: false, parsed_at: monotonic_now, parsed_line_count: line_count)
             new_root
           end
         end
       end
+    end
+
+    # True when the last parse was recent and the edits since then kept the line count,
+    # so its scopes still line up with the text. The next request after the interval
+    # re-parses.
+    def reparse_can_wait?
+      return false if parsed_at.nil?
+
+      parsed_line_count == line_count && monotonic_now - parsed_at < reparse_interval
+    end
+
+    def reparse_interval
+      REPARSE_INTERVAL
+    end
+
+    def line_count
+      text.to_s.count("\n")
+    end
+
+    def monotonic_now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
     # Returns the context of what is being typed in the given line

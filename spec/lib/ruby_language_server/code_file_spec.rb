@@ -28,6 +28,46 @@ describe RubyLanguageServer::CodeFile do
       RubyLanguageServer::CodeFile.build('uri', "class Foo\nend\n")
     end
 
+    describe 'debounced re-parsing' do
+      # A file parsed once, that waits `interval` seconds before re-parsing a same-length edit.
+      def parsed_file(text, interval:)
+        cf = RubyLanguageServer::CodeFile.build('debounce_uri', text)
+        cf.define_singleton_method(:reparse_interval) { interval }
+        cf.refresh_scopes_if_needed
+        cf
+      end
+
+      def method_names(code_file)
+        code_file.scopes.reload.where(class_type: 'method').pluck(:name)
+      end
+
+      it 'waits to re-parse an edit that keeps the line count' do
+        cf = parsed_file("class Foo\n  def one; end\nend\n", interval: 60)
+        cf.update_text("class Foo\n  def two; end\nend\n")
+        cf.refresh_scopes_if_needed
+
+        assert_equal(%w[one], method_names(cf))
+        assert(cf.refresh_root_scope, 'still marked for a re-parse')
+      end
+
+      it 're-parses at once when the line count changes' do
+        cf = parsed_file("class Foo\n  def one; end\nend\n", interval: 60)
+        cf.update_text("class Foo\n  def one; end\n  def two; end\nend\n")
+        cf.refresh_scopes_if_needed
+
+        assert_equal(%w[one two], method_names(cf).sort)
+      end
+
+      it 're-parses once the interval has passed' do
+        cf = parsed_file("class Foo\n  def one; end\nend\n", interval: 0.05)
+        cf.update_text("class Foo\n  def two; end\nend\n")
+        sleep 0.06
+        cf.refresh_scopes_if_needed
+
+        assert_equal(%w[two], method_names(cf))
+      end
+    end
+
     describe 'tags' do
       let(:tags) { code_file(source).tags }
 

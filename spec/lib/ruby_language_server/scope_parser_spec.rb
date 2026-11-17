@@ -8,6 +8,32 @@ describe RubyLanguageServer::ScopeParser do
     @code_file_lines = File.new('spec/fixture_files/scope_parser.sample.rb', 'r').read
   end
 
+  describe 'variables assigned more than once' do
+    it 'records only the first assignment in each scope' do
+      RubyLanguageServer::ScopeParser.new(<<~RUBY)
+        class Foo
+          def bar
+            x = 1
+            x = 2
+          end
+
+          def baz
+            x = 3
+          end
+        end
+      RUBY
+
+      assert_equal([['x', 3, 'Foo#bar'], ['x', 8, 'Foo#baz']],
+                   RubyLanguageServer::ScopeData::Variable.order(:line).map { |v| [v.name, v.line, v.scope.path] })
+    end
+
+    it 'does not repeat top-level variables when a parse reuses the root scope' do
+      2.times { RubyLanguageServer::ScopeParser.new("top = 1\nclass Foo\nend\n") }
+
+      assert_equal(1, RubyLanguageServer::ScopeData::Variable.where(name: 'top').count)
+    end
+  end
+
   describe 'Small file' do
     describe 'normal parsing' do
       before do

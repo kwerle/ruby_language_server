@@ -423,14 +423,22 @@ module RubyLanguageServer
       args
     end
 
+    # Records the first assignment of each name in a scope; later ones are skipped.
+    # The names already recorded are kept in memory, so this is one INSERT per new
+    # variable rather than a SELECT per assignment.
     def add_variable(name, line, column, scope = @current_scope)
       return if scope.nil?
+      return unless variable_names_in(scope).add?(name)
 
-      scope.variables.where(name:).first_or_create!(
-        line:,
-        column:,
-        code_file: scope.code_file
-      )
+      scope.variables.create!(name:, line:, column:, code_file_id: scope.code_file_id)
+    end
+
+    # Names of the variables recorded in scope. Scopes this parse created start empty.
+    # Only the root can already have rows (ScopeParser reuses an existing root), so its
+    # names are read from the database once.
+    def variable_names_in(scope)
+      @variable_names ||= {}
+      @variable_names[scope.id] ||= scope.root_scope? ? Set.new(scope.variables.pluck(:name)) : Set.new
     end
 
     def add_ivar(name, line, column)
