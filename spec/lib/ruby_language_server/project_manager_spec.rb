@@ -643,5 +643,69 @@ describe RubyLanguageServer::ProjectManager do
         assert_equal 0, results.first[:range][:start][:line]
       end
     end
+
+    describe 'receiver constants resolved through enclosing namespaces' do
+      let(:nested_file) do
+        <<~CODE_FILE
+          module Outer
+            class Inner
+              def self.go
+              end
+            end
+
+            class Other
+              def run
+                Inner.go
+                ::Inner.go
+              end
+            end
+          end
+        CODE_FILE
+      end
+
+      let(:top_level_file) do
+        <<~CODE_FILE
+          class Inner
+            def self.go
+            end
+          end
+        CODE_FILE
+      end
+
+      before(:each) do
+        project_manager.update_document_content('nested_uri', nested_file)
+        project_manager.update_document_content('top_uri', top_level_file)
+        project_manager.tags_for_uri('nested_uri') # Force load of tags
+        project_manager.tags_for_uri('top_uri')
+      end
+
+      it 'prefers the constant in an enclosing namespace' do
+        # Position on "go" in "Inner.go" inside Outer::Other
+        results = project_manager.possible_definitions('nested_uri', OpenStruct.new(line: 8, character: 13))
+
+        assert_equal([['nested_uri', 2]], results.map { |r| [r[:uri], r[:range][:start][:line]] })
+      end
+
+      it 'uses only the top level after a leading ::' do
+        # Position on "go" in "::Inner.go"
+        results = project_manager.possible_definitions('nested_uri', OpenStruct.new(line: 9, character: 15))
+
+        assert_equal([['top_uri', 1]], results.map { |r| [r[:uri], r[:range][:start][:line]] })
+      end
+
+      it 'returns a definition from every file that reopens the class' do
+        project_manager.update_document_content('reopen_uri', "class Inner\n  def self.stop\n  end\nend\n")
+        # Another stop, which a project-wide search would also return.
+        project_manager.update_document_content('unrelated_uri', "class Unrelated\n  def self.stop\n  end\nend\n")
+        project_manager.update_document_content('caller_uri', "Inner.stop\nInner.go\n")
+        %w[reopen_uri unrelated_uri caller_uri].each { |uri| project_manager.tags_for_uri(uri) }
+
+        stop = project_manager.possible_definitions('caller_uri', OpenStruct.new(line: 0, character: 7))
+        go = project_manager.possible_definitions('caller_uri', OpenStruct.new(line: 1, character: 7))
+
+        assert_equal([['reopen_uri', 1]], stop.map { |r| [r[:uri], r[:range][:start][:line]] })
+        assert_equal([['top_uri', 1]], go.map { |r| [r[:uri], r[:range][:start][:line]] })
+      end
+    end
   end
 end

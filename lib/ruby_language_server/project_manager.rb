@@ -180,27 +180,20 @@ module RubyLanguageServer
           end
 
           scope_path_parts = context[leftmost_continuous_index..-2]
+          # A leading :: (::Foo::Bar) splits into an empty first element: top level only.
+          top_level = leftmost_continuous_index.positive? && context[leftmost_continuous_index - 1] == ''
 
-          if scope_path_parts.empty?
-            # This shouldn't happen, but handle it gracefully
-            return project_definitions_for(name, current_scopes)
-          elsif scope_path_parts.length == 1
-            # Single class/module like Bar.something or Foo::Bar
-            parent_scope = find_scope_by_path(scope_path_parts.first)
-          else
-            # Multiple parts like Bar::Baz.something or after finding Bar in foo.Bar::Baz.something
-            scope_path = scope_path_parts.join('::')
-            parent_scope = find_scope_by_path(scope_path)
-          end
+          # Resolve the receiver the way Ruby does: inside the enclosing namespaces first.
+          receiver_scopes = resolve_constant_scopes(scope_path_parts.join('::'), current_scopes, top_level:)
 
           # Determine if it's a class/module lookup or a method call
           # If the name also looks like a class/module name, it's a namespace lookup (Foo::Bar)
           # Otherwise it's a method call (Foo.method or Foo::Bar.method)
-          return project_definitions_for(name, parent_scope ? [parent_scope] : []) if likely_class_name?(name) || constant_name?(name)
+          return receiver_definitions_for(name, receiver_scopes) if likely_class_name?(name) || constant_name?(name)
 
           # Method call - determine if it's a class method or instance method
           class_method_filter = name != 'initialize'
-          return project_definitions_for(name, parent_scope ? [parent_scope] : [], class_method_filter)
+          return receiver_definitions_for(name, receiver_scopes, class_method_filter)
 
         end
 
@@ -344,12 +337,39 @@ module RubyLanguageServer
       scope_or_variable_to_locations(all_matches)
     end
 
-    # Find a scope by its path (e.g., "Foo::Bar")
-    # Returns nil if path is nil or empty (for root scope searches)
-    def find_scope_by_path(path)
-      return nil if path.nil? || path.empty?
+    # The scopes a constant path like "Bar" or "Bar::Baz" refers to from the cursor.
+    # Like Ruby, try each enclosing class or module, innermost first, then the top
+    # level. Inside Outer::Other, "Inner" tries Outer::Other::Inner, Outer::Inner, Inner.
+    # Returns every scope with the first path that exists: a class reopened in several
+    # files has one scope per file. Returns [] if nothing matches.
+    #
+    # This uses the nesting of scope paths, so `class Outer::Other` counts as being
+    # inside Outer, which Ruby's lexical scope doesn't do.
+    def resolve_constant_scopes(path, current_scopes, top_level: false)
+      return [] if path.blank?
 
-      RubyLanguageServer::ScopeData::Scope.find_by(path: path)
+      namespaces = top_level ? [] : current_scopes.select { |scope| type_is_class_or_module?(scope) }.map(&:path)
+      candidates = namespaces.map { |namespace| "#{namespace}::#{path}" } + [path]
+      candidates.each do |candidate|
+        scopes = RubyLanguageServer::ScopeData::Scope.where(path: candidate).to_a
+        return scopes if scopes.any?
+      end
+      []
+    end
+
+    def type_is_class_or_module?(scope)
+      [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE].include?(scope.class_type)
+    end
+
+    # Definitions of name inside the receiver's scopes (and their parents), or anywhere
+    # in the project if there are none.
+    def receiver_definitions_for(name, receiver_scopes, class_method_filter = nil)
+      return search_project_wide(name, class_method_filter) if receiver_scopes.empty?
+
+      results = receiver_scopes.flat_map { |scope| search_variables_in_scope_chain(name, scope) }
+      results = receiver_scopes.flat_map { |scope| search_child_scopes_in_chain(name, scope, class_method_filter) } if results.empty?
+      results = search_project_wide(name, class_method_filter) if results.empty?
+      results.uniq
     end
 
     # Check if a name looks like a constant (all uppercase)
