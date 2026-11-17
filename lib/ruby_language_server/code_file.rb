@@ -112,6 +112,7 @@ module RubyLanguageServer
     REPARSE_INTERVAL = Float(ENV.fetch('RUBY_LANGUAGE_SERVER_REPARSE_INTERVAL', '1.0')) # seconds
 
     def refresh_scopes_if_needed
+      return if new_record? # nothing stored yet, so nothing to parse
       return unless refresh_root_scope
       return if reparse_can_wait?
 
@@ -155,7 +156,7 @@ module RubyLanguageServer
 
     # Returns the context of what is being typed in the given line
     def context_at_location(position)
-      lines = text.split("\n")
+      lines = text.to_s.split("\n")
       line = lines[position.line]
       return [] if line.nil? || line.strip.empty?
 

@@ -392,8 +392,10 @@ module RubyLanguageServer
       name =~ /[a-z]/
     end
 
+    # The stored file for uri. For a URI the server hasn't seen, an unsaved, empty
+    # CodeFile, so lookups don't write to the database; CodeFile#update_text saves it.
     def code_file_for_uri(uri)
-      CodeFile.find_by_uri(uri) || CodeFile.build(uri, nil)
+      CodeFile.find_by(uri:) || CodeFile.new(uri:)
     end
   end
 end

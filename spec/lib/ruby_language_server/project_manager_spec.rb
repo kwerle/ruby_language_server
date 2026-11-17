@@ -175,6 +175,30 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  describe 'requests for a file the server has never seen' do
+    let(:unknown_uri) { 'file:///never/seen.rb' }
+    let(:position) { OpenStruct.new(line: 0, character: 0) }
+
+    it 'answer without storing the file' do
+      assert_equal('', project_manager.text_for_uri(unknown_uri))
+      project_manager.tags_for_uri(unknown_uri)
+      assert_empty(project_manager.scopes_at(unknown_uri, position))
+      project_manager.completion_at(unknown_uri, position)
+      assert_equal([], project_manager.possible_definitions(unknown_uri, position))
+
+      assert_nil(RubyLanguageServer::CodeFile.find_by(uri: unknown_uri))
+      assert_equal(0, RubyLanguageServer::ScopeData::Scope.count)
+    end
+
+    it 'store the file once its text arrives' do
+      project_manager.tags_for_uri(unknown_uri)
+      project_manager.update_document_content(unknown_uri, "class Seen\nend\n")
+
+      assert_equal(1, RubyLanguageServer::CodeFile.where(uri: unknown_uri).count)
+      assert_equal(['Seen'], project_manager.tags_for_uri(unknown_uri).map { |tag| tag[:name] })
+    end
+  end
+
   describe '.project_definitions_for' do
     it 'should give a reasonable list' do
       project_manager.update_document_content('uri', rails_file_text)
