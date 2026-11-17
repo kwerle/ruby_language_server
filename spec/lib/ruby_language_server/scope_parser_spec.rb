@@ -53,6 +53,10 @@ describe RubyLanguageServer::ScopeParser do
         it 'should add methods' do
           assert_equal(%w[zoo zor], zar.children.map(&:name).sort)
         end
+
+        it 'marks them as class methods' do
+          assert_equal({ 'zoo' => true, 'zor' => true }, zar.children.to_h { |child| [child.name, child.class_method] })
+        end
       end
 
       describe 'full parsing' do
@@ -309,6 +313,31 @@ describe RubyLanguageServer::ScopeParser do
         RubyLanguageServer.logger.instance_variable_get(:@logdev)&.dev&.flush
         refute_match(/Exception in prism parsing/, File.read('test.log'))
       end
+    end
+  end
+
+  describe 'class << self' do
+    it 'marks only the methods directly inside it as class methods' do
+      RubyLanguageServer::ScopeParser.new(<<~RUBY)
+        class Foo
+          class << self
+            def make; end
+
+            class Nested
+              def instance_method; end
+            end
+          end
+
+          class << some_object
+            def not_ours; end
+          end
+
+          def regular; end
+        end
+      RUBY
+      class_methods = RubyLanguageServer::ScopeData::Scope.method_scopes.to_h { |scope| [scope.name, scope.class_method] }
+
+      assert_equal({ 'make' => true, 'instance_method' => false, 'not_ours' => false, 'regular' => false }, class_methods)
     end
   end
 end

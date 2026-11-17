@@ -48,7 +48,7 @@ module RubyLanguageServer
         scope.set_superclass_name(superclass_name) if superclass_name
       end
 
-      super
+      in_singleton_class(false) { super }
       pop_scope
     end
 
@@ -60,7 +60,7 @@ module RubyLanguageServer
       column = column_of(node.location)
 
       push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line, false)
-      super
+      in_singleton_class(false) { super }
       pop_scope
     end
 
@@ -73,7 +73,8 @@ module RubyLanguageServer
       is_class_method = node.receiver.is_a?(Prism::SelfNode)
 
       scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
-      scope.class_method = is_class_method
+      # def self.name, or a plain def inside class << self
+      scope.class_method = is_class_method || (node.receiver.nil? && @in_singleton_class)
       scope.save!
 
       # Extract and store parameters
@@ -93,10 +94,11 @@ module RubyLanguageServer
     end
 
     # Visit a singleton class (class << self)
-    def visit_singleton_class_node(node) # rubocop:disable Lint/UselessMethodDefinition
-      # For class << self, we visit the body but don't create a new scope
-      # The methods defined inside will be class methods of the current scope
-      super
+    def visit_singleton_class_node(node)
+      # For class << self, we visit the body but don't create a new scope.
+      # The methods defined inside are class methods of the current scope.
+      # class << some_object is not about the current class, so it doesn't count.
+      in_singleton_class(node.expression.is_a?(Prism::SelfNode)) { super }
     end
 
     # Visit block nodes
@@ -452,6 +454,16 @@ module RubyLanguageServer
         end
       end
       add_variable(name, line, column, scope)
+    end
+
+    # Runs the block with @in_singleton_class set, restoring it afterwards. A class or
+    # module nested inside class << self starts fresh.
+    def in_singleton_class(value)
+      saved = @in_singleton_class
+      @in_singleton_class = value
+      yield
+    ensure
+      @in_singleton_class = saved
     end
 
     def type_is_class_or_module(type)
