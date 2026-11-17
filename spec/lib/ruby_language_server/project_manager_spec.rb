@@ -173,6 +173,15 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  describe '.scopes_at' do
+    it 'should list them' do
+      project_manager.update_document_content('uri', rails_file_text)
+      scopes = project_manager.scopes_at('uri', OpenStruct.new(line: 1))
+      assert_equal(1, scopes.length)
+      assert_equal('Foo', scopes.first.name)
+    end
+  end
+
   describe '.skip_scan?' do
     it 'skips spec and test files and vendor directories' do
       %w[spec/foo_spec.rb test/foo_test.rb spec.rb test.rb vendor/bundle/x.rb lib/vendor/y.rb].each do |path|
@@ -184,15 +193,6 @@ describe RubyLanguageServer::ProjectManager do
       %w[lib/latest.rb lib/contest.rb lib/inspec.rb app/models/vendor_account.rb lib/vendors/z.rb spec/spec_helper.rb test/test_helper.rb].each do |path|
         refute(RubyLanguageServer::ProjectManager.skip_scan?(path), path)
       end
-    end
-  end
-
-  describe '.scopes_at' do
-    it 'should list them' do
-      project_manager.update_document_content('uri', rails_file_text)
-      scopes = project_manager.scopes_at('uri', OpenStruct.new(line: 1))
-      assert_equal(1, scopes.length)
-      assert_equal('Foo', scopes.first.name)
     end
   end
 
