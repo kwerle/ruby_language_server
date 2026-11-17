@@ -225,6 +225,30 @@ module RubyLanguageServer
       project_definitions_for(name, current_scopes) || []
     end
 
+    # Hover for the word at position: the signature of the first definition that
+    # possible_definitions finds, or nil.
+    def hover_at(uri, position)
+      name = context_at_location(uri, position)&.last
+      return nil if name.blank?
+
+      name = 'initialize' if name == 'new'
+      definition = possible_definitions(uri, position).first
+      record = definition && record_at(definition, name)
+      markdown = record && Hover.markdown(record)
+      return nil if markdown.blank?
+
+      { contents: { kind: 'markdown', value: markdown } }
+    end
+
+    # The scope or variable named name that a definition location points at.
+    def record_at(location, name)
+      code_file = CodeFile.find_by(uri: location[:uri])
+      return nil if code_file.nil?
+
+      line = location[:range][:start][:line] + 1 # stored lines are 1-based
+      code_file.scopes.find_by(top_line: line, name:) || code_file.variables.find_by(line:, name:)
+    end
+
     # Return variables found in the current scope.  After all, those are the important ones.
     # Should probably be private...
     def scope_definitions_for(name, scope, uri)

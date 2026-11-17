@@ -17,6 +17,7 @@ require_relative 'project_manager'
 require_relative 'server'
 require_relative 'line_context'
 require_relative 'completion'
+require_relative 'hover'
 
 module RubyLanguageServer
   class Application
