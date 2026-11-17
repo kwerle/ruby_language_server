@@ -180,6 +180,24 @@ describe RubyLanguageServer::ProjectManager do
       assert_equal(1, scopes.length)
       assert_equal('Foo', scopes.first.name)
     end
+
+    # LSP lines are 0-based; scope lines are 1-based, as Prism reports them.
+    it 'treats the position line as 0-based' do
+      text = <<~CODE
+        class Foo
+          def bar(a)
+            x = 1
+          end
+        end
+      CODE
+      project_manager.update_document_content('line_uri', text)
+      paths_at = ->(line) { project_manager.scopes_at('line_uri', OpenStruct.new(line:, character: 4)).map(&:path) }
+
+      assert_equal(%w[Foo], paths_at.call(0))           # class Foo
+      assert_equal(%w[Foo#bar Foo], paths_at.call(1))   # def bar(a)
+      assert_equal(%w[Foo#bar Foo], paths_at.call(3))   #   end
+      assert_equal(%w[Foo], paths_at.call(4))           # end
+    end
   end
 
   describe '.scope_definitions_for' do
