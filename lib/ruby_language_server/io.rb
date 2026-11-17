@@ -98,6 +98,14 @@ module RubyLanguageServer
       RubyLanguageServer.logger.info "return_error body: #{body}"
     end
 
+    def log_client_response(response)
+      if response['error']
+        RubyLanguageServer.logger.warn "Client returned an error for request #{response['id']}: #{response['error']}"
+      else
+        RubyLanguageServer.logger.info "Client replied to request #{response['id']}"
+      end
+    end
+
     # Writes one framed LSP message and returns its JSON body.
     # Content-Length is a byte count, not a character count.
     def write_message(message)
@@ -164,14 +172,6 @@ module RubyLanguageServer
 
     def busy_retry_delay
       BUSY_RETRY_DELAY
-    end
-
-    def log_client_response(response)
-      if response['error']
-        RubyLanguageServer.logger.warn "Client returned an error for request #{response['id']}: #{response['error']}"
-      else
-        RubyLanguageServer.logger.info "Client replied to request #{response['id']}"
-      end
     end
 
     def get_request # rubocop:disable Naming/AccessorMethodName
