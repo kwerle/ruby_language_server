@@ -129,6 +129,64 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  describe '#watched_files_changed' do
+    around_root = lambda do |test, &block|
+      Dir.mktmpdir do |dir|
+        test.with_project_environment_root("#{dir}/") do
+          RubyLanguageServer::ProjectManager.root_uri = 'file:///host/project/'
+          block.call(dir, RubyLanguageServer::ProjectManager.new(dir, 'file:///host/project/'))
+        end
+      end
+    end
+
+    it 'drops a deleted file from the index' do
+      around_root.call(self) do |_dir, pm|
+        pm.update_document_content('file:///host/project/gone.rb', "class Gone\nend\n")
+        pm.tags_for_uri('file:///host/project/gone.rb') # parse it
+        assert_equal(1, pm.project_definitions_for('Gone').length)
+
+        pm.watched_files_changed([{ 'uri' => 'file:///host/project/gone.rb', 'type' => 3 }])
+
+        assert_equal([], pm.project_definitions_for('Gone'))
+        assert_nil(RubyLanguageServer::CodeFile.find_by(uri: 'file:///host/project/gone.rb'))
+      end
+    end
+
+    it 'drops every file under a deleted directory' do
+      around_root.call(self) do |_dir, pm|
+        pm.update_document_content('file:///host/project/lib/a.rb', "class A\nend\n")
+        pm.update_document_content('file:///host/project/lib/sub/b.rb', "class B\nend\n")
+        pm.update_document_content('file:///host/project/library.rb', "class Library\nend\n")
+
+        pm.watched_files_changed([{ 'uri' => 'file:///host/project/lib', 'type' => 3 }])
+
+        assert_equal(['file:///host/project/library.rb'], RubyLanguageServer::CodeFile.pluck(:uri))
+      end
+    end
+
+    it 'reads created and changed files from disk' do
+      around_root.call(self) do |dir, pm|
+        File.write(File.join(dir, 'new file.rb'), "class Created\nend\n")
+        pm.watched_files_changed([{ 'uri' => 'file:///host/project/new%20file.rb', 'type' => 1 }])
+        assert_equal(['Created'], pm.tags_for_uri('file:///host/project/new%20file.rb').map { |tag| tag[:name] })
+
+        File.write(File.join(dir, 'new file.rb'), "class Renamed\nend\n")
+        pm.watched_files_changed([{ 'uri' => 'file:///host/project/new%20file.rb', 'type' => 2 }])
+        assert_equal(['Renamed'], pm.tags_for_uri('file:///host/project/new%20file.rb').map { |tag| tag[:name] })
+      end
+    end
+
+    it 'ignores files outside the project and missing files' do
+      around_root.call(self) do |_dir, pm|
+        pm.watched_files_changed([
+                                   { 'uri' => 'file:///elsewhere/x.rb', 'type' => 1 },
+                                   { 'uri' => 'file:///host/project/missing.rb', 'type' => 2 }
+                                 ])
+        assert_equal(0, RubyLanguageServer::CodeFile.count)
+      end
+    end
+  end
+
   describe '#completion_at' do
     let(:file_text) do
       <<~CODE_FILE

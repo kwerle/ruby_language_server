@@ -39,6 +39,16 @@ module RubyLanguageServer
       RubyLanguageServer.logger.info "send_notification body: #{body}"
     end
 
+    # Sends a request to the client and returns its id. The client's response is logged
+    # and otherwise ignored (see #process_request).
+    def send_request(message, params)
+      @next_request_id = (@next_request_id || 0) + 1
+      id = "ruby_language_server-#{@next_request_id}"
+      body = write_message(jsonrpc: '2.0', id:, method: message, params:)
+      RubyLanguageServer.logger.info "send_request body: #{body}"
+      id
+    end
+
     private
 
     attr_accessor :in, :out
@@ -106,6 +116,11 @@ module RubyLanguageServer
       id = request_json['id']
       lsp_method = request_json['method']
       params = request_json['params']
+      if lsp_method.nil?
+        # A response to a request we sent the client, such as client/registerCapability.
+        log_client_response(request_json)
+        return nil
+      end
       method_name = "on_#{lsp_method.gsub(/[^\w]/, '_')}"
       if !id.nil? && @server.respond_to?(:shutdown_requested?) && @server.shutdown_requested?
         RubyLanguageServer.logger.warn "Request #{lsp_method} after shutdown"
@@ -149,6 +164,14 @@ module RubyLanguageServer
 
     def busy_retry_delay
       BUSY_RETRY_DELAY
+    end
+
+    def log_client_response(response)
+      if response['error']
+        RubyLanguageServer.logger.warn "Client returned an error for request #{response['id']}: #{response['error']}"
+      else
+        RubyLanguageServer.logger.info "Client replied to request #{response['id']}"
+      end
     end
 
     def get_request # rubocop:disable Naming/AccessorMethodName

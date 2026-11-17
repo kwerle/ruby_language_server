@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'uri'
 require 'fuzzy_match'
 require 'amatch' # NOTE: that you have to require this... fuzzy_match won't require it for you
 FuzzyMatch.engine = :amatch # This should be in a config somewhere
@@ -143,6 +144,46 @@ module RubyLanguageServer
     def context_at_location(uri, position)
       code_file = code_file_for_uri(uri)
       code_file&.context_at_location(position)
+    end
+
+    # FileChangeType values in workspace/didChangeWatchedFiles.
+    FILE_CREATED = 1
+    FILE_CHANGED = 2
+    FILE_DELETED = 3
+
+    # Keeps the index in step with files created, changed or deleted outside the editor.
+    def watched_files_changed(changes)
+      changes.each do |change|
+        uri = change['uri']
+        case change['type']
+        when FILE_DELETED then forget_uri(uri)
+        when FILE_CREATED, FILE_CHANGED then reload_from_disk(uri)
+        end
+      rescue StandardError => e
+        RubyLanguageServer.logger.error("Error handling watched file change #{change}: #{e.class}: #{e}")
+      end
+    end
+
+    # Drops a file from the index. If uri is a directory, drops everything under it.
+    def forget_uri(uri)
+      under_directory = "#{ActiveRecord::Base.sanitize_sql_like(uri.delete_suffix('/'))}/%"
+      CodeFile.where(uri:).or(CodeFile.where('uri LIKE ?', under_directory)).destroy_all
+    end
+
+    def reload_from_disk(uri)
+      path = container_path_for(uri)
+      return if path.nil? || !path.end_with?('.rb') || !File.file?(path)
+
+      update_document_content(uri, File.read(path))
+    end
+
+    # Maps an editor URI under the project root to the path this server reads it from.
+    # Returns nil for URIs outside the project.
+    def container_path_for(uri)
+      prefix = self.class.root_uri
+      return nil if self.class.root_path.nil? || !uri.start_with?(prefix)
+
+      File.join(self.class.root_path, URI.decode_uri_component(uri.delete_prefix(prefix)))
     end
 
     def word_at_location(uri, position)

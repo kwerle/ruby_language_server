@@ -210,6 +210,28 @@ class TestRubyLanguageServerIO < Minitest::Test
     assert_includes message['error']['message'], 'ActiveRecord::StatementTimeout'
   end
 
+  def test_send_request_writes_request_with_a_fresh_id
+    io = RubyLanguageServer::IO.allocate
+    io.send(:out=, @fake_out)
+    first = io.send_request('client/registerCapability', registrations: [])
+    second = io.send_request('client/registerCapability', registrations: [])
+
+    messages = parse_written_messages(@fake_out.string)
+    assert_equal([first, second], messages.map { |m| m['id'] })
+    refute_equal first, second
+    assert_equal 'client/registerCapability', messages.first['method']
+    assert_equal({ 'registrations' => [] }, messages.first['params'])
+  end
+
+  def test_process_request_ignores_client_responses
+    server = Object.new
+    [{ id: 'ruby_language_server-1', result: nil }, { id: 'ruby_language_server-2', error: { code: -32_601, message: 'nope' } }].each do |response|
+      io = io_for_request(response.merge(jsonrpc: '2.0'), server)
+      assert_nil io.send(:process_request)
+      assert_equal '', @fake_out.string
+    end
+  end
+
   def test_return_error_writes_jsonrpc_error
     io = RubyLanguageServer::IO.allocate
     io.send(:out=, @fake_out)
