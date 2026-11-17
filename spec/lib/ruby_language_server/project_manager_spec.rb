@@ -188,7 +188,7 @@ describe RubyLanguageServer::ProjectManager do
       project_manager.scopes_at('uri', OpenStruct.new(line: 1)) # heat up the scopes
       scope = project_manager.all_scopes.find_by(name: :Foo)
       project_manager.scope_definitions_for('bar', scope, 'uri')
-      assert_equal([{uri: 'uri', range: {start: {line: 1, character: 1}, end: {line: 1, character: 1}}}], project_manager.scope_definitions_for('@baz', scope, 'uri'))
+      assert_equal([{uri: 'uri', range: {start: {line: 1, character: 2}, end: {line: 1, character: 2}}}], project_manager.scope_definitions_for('@baz', scope, 'uri'))
     end
   end
 
@@ -236,6 +236,15 @@ describe RubyLanguageServer::ProjectManager do
       assert_equal 1, results.length
       assert_equal 'test_uri', results.first[:uri]
       assert_equal 5, results.first[:range][:start][:line]
+      assert_equal 2, results.first[:range][:start][:character] # the indented def
+    end
+
+    it 'points at the column where a local variable is assigned' do
+      # Position on "local_var" in "puts local_var"
+      position = OpenStruct.new(line: 7, character: 10)
+      results = project_manager.possible_definitions('test_uri', position)
+
+      assert_equal([{start: {line: 6, character: 4}, end: {line: 6, character: 4}}], results.map { |r| r[:range] })
     end
 
     it 'finds instance variable definitions in scope' do
