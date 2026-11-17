@@ -119,6 +119,24 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  describe '#scan_root_uri' do
+    it 'uses the client rootUri' do
+      assert_equal('file:///host/project/', RubyLanguageServer::ProjectManager.new('/host/project', 'file:///host/project').scan_root_uri)
+    end
+
+    it 'uses rootUri when there is no rootPath' do
+      assert_equal('file:///host/project/', RubyLanguageServer::ProjectManager.new(nil, 'file:///host/project/').scan_root_uri)
+    end
+
+    it 'keeps rootUri percent-encoding' do
+      assert_equal('file:///host/my%20project/', RubyLanguageServer::ProjectManager.new('/host/my project', 'file:///host/my%20project').scan_root_uri)
+    end
+
+    it 'falls back to rootPath' do
+      assert_equal('file:///host/project/', RubyLanguageServer::ProjectManager.new('/host/project').scan_root_uri)
+    end
+  end
+
   describe 'has_one' do
     it 'should show up as a method' do
       project_manager.instance_variable_set(:@additional_gems_installed, true)
