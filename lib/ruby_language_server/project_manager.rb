@@ -150,13 +150,12 @@ module RubyLanguageServer
     end
 
     def possible_definitions(uri, position)
-      name = word_at_location(uri, position)
+      context = context_at_location(uri, position)
+      name = context&.last
       return [] if name.blank?
 
       # Special case: "new" should find "initialize" (instance method, not class method)
       name = 'initialize' if name == 'new'
-
-      context = context_at_location(uri, position)
 
       # Get current scopes for context
       current_scopes = scopes_at(uri, position)
@@ -287,6 +286,9 @@ module RubyLanguageServer
 
     # Convert a collection of scopes or variables to location hashes
     def scope_or_variable_to_locations(items)
+      items = items.to_a
+      # One query for all the items' files, not one per item.
+      ActiveRecord::Associations::Preloader.new(records: items, associations: :code_file).call
       items.reject { |item| item.code_file.nil? }.map do |item|
         line = item.respond_to?(:top_line) ? item.top_line : item.line
         Location.hash(item.code_file.uri, line, 1)
@@ -305,7 +307,7 @@ module RubyLanguageServer
         end
 
         # Check variables (constants) in the current scope
-        matching_variable = current.variables.where(name: name).reject { |item| item.code_file.nil? }.first
+        matching_variable = current.variables.where(name: name).includes(:code_file).find(&:code_file)
         if matching_variable
           line = matching_variable.respond_to?(:top_line) ? matching_variable.top_line : matching_variable.line
           return [Location.hash(matching_variable.code_file.uri, line, 1)]
