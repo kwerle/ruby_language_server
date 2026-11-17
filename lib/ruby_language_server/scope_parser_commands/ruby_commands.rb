@@ -26,6 +26,8 @@ module RubyLanguageServer
         line = command_line(node)
         column = command_column(node)
         command_arguments(node).each do |name|
+          next if name.blank?
+
           if reader
             push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, name, line, column, line)
             pop_scope
