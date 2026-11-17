@@ -96,6 +96,33 @@ module RubyLanguageServer
       RubyLanguageServer::Completion.completion(context, context_scope, position_scopes)
     end
 
+    # How many times the background scan retries a file when the database is locked.
+    SCAN_BUSY_RETRIES = 3
+    SCAN_BUSY_RETRY_DELAY = 1 # seconds
+
+    # Stores and parses one file for the background scan. Only a locked database is
+    # retried, briefly; any other error is raised for the caller to log.
+    def index_file(uri, text)
+      attempts = 0
+      begin
+        ActiveRecord::Base.connection_pool.with_connection do
+          update_document_content(uri, text)
+          code_file_for_uri(uri).refresh_scopes_if_needed
+        end
+      rescue ActiveRecord::StatementTimeout => e
+        attempts += 1
+        raise if attempts > SCAN_BUSY_RETRIES
+
+        RubyLanguageServer.logger.warn("Database busy indexing #{uri}, retrying: #{e.message}")
+        sleep scan_busy_retry_delay
+        retry
+      end
+    end
+
+    def scan_busy_retry_delay
+      SCAN_BUSY_RETRY_DELAY
+    end
+
     def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       RubyLanguageServer.logger.debug('Threading up!')
@@ -112,16 +139,10 @@ module RubyLanguageServer
           relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = root_uri + relative_path
           RubyLanguageServer.logger.debug("Threading #{host_uri}")
-          begin
-            ActiveRecord::Base.connection_pool.with_connection do |_connection|
-              update_document_content(host_uri, text)
-              code_file_for_uri(host_uri).refresh_scopes_if_needed
-            end
-          rescue StandardError => e
-            RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
-            sleep 5
-            retry
-          end
+          index_file(host_uri, text)
+        rescue StandardError => e
+          # One bad file mustn't stall the scan: log it and go on to the next.
+          RubyLanguageServer.logger.error("Skipping #{container_path}: #{e.class}: #{e}\n#{e.backtrace * "\n"}")
         end
       end
       RubyLanguageServer.logger.debug("Forked process id to look at other files: #{fork_id}")
