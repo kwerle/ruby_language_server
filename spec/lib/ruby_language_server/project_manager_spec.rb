@@ -406,6 +406,67 @@ describe RubyLanguageServer::ProjectManager do
       end
     end
 
+    describe 'superclass lookup' do
+      before(:each) do
+        project_manager.update_document_content('base_uri', <<~CODE_FILE)
+          class Base
+            def inherited_helper
+            end
+
+            def self.build
+            end
+          end
+        CODE_FILE
+        project_manager.update_document_content('unrelated_uri', <<~CODE_FILE)
+          class Unrelated
+            def inherited_helper
+            end
+
+            def self.build
+            end
+          end
+        CODE_FILE
+        project_manager.update_document_content('child_uri', <<~CODE_FILE)
+          module App
+            class Child < Base
+              def run
+                inherited_helper
+                inher
+              end
+            end
+          end
+
+          App::Child.build
+        CODE_FILE
+        %w[base_uri unrelated_uri child_uri].each { |uri| project_manager.tags_for_uri(uri) } # Force load of tags
+      end
+
+      def locations(results)
+        results.map { |r| [r[:uri], r[:range][:start][:line]] }
+      end
+
+      it 'finds an inherited method called without a receiver' do
+        # Position on "inherited_helper" in Child#run
+        results = project_manager.possible_definitions('child_uri', OpenStruct.new(line: 3, character: 8))
+
+        assert_equal([['base_uri', 1]], locations(results))
+      end
+
+      it 'finds an inherited class method through the subclass' do
+        # Position on "build" in "App::Child.build"
+        results = project_manager.possible_definitions('child_uri', OpenStruct.new(line: 9, character: 13))
+
+        assert_equal([['base_uri', 4]], locations(results))
+      end
+
+      it 'completes inherited methods' do
+        # Position at the end of "inher" in Child#run
+        completions = project_manager.completion_at('child_uri', OpenStruct.new(line: 4, character: 9))
+
+        assert_includes(completions[:items].map { |item| item[:label] }, 'inherited_helper')
+      end
+    end
+
     describe 'parameter vs method name resolution' do
       let(:file_with_param_shadowing) do
         <<~CODE_FILE

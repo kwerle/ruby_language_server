@@ -67,6 +67,38 @@ module RubyLanguageServer
         save!
       end
 
+      # The scopes of this class's superclass, one per file that defines it, or [].
+      # superclass_name was qualified with the enclosing namespace when parsed
+      # (Foo::Bar for `class Nar < Bar` inside Foo), so if that path doesn't exist, drop
+      # leading namespaces until one does, the way Ruby falls back to outer constants.
+      def superclass_scopes
+        return [] if superclass_name.blank?
+
+        parts = superclass_name.split('::')
+        parts.each_index do |index|
+          scopes = Scope.where(path: parts[index..].join('::'), class_type: TYPE_CLASS).where.not(id:).to_a
+          return scopes if scopes.any?
+        end
+        []
+      end
+
+      # Superclass scopes, nearest first, stopping at a cycle or after max_depth classes.
+      def ancestor_class_scopes(max_depth: 20)
+        ancestors = []
+        frontier = [self]
+        max_depth.times do
+          frontier = frontier.flat_map(&:superclass_scopes).uniq - ancestors - [self]
+          break if frontier.empty?
+
+          ancestors.concat(frontier)
+        end
+        ancestors
+      end
+
+      def class_scope?
+        class_type == TYPE_CLASS
+      end
+
       def root_scope?
         class_type == TYPE_ROOT
       end

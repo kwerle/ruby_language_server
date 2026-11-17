@@ -152,7 +152,10 @@ module RubyLanguageServer
         return module_completions(word) if word.match?(/\A[A-Z][a-z]/)
 
         scope_ids = scopes.map(&:id)
+        # Members inherited from superclasses are candidates too.
+        inherited_ids = scopes.select(&:class_scope?).flat_map(&:ancestor_class_scopes).map(&:id)
         word_scopes = scopes.to_a + RubyLanguageServer::ScopeData::Scope.where(parent_id: scope_ids).closest_to(word).limit(5)
+        word_scopes += RubyLanguageServer::ScopeData::Scope.where(parent_id: inherited_ids).closest_to(word).limit(5) if inherited_ids.any?
         scope_words = word_scopes.select(&:named_scope?).sort_by(&:depth).map { |scope| [scope.name, scope] }
         variable_words = RubyLanguageServer::ScopeData::Variable.where(scope_id: scope_ids).closest_to(word).limit(5).map { |variable| [variable.name, variable.scope] }
         words = (scope_words + variable_words).to_h
