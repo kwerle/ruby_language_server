@@ -477,6 +477,24 @@ describe RubyLanguageServer::ProjectManager do
       end
     end
 
+    describe 'query count' do
+      it 'loads the code files of project-wide results in one query' do
+        5.times { |i| project_manager.update_document_content("many_#{i}", "class Many#{i}\n  def shared_name\n  end\nend\n") }
+        5.times { |i| project_manager.tags_for_uri("many_#{i}") } # Force load of tags
+        project_manager.update_document_content('caller', "thing.shared_name\n")
+        project_manager.tags_for_uri('caller')
+
+        code_file_queries = 0
+        counter = ->(*, payload) { code_file_queries += 1 if payload[:sql].include?('FROM "code_files" WHERE "code_files"."id"') }
+        results = ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+          project_manager.possible_definitions('caller', OpenStruct.new(line: 0, character: 8))
+        end
+
+        assert_equal(5, results.length)
+        assert_operator(code_file_queries, :<=, 1)
+      end
+    end
+
     describe 'constant lookup with namespace' do
       let(:file_with_namespaced_constant) do
         <<~CODE_FILE
