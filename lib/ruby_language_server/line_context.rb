@@ -17,7 +17,8 @@
 
 module RubyLanguageServer
   module LineContext
-    # LSP Position.character counts UTF-16 code units. Returns the matching index into the
+    # LSP Position.character counts UTF-16 code units - NOT UTF-8.
+    # Returns the matching index into the
     # Ruby string, which counts characters. They differ for characters outside the BMP,
     # such as emoji, which take two code units.
     def self.character_index(line, utf16_offset)
