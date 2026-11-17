@@ -4,13 +4,11 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::Server do
-  let(:mutex) { Mutex.new }
-  let(:server) { RubyLanguageServer::Server.new(mutex) }
+  let(:server) { RubyLanguageServer::Server.new }
 
   describe '#initialize' do
-    it 'initializes with a mutex' do
+    it 'initializes' do
       refute_nil(server)
-      assert_instance_of Mutex, mutex
     end
   end
 

@@ -7,9 +7,8 @@ module RubyLanguageServer
   class IO
     attr_reader :using_socket
 
-    def initialize(server, mutex)
+    def initialize(server)
       @server = server
-      @mutex = mutex
       server.io = self
 
       configure_io
