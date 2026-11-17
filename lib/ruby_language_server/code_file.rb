@@ -55,12 +55,10 @@ module RubyLanguageServer
 
     def tags
       RubyLanguageServer.logger.debug("Asking about tags for #{uri}")
-      @tags ||= [{}]
-      return @tags if text.nil?
-      return @tags = [{}] if text == ''
+      return [] if text.blank?
 
       refresh_scopes_if_needed # cause root scope to reset
-      return @tags if scopes.reload.count <= 1 # just the root
+      return [] if scopes.reload.count <= 1 # just the root
 
       tags = scopes.reload.map do |scope|
         next if scope.class_type == ScopeData::Base::TYPE_BLOCK

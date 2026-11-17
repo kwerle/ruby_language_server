@@ -81,7 +81,7 @@ module RubyLanguageServer
 
     def tags_for_uri(uri)
       code_file = code_file_for_uri(uri)
-      return {} if code_file.nil?
+      return [] if code_file.nil?
 
       code_file.tags
     end

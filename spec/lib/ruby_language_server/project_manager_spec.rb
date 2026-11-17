@@ -284,6 +284,12 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  describe '#tags_for_uri' do
+    it 'returns an empty list for a file it has never seen' do
+      assert_equal([], project_manager.tags_for_uri('file:///never_opened.rb'))
+    end
+  end
+
   describe '.scopes_at' do
     it 'should list them' do
       project_manager.update_document_content('uri', rails_file_text)

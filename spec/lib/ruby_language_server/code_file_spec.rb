@@ -79,6 +79,12 @@ describe RubyLanguageServer::CodeFile do
         assert_equal(5, code_file.tags.last[:kind])
       end
 
+      it 'returns an empty list when there is nothing to show' do
+        assert_equal([], RubyLanguageServer::CodeFile.build('nil_uri', nil).tags)
+        assert_equal([], code_file('').tags)
+        assert_equal([], code_file("# just a comment\n").tags)
+      end
+
       it 'should retain existing tags when text becomes unparsable' do
         code_file = code_file("def foo\nend\n")
         assert_equal('foo', code_file.tags.last[:name])
