@@ -100,7 +100,7 @@ module RubyLanguageServer
     end
 
     def process_request
-      request_body = get_request
+      request_body = read_request
       # RubyLanguageServer.logger.debug "request_body: #{request_body}"
       request_json = JSON.parse request_body
       id = request_json['id']
@@ -151,35 +151,52 @@ module RubyLanguageServer
       BUSY_RETRY_DELAY
     end
 
-    def get_request # rubocop:disable Naming/AccessorMethodName
-      initial_line = get_initial_request_line
-      RubyLanguageServer.logger.debug "initial_line: #{initial_line}"
-      length = get_length(initial_line)
-      content = ''
-      while content.length < length + 2
-        begin
-          content += get_content(length + 2) # Why + 2?  CRLF?
-        rescue Exception => e
-          RubyLanguageServer.logger.error e
-          # We have almost certainly been disconnected from the server
-          exit!(1)
-        end
+    # Reads one framed message: header lines up to the blank line that ends them, then
+    # exactly Content-Length bytes of body. Exits if the client has disconnected.
+    def read_request
+      length = read_content_length
+      content = read_content(length)
+      if content.nil? || content.bytesize < length
+        RubyLanguageServer.logger.error("Expected #{length} bytes, got #{content&.bytesize.to_i}; client disconnected")
+        exit!(1)
       end
-      RubyLanguageServer.logger.debug "content.length: #{content.length}"
+      RubyLanguageServer.logger.debug "content.bytesize: #{content.bytesize}"
       content
     end
 
-    def get_initial_request_line # rubocop:disable Naming/AccessorMethodName
+    # Reads the header block and returns its Content-Length. Other headers, such as
+    # Content-Type, are skipped. Header names are case-insensitive.
+    def read_content_length
+      length = nil
+      headers_seen = false
+      loop do
+        line = read_header_line
+        if line.nil?
+          RubyLanguageServer.logger.error('End of input while reading headers; client disconnected')
+          exit!(1)
+        end
+        line = line.chomp
+        RubyLanguageServer.logger.debug "header: #{line}"
+        # A blank line ends the headers. Tolerate stray blank lines before the first header.
+        if line.empty?
+          break if headers_seen
+
+          next
+        end
+        headers_seen = true
+        name, value = line.split(':', 2)
+        length = Integer(value.strip, 10) if value && name.strip.casecmp?('Content-Length')
+      end
+      raise ArgumentError, 'Message has no Content-Length header' if length.nil?
+
+      length
+    end
+
+    def read_header_line
       self.in.gets
     end
 
-    def get_length(string)
-      return 0 if string.nil?
-
-      string.match(/Content-Length: (\d+)/)[1].to_i
-    end
-
-    def get_content(size)
+    def read_content(size)
       self.in.read(size)
     end
   end # class

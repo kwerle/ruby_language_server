@@ -105,33 +105,62 @@ class TestRubyLanguageServerIO < Minitest::Test
     end
   end
 
-  def test_get_length_returns_correct_length
+  def test_read_header_line_reads_line
     io = RubyLanguageServer::IO.allocate
-    assert_equal 42, io.send(:get_length, 'Content-Length: 42')
-    assert_equal 0, io.send(:get_length, nil)
-  end
-
-  def test_get_initial_request_line_reads_line
-    io = RubyLanguageServer::IO.allocate
-    @fake_in.string = "Content-Length: 42\n"
+    @fake_in.string = "Content-Length: 42\r\n"
     io.send(:in=, @fake_in)
-    assert_equal "Content-Length: 42\n", io.send(:get_initial_request_line)
+    assert_equal "Content-Length: 42\r\n", io.send(:read_header_line)
   end
 
-  def test_get_content_reads_bytes
+  def test_read_content_reads_bytes
     io = RubyLanguageServer::IO.allocate
     @fake_in.string = 'abcdefg'
     io.send(:in=, @fake_in)
-    assert_equal 'abc', io.send(:get_content, 3)
+    assert_equal 'abc', io.send(:read_content, 3)
   end
 
-  def test_get_request_reads_body
-    io = RubyLanguageServer::IO.allocate
-    header = "Content-Length: 5\n"
-    body = "abcde\r\n"
-    fake_in = StringIO.new(header + body)
-    io.send(:in=, fake_in)
-    assert_includes io.send(:get_request), 'abcde'
+  def test_read_request_reads_body
+    assert_equal 'abcde', read_request_from("Content-Length: 5\r\n\r\nabcde")
+  end
+
+  def test_read_request_reads_exactly_content_length_bytes
+    io = io_reading("Content-Length: 5\r\n\r\nabcdeContent-Length: 3\r\n\r\nxyz")
+    assert_equal 'abcde', io.send(:read_request)
+    assert_equal 'xyz', io.send(:read_request)
+  end
+
+  def test_read_request_skips_content_type_after_content_length
+    assert_equal '{"a":1}', read_request_from("Content-Length: 7\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n{\"a\":1}")
+  end
+
+  def test_read_request_skips_content_type_before_content_length
+    assert_equal '{"a":1}', read_request_from("Content-Type: application/vscode-jsonrpc; charset=utf-8\r\nContent-Length: 7\r\n\r\n{\"a\":1}")
+  end
+
+  def test_read_request_header_name_is_case_insensitive
+    assert_equal 'abc', read_request_from("content-length: 3\r\n\r\nabc")
+  end
+
+  def test_read_request_accepts_bare_newlines
+    assert_equal 'abc', read_request_from("Content-Length: 3\n\nabc")
+  end
+
+  def test_read_request_counts_bytes_not_characters
+    body = '{"name":"café ☕"}'
+    assert_equal body.b, read_request_from("Content-Length: #{body.bytesize}\r\n\r\n#{body}")
+  end
+
+  def test_read_request_without_content_length_raises
+    assert_raises(ArgumentError) { read_request_from("Content-Type: text/plain\r\n\r\n") }
+  end
+
+  def test_read_request_exits_when_input_ends_in_headers
+    assert_raises(RuntimeError) { read_request_from('Content-Length: 3') }
+    assert_raises(RuntimeError) { read_request_from('') }
+  end
+
+  def test_read_request_exits_when_body_is_short
+    assert_raises(RuntimeError) { read_request_from("Content-Length: 10\r\n\r\nabc") }
   end
 
   def test_process_request_calls_server_method_and_returns_response
@@ -140,9 +169,7 @@ class TestRubyLanguageServerIO < Minitest::Test
       { result: params['foo'] }
     end
     request = { id: 1, method: 'test_method', params: { 'foo' => 'bar' } }.to_json
-    header = "Content-Length: #{request.bytesize}\n"
-    body = "#{request}\r\n"
-    fake_in = StringIO.new(header + body)
+    fake_in = StringIO.new("Content-Length: #{request.bytesize}\r\n\r\n#{request}")
     io = RubyLanguageServer::IO.allocate
     io.send(:in=, fake_in)
     io.instance_variable_set(:@server, server)
@@ -254,7 +281,7 @@ class TestRubyLanguageServerIO < Minitest::Test
   private
 
   # An IO wired to a real Server, reading the given messages framed as a client sends them.
-  # If the loop runs out of input, get_request calls exit!(1), which would kill the test
+  # If the loop runs out of input, read_request calls exit!(1), which would kill the test
   # process, so make that raise instead.
   def io_for_session(messages)
     input = messages.map do |m|
@@ -281,10 +308,22 @@ class TestRubyLanguageServerIO < Minitest::Test
     messages
   end
 
+  # An IO reading the given raw input. exit! raises instead of killing the test process.
+  def io_reading(input)
+    io = RubyLanguageServer::IO.allocate
+    io.send(:in=, StringIO.new(input.b))
+    io.define_singleton_method(:exit!) { |status = 1| raise "exit!(#{status})" }
+    io
+  end
+
+  def read_request_from(input)
+    io_reading(input).send(:read_request)
+  end
+
   def io_for_request(request, server = Object.new)
     json = request.to_json
     io = RubyLanguageServer::IO.allocate
-    io.send(:in=, StringIO.new("Content-Length: #{json.bytesize}\n#{json}\r\n"))
+    io.send(:in=, StringIO.new("Content-Length: #{json.bytesize}\r\n\r\n#{json}"))
     io.send(:out=, @fake_out)
     io.instance_variable_set(:@server, server)
     def io.busy_retry_delay = 0 # keep the busy-retry tests fast
