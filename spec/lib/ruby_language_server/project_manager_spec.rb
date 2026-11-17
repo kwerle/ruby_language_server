@@ -303,6 +303,46 @@ describe RubyLanguageServer::ProjectManager do
     end
   end
 
+  describe '#index_file' do
+    # A ProjectManager whose update_document_content raises the given errors in turn, then succeeds.
+    def failing_project_manager(*errors)
+      pm = RubyLanguageServer::ProjectManager.new('/')
+      pm.define_singleton_method(:scan_busy_retry_delay) { 0 }
+      pm.instance_variable_set(:@attempts, 0)
+      pm.define_singleton_method(:attempts) { @attempts }
+      pm.define_singleton_method(:update_document_content) do |_uri, _text|
+        @attempts += 1
+        error = errors.shift
+        raise error if error
+      end
+      pm
+    end
+
+    it 'indexes the file' do
+      project_manager.index_file('file:///indexed.rb', "class Indexed\nend\n")
+      assert_equal(['Indexed'], project_manager.tags_for_uri('file:///indexed.rb').map { |tag| tag[:name] })
+    end
+
+    it 'retries when the database is busy' do
+      pm = failing_project_manager(ActiveRecord::StatementTimeout.new('busy'), ActiveRecord::StatementTimeout.new('busy'))
+      pm.index_file('file:///busy.rb', "class Busy\nend\n")
+      assert_equal(3, pm.attempts)
+    end
+
+    it 'gives up after a few busy retries' do
+      busy = Array.new(RubyLanguageServer::ProjectManager::SCAN_BUSY_RETRIES + 1) { ActiveRecord::StatementTimeout.new('busy') }
+      pm = failing_project_manager(*busy)
+      assert_raises(ActiveRecord::StatementTimeout) { pm.index_file('file:///busy.rb', '') }
+      assert_equal(RubyLanguageServer::ProjectManager::SCAN_BUSY_RETRIES + 1, pm.attempts)
+    end
+
+    it 'does not retry other errors' do
+      pm = failing_project_manager(ActiveRecord::RecordInvalid.new)
+      assert_raises(ActiveRecord::RecordInvalid) { pm.index_file('file:///bad.rb', '') }
+      assert_equal(1, pm.attempts)
+    end
+  end
+
   describe '#possible_definitions' do
     let(:file_with_class_and_methods) do
       <<~CODE_FILE
