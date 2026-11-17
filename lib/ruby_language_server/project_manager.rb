@@ -40,6 +40,17 @@ module RubyLanguageServer
       def root_uri
         @_root_uri || "file://#{root_path}"
       end
+
+      # Let's not preload spec/test files or vendor - yet.
+      # Matches foo_spec.rb, foo_test.rb, spec.rb and test.rb, and anything in a vendor
+      # directory, but not files that merely contain those words, like latest.rb.
+      SKIP_SCAN_PATTERN = %r{(?:\A|/|_)(?:spec|test)\.rb\z|(?:\A|/)vendor/}
+
+      # relative_path is relative to the project root, so a root inside a directory named
+      # vendor doesn't skip everything.
+      def skip_scan?(relative_path)
+        relative_path.match?(SKIP_SCAN_PATTERN)
+      end
     end
 
     def initialize(path, uri = nil)
@@ -105,11 +116,10 @@ module RubyLanguageServer
       # If you want to run this on some platform without fork, fork the code and PR it :-)
       fork_id = fork do
         project_ruby_files.each do |container_path|
-          # Let's not preload spec/test files or vendor - yet..
-          next if container_path.match?(/(spec\.rb|test\.rb|vendor)/)
+          relative_path = container_path.delete_prefix(self.class.root_path)
+          next if self.class.skip_scan?(relative_path)
 
           text = File.read(container_path)
-          relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = root_uri + relative_path
           RubyLanguageServer.logger.debug("Threading #{host_uri}")
           begin
