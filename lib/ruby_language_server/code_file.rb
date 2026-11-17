@@ -109,6 +109,7 @@ module RubyLanguageServer
     end
 
     def refresh_scopes_if_needed
+      return if new_record? # nothing stored yet, so nothing to parse
       return unless refresh_root_scope
 
       RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
@@ -130,7 +131,7 @@ module RubyLanguageServer
 
     # Returns the context of what is being typed in the given line
     def context_at_location(position)
-      lines = text.split("\n")
+      lines = text.to_s.split("\n")
       line = lines[position.line]
       return [] if line.nil? || line.strip.empty?
 
