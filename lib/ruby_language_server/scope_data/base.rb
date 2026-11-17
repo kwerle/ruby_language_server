@@ -31,9 +31,14 @@ module RubyLanguageServer
       end
 
       # bar should be closer to Bar than Far.  Adding the UPPER version accomplishes this.
+      # The word is always passed as a bound value, never interpolated into the SQL.
       scope :with_distance_from, lambda { |word|
-        sanitized_word = sanitize_sql(word)
-        where("LENGTH(name) >= LENGTH('#{sanitized_word}')").select("*, LEVENSHTEIN(SUBSTR(name, 1, #{word.length}), '#{sanitized_word}') + LEVENSHTEIN(SUBSTR(UPPER(name), 1, #{word.length}), UPPER('#{sanitized_word}')) as levenshtein_distance")
+        length = word.length
+        distance = sanitize_sql_array([
+                                        '*, LEVENSHTEIN(SUBSTR(name, 1, ?), ?) + LEVENSHTEIN(SUBSTR(UPPER(name), 1, ?), UPPER(?)) AS levenshtein_distance',
+                                        length, word, length, word
+                                      ])
+        where('LENGTH(name) >= ?', length).select(distance)
       }
       scope :closest_to, ->(word) { with_distance_from(word).order(:levenshtein_distance) }
 
