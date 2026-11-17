@@ -194,4 +194,19 @@ describe RubyLanguageServer::Completion do
       assert_equal('arg1 (required), arg2 (required)', simple_method_item[:detail], 'should include parameter details')
     end
   end
+
+  describe 'logging' do
+    it 'does not log class and module completions at error level' do
+      original_logger = RubyLanguageServer.logger
+      output = StringIO.new
+      RubyLanguageServer.logger = Logger.new(output, level: Logger::ERROR)
+      RubyLanguageServer::ScopeParser.new("class Widget\nend\n")
+
+      RubyLanguageServer::Completion.completion(['Wid'], nil, [])
+
+      assert_equal('', output.string)
+    ensure
+      RubyLanguageServer.logger = original_logger
+    end
+  end
 end
