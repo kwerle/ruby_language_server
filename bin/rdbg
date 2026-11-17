@@ -1,0 +1,8 @@
+#!/bin/sh
+# rdbg from the Docker image, for the VS Code rdbg extension ("rdbgPath" in .vscode/launch.json).
+# The extension runs `rdbg --version` on the host even when attaching over TCP; host Ruby
+# isn't used for this project, so answer from the debug container (or the image if it isn't up).
+if docker container inspect rls-debug >/dev/null 2>&1; then
+  exec docker exec -i rls-debug bundle exec rdbg "$@"
+fi
+exec docker run --rm -i ruby_language_server bundle exec rdbg "$@"

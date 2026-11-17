@@ -4,13 +4,11 @@ require_relative '../../test_helper'
 require 'minitest/autorun'
 
 describe RubyLanguageServer::Server do
-  let(:mutex) { Mutex.new }
-  let(:server) { RubyLanguageServer::Server.new(mutex) }
+  let(:server) { RubyLanguageServer::Server.new }
 
   describe '#initialize' do
-    it 'initializes with a mutex' do
+    it 'initializes' do
       refute_nil(server)
-      assert_instance_of Mutex, mutex
     end
   end
 
@@ -29,39 +27,42 @@ describe RubyLanguageServer::Server do
       assert_includes result.keys, :capabilities
 
       capabilities = result[:capabilities]
+      assert_equal %i[textDocumentSync definitionProvider documentSymbolProvider hoverProvider completionProvider].sort,
+                   capabilities.keys.sort
       assert_equal 1, capabilities[:textDocumentSync]
-      assert_equal true, capabilities[:hoverProvider]
       assert_equal true, capabilities[:definitionProvider]
-      assert_equal true, capabilities[:referencesProvider]
       assert_equal true, capabilities[:documentSymbolProvider]
-      assert_equal true, capabilities[:workspaceSymbolProvider]
-      assert_equal true, capabilities[:codeActionProvider]
-      assert_equal true, capabilities[:renameProvider]
     end
 
-    it 'sets up signature help provider' do
+    it 'reports serverInfo with the gem version' do
       result = server.on_initialize(params)
 
-      signature_help = result[:capabilities][:signatureHelpProvider]
-      refute_nil(signature_help)
-      assert_equal ['(', ','], signature_help[:triggerCharacters]
+      assert_equal({ name: 'ruby_language_server', version: RubyLanguageServer::VERSION }, result[:serverInfo])
     end
 
-    it 'sets up completion provider' do
+    it 'sets up completion provider without resolve' do
       result = server.on_initialize(params)
 
       completion = result[:capabilities][:completionProvider]
       refute_nil(completion)
-      assert_equal true, completion[:resolveProvider]
+      refute completion.key?(:resolveProvider), 'there is no completionItem/resolve handler'
       assert_equal ['.', '::'], completion[:triggerCharacters]
     end
 
-    it 'sets up execute command provider' do
-      result = server.on_initialize(params)
-
-      execute_command = result[:capabilities][:executeCommandProvider]
-      refute_nil(execute_command)
-      assert_equal [], execute_command[:commands]
+    it 'has a handler for every advertised capability' do
+      handlers = {
+        textDocumentSync: %i[on_textDocument_didOpen on_textDocument_didChange],
+        definitionProvider: %i[on_textDocument_definition],
+        documentSymbolProvider: %i[on_textDocument_documentSymbol],
+        hoverProvider: %i[on_textDocument_hover],
+        completionProvider: %i[on_textDocument_completion]
+      }
+      server.on_initialize(params)[:capabilities].each_key do |capability|
+        assert handlers.key?(capability), "#{capability} is advertised; add its handlers to this test"
+        handlers[capability].each do |handler|
+          assert server.respond_to?(handler), "#{capability} is advertised but Server has no #{handler}"
+        end
+      end
     end
 
     it 'initializes project manager with root path and uri' do
@@ -71,34 +72,99 @@ describe RubyLanguageServer::Server do
       refute_nil(project_manager)
       assert_instance_of RubyLanguageServer::ProjectManager, project_manager
     end
+
+    it 'scans under rootUri when rootPath is missing' do
+      server.on_initialize({ 'rootPath' => nil, 'rootUri' => 'file:///test/only%20uri' })
+
+      assert_equal('file:///test/only%20uri/', server.instance_variable_get(:@project_manager).scan_root_uri)
+    end
+
+    it 'falls back to the first workspace folder' do
+      server.on_initialize({ 'workspaceFolders' => [{ 'uri' => 'file:///test/folder', 'name' => 'folder' }] })
+
+      assert_equal('file:///test/folder/', server.instance_variable_get(:@project_manager).scan_root_uri)
+    end
+
+    it 'derives the root path from a file URI' do
+      assert_equal('/test/only uri', server.send(:path_from_file_uri, 'file:///test/only%20uri'))
+      assert_nil(server.send(:path_from_file_uri, 'untitled:foo'))
+      assert_nil(server.send(:path_from_file_uri, nil))
+    end
   end
 
   describe '#on_initialized' do
-    it 'logs version information' do
+    # An IO double that records send_request calls.
+    def recording_io
+      requests = []
+      io = Object.new
+      io.define_singleton_method(:send_request) { |method, params| requests << [method, params] }
+      io.define_singleton_method(:requests) { requests }
+      io
+    end
+
+    it 'registers a watcher for Ruby files when the client supports it' do
+      capabilities = { 'workspace' => { 'didChangeWatchedFiles' => { 'dynamicRegistration' => true } } }
+      server.on_initialize({ 'rootPath' => '/test/project', 'capabilities' => capabilities })
+      server.io = recording_io
       server.on_initialized({})
-      # Just verify it doesn't raise an error
-      assert true
+
+      method, params = server.io.requests.first
+      assert_equal 'client/registerCapability', method
+      registration = params[:registrations].first
+      assert_equal 'workspace/didChangeWatchedFiles', registration[:method]
+      assert_equal [{ globPattern: '**/*.rb' }], registration[:registerOptions][:watchers]
+    end
+
+    it 'does not register when the client does not support dynamic registration' do
+      server.on_initialize({ 'rootPath' => '/test/project', 'capabilities' => {} })
+      server.io = recording_io
+      server.on_initialized({})
+
+      assert_empty server.io.requests
     end
   end
 
   describe '#on_workspace_didChangeWatchedFiles' do
-    it 'returns empty hash' do
-      params = { 'changes' => [] }
-      result = server.on_workspace_didChangeWatchedFiles(params)
+    it 'passes the changes to the project manager and returns nil' do
+      server.on_initialize({ 'rootPath' => '/test/project' })
+      received = nil
+      project_manager = server.instance_variable_get(:@project_manager)
+      project_manager.define_singleton_method(:watched_files_changed) { |changes| received = changes }
+      changes = [{ 'uri' => 'file:///test/project/a.rb', 'type' => 3 }]
 
-      assert_equal({}, result)
+      assert_nil server.on_workspace_didChangeWatchedFiles({ 'changes' => changes })
+      assert_equal changes, received
     end
   end
 
   describe '#on_textDocument_hover' do
-    it 'returns empty hash' do
+    before do
+      server.on_initialize({ 'rootPath' => '/test/project', 'rootUri' => 'file:///test/project' })
+    end
+
+    it 'returns nil when there is nothing under the cursor' do
+      server.instance_variable_get(:@project_manager).update_document_content('file:///test.rb', "\n")
       params = {
         'textDocument' => { 'uri' => 'file:///test.rb' },
         'position' => { 'line' => 0, 'character' => 0 }
       }
       result = server.on_textDocument_hover(params)
 
-      assert_equal({}, result)
+      assert_nil result
+    end
+
+    it 'returns markdown for a method' do
+      project_manager = server.instance_variable_get(:@project_manager)
+      project_manager.update_document_content('file:///hover.rb', "class Foo\n  def bar(a)\n  end\nend\nfoo.bar(1)\n")
+      project_manager.tags_for_uri('file:///hover.rb') # parse it
+      params = {
+        'textDocument' => { 'uri' => 'file:///hover.rb' },
+        'position' => { 'line' => 4, 'character' => 5 }
+      }
+      result = server.on_textDocument_hover(params)
+
+      assert_equal 'markdown', result[:contents][:kind]
+      assert_includes result[:contents][:value], 'def bar(a)'
     end
   end
 
@@ -276,10 +342,23 @@ describe RubyLanguageServer::Server do
   end
 
   describe '#on_shutdown' do
-    it 'logs shutdown' do
+    it 'returns nil and records the shutdown' do
+      refute server.shutdown_requested?
+      assert_nil server.on_shutdown({})
+      assert server.shutdown_requested?
+    end
+  end
+
+  describe '#on_exit' do
+    it 'exits 0 after shutdown' do
       server.on_shutdown({})
-      # Just verify it doesn't raise an error
-      assert true
+      error = assert_raises(SystemExit) { server.on_exit(nil) }
+      assert_equal 0, error.status
+    end
+
+    it 'exits 1 without shutdown' do
+      error = assert_raises(SystemExit) { server.on_exit(nil) }
+      assert_equal 1, error.status
     end
   end
 

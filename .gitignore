@@ -4,3 +4,4 @@
 *.log
 coverage
 /plans/
+temp/

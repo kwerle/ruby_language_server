@@ -1,4 +1,4 @@
-#!/usr/local/bin/ruby
+#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 $LOAD_PATH << File.join(__dir__, '..', 'lib')

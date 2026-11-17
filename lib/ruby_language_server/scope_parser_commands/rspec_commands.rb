@@ -3,29 +3,24 @@
 module RubyLanguageServer
   module ScopeParserCommands
     module RspecCommands
-      def on_describe_command(line, args, rest)
-        rspec_block_command('describe', line, args, rest)
+      def on_describe_command(node)
+        rspec_block_command('describe', node)
       end
 
-      def on_context_command(line, args, rest)
-        rspec_block_command('context', line, args, rest)
+      def on_context_command(node)
+        rspec_block_command('context', node)
       end
 
-      def on_it_command(line, args, rest)
-        rspec_block_command('it', line, args, rest)
+      def on_it_command(node)
+        rspec_block_command('it', node)
       end
 
-      def on_let_command(line, args, rest)
-        # Extract the variable name from the symbol (e.g., :foo -> foo)
-        # The rest array contains the extracted symbol values from extract_command_rest
-        var_name = rest.flatten.first
-        return unless var_name.is_a?(String)
+      # let(:foo) { ... } adds the variable foo to the current scope.
+      def on_let_command(node)
+        var_name = command_arguments(node).first
+        return if var_name.nil?
 
-        # Extract the column from args structure: [:@ident, "let", [line, column]]
-        (_, _, (_, column)) = args
-
-        # Add the variable to the current scope
-        add_variable(var_name, line, column)
+        add_variable(var_name, command_line(node), command_column(node))
       end
 
       # let! is an eager version of let - alias it using send to avoid syntax issues
@@ -33,15 +28,12 @@ module RubyLanguageServer
 
       private
 
-      def rspec_block_command(prefix, line, _args, rest)
-        name = "#{prefix} "
-        name += rest.flatten.select { |part| part.instance_of?(String) }.join('::')
-
-        # Push the named scope (e.g., "describe Something")
-        # The block node will create a child "block" scope automatically
-        # Signal that visit_call_node should pop this scope after visiting children
-        end_line = @current_block_node ? @current_block_node.location.end_line : line
-        push_scope(ScopeData::Scope::TYPE_MODULE, name, line, 0, end_line, false)
+      # Push the named scope (e.g., "describe Something").
+      # The block node will create a child "block" scope automatically.
+      # Signal that visit_call_node should pop this scope after visiting children.
+      def rspec_block_command(prefix, node)
+        name = "#{prefix} #{command_arguments(node).join('::')}"
+        push_scope(ScopeData::Scope::TYPE_MODULE, name, command_line(node), 0, command_end_line(node), false)
         @command_pushed_scope = true
       end
     end

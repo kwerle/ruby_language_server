@@ -78,4 +78,25 @@ describe RubyLanguageServer::LineContext do
       assert_equal(['@foo'], line_context.for(line, 0))
     end
   end
+
+  describe '.character_index' do
+    it 'is the same as the offset for ASCII' do
+      assert_equal(4, line_context.character_index('foo.bar', 4))
+    end
+
+    it 'counts characters outside the BMP as two code units' do
+      line = "x = '😀'; foo.bar"
+      # 'b' is character 13, but UTF-16 code unit 14, because the emoji takes two units
+      assert_equal(13, line_context.character_index(line, 14))
+      assert_equal('b', line[line_context.character_index(line, 14)])
+    end
+
+    it 'counts other non-ASCII characters as one code unit' do
+      assert_equal(9, line_context.character_index("x = 'é'; foo", 9))
+    end
+
+    it 'clamps offsets past the end of the line' do
+      assert_equal(3, line_context.character_index('foo', 10))
+    end
+  end
 end

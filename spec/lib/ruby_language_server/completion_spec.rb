@@ -78,7 +78,7 @@ describe RubyLanguageServer::Completion do
       context = %w[bar ba]
       context_scope = nar_naz_scope
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
-      completions = scope_completions_in_target_context(context, context_scope, position_scopes)
+      completions = scope_completions_in_target_context(context, position_scopes)
       # Sort for consistent comparison since order may vary
       assert_equal(["@biz", "@bottom", "Bar", "Nar", "bar", "baz", "bogus", "naz"], completions.map(&:first).sort)
     end
@@ -192,6 +192,21 @@ describe RubyLanguageServer::Completion do
       assert_equal('simple_method(${1:arg1}, ${2:arg2})', simple_method_item[:insertText], 'should include parameter snippet')
       assert_equal(2, simple_method_item[:insertTextFormat], 'should be snippet format')
       assert_equal('arg1 (required), arg2 (required)', simple_method_item[:detail], 'should include parameter details')
+    end
+  end
+
+  describe 'logging' do
+    it 'does not log class and module completions at error level' do
+      original_logger = RubyLanguageServer.logger
+      output = StringIO.new
+      RubyLanguageServer.logger = Logger.new(output, level: Logger::ERROR)
+      RubyLanguageServer::ScopeParser.new("class Widget\nend\n")
+
+      RubyLanguageServer::Completion.completion(['Wid'], nil, [])
+
+      assert_equal('', output.string)
+    ensure
+      RubyLanguageServer.logger = original_logger
     end
   end
 end

@@ -8,7 +8,6 @@ require_relative '../config/initializers/active_record'
 require_relative '../db/schema'
 
 require_relative 'version'
-require_relative 'gem_installer'
 require_relative 'io'
 require_relative 'location'
 require_relative 'code_file'
@@ -17,13 +16,13 @@ require_relative 'project_manager'
 require_relative 'server'
 require_relative 'line_context'
 require_relative 'completion'
+require_relative 'hover'
 
 module RubyLanguageServer
   class Application
     def start
-      update_mutex = Monitor.new
-      server = RubyLanguageServer::Server.new(update_mutex)
-      RubyLanguageServer::IO.new(server, update_mutex)
+      server = RubyLanguageServer::Server.new
+      RubyLanguageServer::IO.new(server)
     end
   end
 end

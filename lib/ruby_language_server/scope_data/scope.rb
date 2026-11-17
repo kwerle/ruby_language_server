@@ -17,6 +17,9 @@ module RubyLanguageServer
       scope :method_scopes, -> { where(class_type: TYPE_METHOD) }
       scope :for_line, ->(line) { where('top_line <= ? AND bottom_line >= ?', line, line).or(where(parent_id: nil)) }
       scope :by_path_length, -> { order(Arel.sql('length(path) DESC')) }
+
+      # The separators between a scope's path and its children's (see JoinHash).
+      DESCENDANT_SEPARATORS = JoinHash.values_at(TYPE_MODULE, TYPE_METHOD, TYPE_BLOCK).uniq.freeze
       # attr_accessor :top_line        # first line
       # attr_accessor :bottom_line     # last line
       # attr_accessor :parent          # parent scope
@@ -47,15 +50,21 @@ module RubyLanguageServer
         scope_parts.count
       end
 
-      # Self and all descendents flattened into array
+      # Self and all descendents, in the same file.
       def self_and_descendants
-        return Scope.all if root_scope?
-
-        Scope.where('path like ?', "#{path}%")
+        Scope.where(id:).or(descendants)
       end
 
+      # Every scope nested inside this one, in the same file. A descendant's path is this
+      # path followed by a separator (::, #, >), so Foo's descendants include Foo::Bar and
+      # Foo#baz but not FooBar. % and _ in the path match literally.
       def descendants
-        Scope.where('path like ?', "#{path}_%")
+        same_file = Scope.where(code_file_id:)
+        return same_file.where.not(id:) if root_scope?
+
+        prefix = self.class.sanitize_sql_like(path)
+        patterns = DESCENDANT_SEPARATORS.map { |separator| "#{prefix}#{self.class.sanitize_sql_like(separator)}%" }
+        same_file.where((["path LIKE ? ESCAPE '\\'"] * patterns.length).join(' OR '), *patterns)
       end
 
       def set_superclass_name(partial)
@@ -65,6 +74,38 @@ module RubyLanguageServer
           self.superclass_name = [parent&.full_name, partial].compact.join(JoinHash[class_type])
         end
         save!
+      end
+
+      # The scopes of this class's superclass, one per file that defines it, or [].
+      # superclass_name was qualified with the enclosing namespace when parsed
+      # (Foo::Bar for `class Nar < Bar` inside Foo), so if that path doesn't exist, drop
+      # leading namespaces until one does, the way Ruby falls back to outer constants.
+      def superclass_scopes
+        return [] if superclass_name.blank?
+
+        parts = superclass_name.split('::')
+        parts.each_index do |index|
+          scopes = Scope.where(path: parts[index..].join('::'), class_type: TYPE_CLASS).where.not(id:).to_a
+          return scopes if scopes.any?
+        end
+        []
+      end
+
+      # Superclass scopes, nearest first, stopping at a cycle or after max_depth classes.
+      def ancestor_class_scopes(max_depth: 20)
+        ancestors = []
+        frontier = [self]
+        max_depth.times do
+          frontier = frontier.flat_map(&:superclass_scopes).uniq - ancestors - [self]
+          break if frontier.empty?
+
+          ancestors.concat(frontier)
+        end
+        ancestors
+      end
+
+      def class_scope?
+        class_type == TYPE_CLASS
       end
 
       def root_scope?

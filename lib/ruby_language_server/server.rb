@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'uri'
 
 # Deal with the various languageserver calls.
 module RubyLanguageServer
@@ -8,59 +9,62 @@ module RubyLanguageServer
     Position = Struct.new('Position', :line, :character)
     attr_accessor :io
 
-    def initialize(mutex)
-      @mutex = mutex
-    end
-
     def on_initialize(params)
       RubyLanguageServer.logger.info("on_initialize: #{params}")
       RubyLanguageServer::CodeFile.all # Just to warm up active_record.
-      root_path = params['rootPath']
-      root_uri = params['rootUri']
+      # rootPath and rootUri are deprecated in favor of workspaceFolders. Only the first
+      # folder is indexed.
+      root_uri = params['rootUri'] || params.dig('workspaceFolders', 0, 'uri')
+      root_path = params['rootPath'] || path_from_file_uri(root_uri)
       @project_manager = ProjectManager.new(root_path, root_uri)
       @project_manager.scan_all_project_files
+      @client_capabilities = params['capabilities'] || {}
       {
+        # Advertise only capabilities that have an on_* handler. Requests for anything
+        # else get a MethodNotFound error (see IO#process_request).
         capabilities: {
           textDocumentSync: 1,
-          hoverProvider: true,
-          signatureHelpProvider: {
-            triggerCharacters: ['(', ',']
-          },
           definitionProvider: true,
-          referencesProvider: true,
           documentSymbolProvider: true,
-          workspaceSymbolProvider: true,
-          xworkspaceReferencesProvider: true,
-          xdefinitionProvider: true,
-          xdependenciesProvider: true,
+          hoverProvider: true,
           completionProvider: {
-            resolveProvider: true,
             triggerCharacters: ['.', '::']
-          },
-          codeActionProvider: true,
-          renameProvider: true,
-          executeCommandProvider: {
-            commands: []
-          },
-          xpackagesProvider: true
+          }
+        },
+        serverInfo: {
+          name: 'ruby_language_server',
+          version: RubyLanguageServer::VERSION
         }
       }
     end
 
     def on_initialized(_hash)
       RubyLanguageServer.logger.info("RubyLanguageServer::VERSION #{RubyLanguageServer::VERSION}")
+      register_file_watcher
+    end
+
+    # Ask the client to tell us when Ruby files are created, changed or deleted, so the
+    # index doesn't keep files that are gone. Only clients that support dynamic
+    # registration for workspace/didChangeWatchedFiles are asked.
+    def register_file_watcher
+      return unless @client_capabilities&.dig('workspace', 'didChangeWatchedFiles', 'dynamicRegistration')
+
+      io.send_request('client/registerCapability', registrations: [{
+                        id: 'ruby_language_server-watched-files',
+                        method: 'workspace/didChangeWatchedFiles',
+                        registerOptions: { watchers: [{ globPattern: '**/*.rb' }] }
+                      }])
     end
 
     def on_workspace_didChangeWatchedFiles(params)
-      RubyLanguageServer.logger.debug('on_workspace_didChangeWatchedFiles')
-      RubyLanguageServer.logger.debug(params)
-      {}
+      RubyLanguageServer.logger.debug("on_workspace_didChangeWatchedFiles #{params}")
+      @project_manager.watched_files_changed(params['changes'] || [])
+      nil # A notification: there is no reply.
     end
 
     def on_textDocument_hover(params)
-      RubyLanguageServer.logger.debug('on_textDocument_hover')
-      RubyLanguageServer.logger.debug(params)
-      {}
+      RubyLanguageServer.logger.debug("on_textDocument_hover #{params}")
+      @project_manager.hover_at(uri_from_params(params), postition_from_params(params))
     end
 
     def on_textDocument_documentSymbol(params)
@@ -111,11 +115,30 @@ module RubyLanguageServer
       completions
     end
 
+    # LSP shutdown request: stop serving, but don't exit until the exit notification.
     def on_shutdown(_params)
       RubyLanguageServer.logger.info('on_shutdown')
+      @shutdown_requested = true
+      nil
+    end
+
+    # LSP exit notification: exit 0 if shutdown came first, 1 otherwise.
+    def on_exit(_params)
+      RubyLanguageServer.logger.info("on_exit (shutdown requested: #{shutdown_requested?})")
+      exit(shutdown_requested? ? 0 : 1)
+    end
+
+    def shutdown_requested?
+      @shutdown_requested == true
     end
 
     private
+
+    def path_from_file_uri(uri)
+      return nil unless uri&.start_with?('file://')
+
+      URI.decode_uri_component(URI(uri).path)
+    end
 
     def uri_from_params(params)
       textDocument = params['textDocument']

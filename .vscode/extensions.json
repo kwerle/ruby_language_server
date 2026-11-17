@@ -1,0 +1,4 @@
+{
+	// rdbg is needed for the "Debug server" launch configuration.
+	"recommendations": ["KoichiSasada.vscode-rdbg"]
+}

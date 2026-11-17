@@ -43,6 +43,8 @@ module Schema
           t.string  :uri
           t.boolean :refresh_root_scope, default: true
           t.text    :text
+          t.float   :parsed_at          # Process::CLOCK_MONOTONIC seconds of the last parse
+          t.integer :parsed_line_count  # lines in the text that was last parsed
         end
 
         add_index :code_files, :uri
@@ -55,7 +57,7 @@ module Schema
     def already_initialized
       response = ActiveRecord::Base.connection_pool.with_connection { |con| con.exec_query "SELECT name  FROM sqlite_master WHERE type='table'" }
       response.rows.flatten.member?('code_files')
-    rescue ExceptionName
+    rescue ActiveRecord::StatementInvalid
       false
     end
 

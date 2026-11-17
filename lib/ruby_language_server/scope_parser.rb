@@ -38,7 +38,7 @@ module RubyLanguageServer
       name = constant_path_name(node.constant_path)
       line = node.location.start_line
       end_line = node.location.end_line
-      column = node.location.start_column
+      column = column_of(node.location)
 
       scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column, end_line, false)
 
@@ -48,7 +48,7 @@ module RubyLanguageServer
         scope.set_superclass_name(superclass_name) if superclass_name
       end
 
-      super
+      in_singleton_class(false) { super }
       pop_scope
     end
 
@@ -57,10 +57,10 @@ module RubyLanguageServer
       name = constant_path_name(node.constant_path)
       line = node.location.start_line
       end_line = node.location.end_line
-      column = node.location.start_column
+      column = column_of(node.location)
 
       push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line, false)
-      super
+      in_singleton_class(false) { super }
       pop_scope
     end
 
@@ -69,11 +69,12 @@ module RubyLanguageServer
       name = node.name.to_s
       line = node.location.start_line
       end_line = node.location.end_line
-      column = node.location.start_column
+      column = column_of(node.location)
       is_class_method = node.receiver.is_a?(Prism::SelfNode)
 
       scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
-      scope.class_method = is_class_method
+      # def self.name, or a plain def inside class << self
+      scope.class_method = is_class_method || (node.receiver.nil? && @in_singleton_class)
       scope.save!
 
       # Extract and store parameters
@@ -93,17 +94,18 @@ module RubyLanguageServer
     end
 
     # Visit a singleton class (class << self)
-    def visit_singleton_class_node(node) # rubocop:disable Lint/UselessMethodDefinition
-      # For class << self, we visit the body but don't create a new scope
-      # The methods defined inside will be class methods of the current scope
-      super
+    def visit_singleton_class_node(node)
+      # For class << self, we visit the body but don't create a new scope.
+      # The methods defined inside are class methods of the current scope.
+      # class << some_object is not about the current class, so it doesn't count.
+      in_singleton_class(node.expression.is_a?(Prism::SelfNode)) { super }
     end
 
     # Visit block nodes
     def visit_block_node(node)
       line = node.location.start_line
       end_line = node.location.end_line
-      column = node.location.start_column
+      column = column_of(node.location)
 
       # Use block-specific name if set by command handler, otherwise use 'block'
       name = @block_names.delete(node.object_id) || 'block'
@@ -121,7 +123,7 @@ module RubyLanguageServer
     def visit_local_variable_write_node(node)
       name = node.name.to_s
       line = node.location.start_line
-      column = node.location.start_column
+      column = column_of(node.location)
 
       add_variable(name, line, column)
       super
@@ -131,7 +133,7 @@ module RubyLanguageServer
     def visit_instance_variable_write_node(node)
       name = node.name.to_s
       line = node.location.start_line
-      column = node.location.start_column
+      column = column_of(node.location)
 
       add_ivar(name, line, column)
       super
@@ -142,7 +144,7 @@ module RubyLanguageServer
     def visit_constant_write_node(node)
       name = node.name.to_s
       line = node.location.start_line
-      column = node.location.start_column
+      column = column_of(node.location)
 
       add_variable(name, line, column)
       super
@@ -153,9 +155,9 @@ module RubyLanguageServer
       node.lefts.each do |target|
         case target
         when Prism::LocalVariableTargetNode
-          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+          add_variable(target.name.to_s, target.location.start_line, column_of(target.location))
         when Prism::InstanceVariableTargetNode
-          add_ivar(target.name.to_s, target.location.start_line, target.location.start_column)
+          add_ivar(target.name.to_s, target.location.start_line, column_of(target.location))
         when Prism::MultiTargetNode
           # Handle nested destructuring like (a, (b, c)) = ...
           visit_multi_target(target)
@@ -166,7 +168,7 @@ module RubyLanguageServer
       if node.rest.is_a?(Prism::SplatNode) && node.rest.expression
         case node.rest.expression
         when Prism::LocalVariableTargetNode
-          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column)
+          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, column_of(node.rest.expression.location))
         end
       end
 
@@ -178,9 +180,9 @@ module RubyLanguageServer
       node.lefts.each do |target|
         case target
         when Prism::LocalVariableTargetNode
-          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+          add_variable(target.name.to_s, target.location.start_line, column_of(target.location))
         when Prism::InstanceVariableTargetNode
-          add_ivar(target.name.to_s, target.location.start_line, target.location.start_column)
+          add_ivar(target.name.to_s, target.location.start_line, column_of(target.location))
         when Prism::MultiTargetNode
           visit_multi_target(target)
         end
@@ -193,7 +195,7 @@ module RubyLanguageServer
       node.lefts.each do |target|
         case target
         when Prism::RequiredParameterNode
-          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+          add_variable(target.name.to_s, target.location.start_line, column_of(target.location))
         when Prism::MultiTargetNode
           # Recursively handle nested destructuring
           extract_multi_target_variables(target)
@@ -204,7 +206,7 @@ module RubyLanguageServer
       if node.rest
         case node.rest
         when Prism::SplatNode
-          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, node.rest.expression.location.start_column) if node.rest.expression.is_a?(Prism::RequiredParameterNode)
+          add_variable(node.rest.expression.name.to_s, node.rest.expression.location.start_line, column_of(node.rest.expression.location)) if node.rest.expression.is_a?(Prism::RequiredParameterNode)
         end
       end
 
@@ -212,7 +214,7 @@ module RubyLanguageServer
       node.rights.each do |target|
         case target
         when Prism::RequiredParameterNode
-          add_variable(target.name.to_s, target.location.start_line, target.location.start_column)
+          add_variable(target.name.to_s, target.location.start_line, column_of(target.location))
         when Prism::MultiTargetNode
           extract_multi_target_variables(target)
         end
@@ -222,13 +224,12 @@ module RubyLanguageServer
     # Visit call nodes (method calls)
     def visit_call_node(node)
       name = node.name.to_s
-      line = node.location.start_line
 
       # Handle special commands like attr_accessor, private, etc.
       # Only handle if there's no receiver (i.e., it's a method call in current scope)
       if node.receiver.nil?
         block_node = node.block if node.block.is_a?(Prism::BlockNode)
-        handle_command(name, line, node, block_node)
+        handle_command(name, node, block_node)
 
         # If the command pushed a scope for a block, pop it after visiting children
         should_pop = @command_pushed_scope
@@ -243,6 +244,12 @@ module RubyLanguageServer
     end
 
     private
+
+    # LSP character offsets count UTF-16 code units. Prism's start_column counts bytes,
+    # which differ from code units on any line with non-ASCII text before the node.
+    def column_of(location)
+      location.start_code_units_column(Encoding::UTF_16LE)
+    end
 
     def extract_parameters_data(params_node)
       return [] unless params_node
@@ -290,7 +297,7 @@ module RubyLanguageServer
       params_node.requireds.each do |param|
         case param
         when Prism::RequiredParameterNode
-          add_variable(param.name.to_s, param.location.start_line, param.location.start_column)
+          add_variable(param.name.to_s, param.location.start_line, column_of(param.location))
         when Prism::MultiTargetNode
           # Handle destructuring in parameters like |(a, b), c|
           extract_multi_target_variables(param)
@@ -299,23 +306,23 @@ module RubyLanguageServer
 
       # Optional parameters
       params_node.optionals.each do |param|
-        add_variable(param.name.to_s, param.location.start_line, param.location.start_column)
+        add_variable(param.name.to_s, param.location.start_line, column_of(param.location))
       end
 
       # Rest parameter
-      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, params_node.rest.location.start_column) if params_node.rest&.name
+      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, column_of(params_node.rest.location)) if params_node.rest&.name
 
       # Keyword parameters
       params_node.keywords.each do |param|
         name = param.name.to_s
-        add_variable(name, param.location.start_line, param.location.start_column)
+        add_variable(name, param.location.start_line, column_of(param.location))
       end
 
       # Keyword rest parameter
-      add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, params_node.keyword_rest.location.start_column) if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
+      add_variable(params_node.keyword_rest.name.to_s, params_node.keyword_rest.location.start_line, column_of(params_node.keyword_rest.location)) if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
 
       # Block parameter
-      add_variable(params_node.block.name.to_s, params_node.block.location.start_line, params_node.block.location.start_column) if params_node.block&.name
+      add_variable(params_node.block.name.to_s, params_node.block.location.start_line, column_of(params_node.block.location)) if params_node.block&.name
     end
 
     def visit_block_parameters(params_node)
@@ -356,31 +363,38 @@ module RubyLanguageServer
       end
     end
 
-    def handle_command(name, line, node, block_node = nil)
+    # Calls on_<name>_command(node) from ScopeParserCommands, if there is one, with
+    # @current_block_node set to the call's block. Handlers read the call with
+    # command_line, command_column and command_arguments.
+    def handle_command(name, node, block_node = nil)
       method_name = "on_#{name}_command"
       if respond_to?(method_name)
-        # Extract arguments from Prism node and format for command handler
-        args = extract_command_args(node)
-        rest = extract_command_rest(node)
         @current_block_node = block_node
-        send(method_name, line, args, rest)
+        send(method_name, node)
         @current_block_node = nil
       else
         RubyLanguageServer.logger.debug("We don't have a #{method_name}")
       end
     end
 
-    # Extract arguments in format expected by command handlers
-    # Returns: [:@ident, "method_name", [line, column]]
-    def extract_command_args(node)
-      [:@ident, node.name.to_s, [node.location.start_line, node.location.start_column]]
+    def command_line(node)
+      node.location.start_line
     end
 
-    # Extract the rest/body arguments from a call node
-    # For attr methods, this needs to extract symbol arguments
-    # For rake tasks, this needs to extract keyword hash keys
-    # For rspec commands, this needs to extract constant paths
-    def extract_command_rest(node)
+    def command_column(node)
+      column_of(node.location)
+    end
+
+    # The last line of the command's block, or its own line if it has none.
+    def command_end_line(node)
+      @current_block_node ? @current_block_node.location.end_line : command_line(node)
+    end
+
+    # The command's arguments that name things, as strings, in order:
+    # symbols (attr_reader :foo), strings (describe 'thing'), constants
+    # (describe Some::Class) and symbol keys of a keyword hash with a trailing colon
+    # (task something: [] becomes "something:").
+    def command_arguments(node)
       return [] unless node.arguments
 
       args = []
@@ -411,14 +425,22 @@ module RubyLanguageServer
       args
     end
 
+    # Records the first assignment of each name in a scope; later ones are skipped.
+    # The names already recorded are kept in memory, so this is one INSERT per new
+    # variable rather than a SELECT per assignment.
     def add_variable(name, line, column, scope = @current_scope)
       return if scope.nil?
+      return unless variable_names_in(scope).add?(name)
 
-      scope.variables.where(name:).first_or_create!(
-        line:,
-        column:,
-        code_file: scope.code_file
-      )
+      scope.variables.create!(name:, line:, column:, code_file_id: scope.code_file_id)
+    end
+
+    # Names of the variables recorded in scope. Scopes this parse created start empty.
+    # Only the root can already have rows (ScopeParser reuses an existing root), so its
+    # names are read from the database once.
+    def variable_names_in(scope)
+      @variable_names ||= {}
+      @variable_names[scope.id] ||= scope.root_scope? ? Set.new(scope.variables.pluck(:name)) : Set.new
     end
 
     def add_ivar(name, line, column)
@@ -432,6 +454,16 @@ module RubyLanguageServer
         end
       end
       add_variable(name, line, column, scope)
+    end
+
+    # Runs the block with @in_singleton_class set, restoring it afterwards. A class or
+    # module nested inside class << self starts fresh.
+    def in_singleton_class(value)
+      saved = @in_singleton_class
+      @in_singleton_class = value
+      yield
+    ensure
+      @in_singleton_class = saved
     end
 
     def type_is_class_or_module(type)

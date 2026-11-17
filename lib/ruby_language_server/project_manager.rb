@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
+require 'uri'
 require 'fuzzy_match'
 require 'amatch' # NOTE: that you have to require this... fuzzy_match won't require it for you
 FuzzyMatch.engine = :amatch # This should be in a config somewhere
 
 module RubyLanguageServer
   class ProjectManager
-    attr_reader :uri_code_file_hash
-
     # GoodCop wants to know where to find its config.  So here we are.
     ROOT_PATH_MUTEX = Mutex.new
     @_root_path = nil
@@ -40,6 +39,17 @@ module RubyLanguageServer
       def root_uri
         @_root_uri || "file://#{root_path}"
       end
+
+      # Let's not preload spec/test files or vendor - yet.
+      # Matches foo_spec.rb, foo_test.rb, spec.rb and test.rb, and anything in a vendor
+      # directory, but not files that merely contain those words, like latest.rb.
+      SKIP_SCAN_PATTERN = %r{(?:\A|/|_)(?:spec|test)\.rb\z|(?:\A|/)vendor/}
+
+      # relative_path is relative to the project root, so a root inside a directory named
+      # vendor doesn't skip everything.
+      def skip_scan?(relative_path)
+        relative_path.match?(SKIP_SCAN_PATTERN)
+      end
     end
 
     def initialize(path, uri = nil)
@@ -47,7 +57,8 @@ module RubyLanguageServer
       self.class.root_path = path if self.class.root_path.nil?
       self.class.root_uri = uri if uri
 
-      @root_uri = "file://#{path}"
+      # The URI the editor uses for the project root. The scan maps container paths onto it.
+      @root_uri = uri || "file://#{path}"
       # This is {uri: code_file} where content stuff is like
       # @additional_gems_installed = false
       # @additional_gem_mutex = Mutex.new
@@ -57,6 +68,12 @@ module RubyLanguageServer
     #   @additional_gem_mutex.synchronize { @additional_gems_installed }
     # end
 
+    # The prefix the background scan puts in front of each file's path relative to the
+    # project root: the client's rootUri, or file:// + rootPath, with a trailing slash.
+    def scan_root_uri
+      @root_uri.end_with?('/') ? @root_uri : "#{@root_uri}/"
+    end
+
     def text_for_uri(uri)
       code_file = code_file_for_uri(uri)
       code_file&.text || ''
@@ -64,64 +81,79 @@ module RubyLanguageServer
 
     def tags_for_uri(uri)
       code_file = code_file_for_uri(uri)
-      return {} if code_file.nil?
+      return [] if code_file.nil?
 
       code_file.tags
     end
 
     def root_scope_for(uri)
-      code_file = code_file_for_uri(uri)
-      RubyLanguageServer.logger.error('code_file.nil?!!!!!!!!!!!!!!') if code_file.nil?
-      code_file&.root_scope
-    end
-
-    def all_scopes
-      RubyLanguageServer::ScopeData::Scope.all
+      code_file_for_uri(uri).scopes.root_scope
     end
 
     # Return the list of scopes [deepest, parent, ..., Object]
     def scopes_at(uri, position)
       code_file = code_file_for_uri(uri)
       code_file.refresh_scopes_if_needed
-      code_file.scopes.for_line(position.line).where.not(path: nil).by_path_length
+      code_file.scopes.for_line(position.line + 1).where.not(path: nil).by_path_length
     end
 
     def completion_at(uri, position)
       context = context_at_location(uri, position)
-      return {} if context.blank?
+      return nil if context.blank? # null: no completions
 
-      RubyLanguageServer.logger.debug("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
-      position_scopes = scopes_at(uri, position) || RubyLanguageServer::ScopeData::Scope.where(id: root_scope_for(uri).id)
+      position_scopes = scopes_at(uri, position)
+      RubyLanguageServer.logger.debug("scopes_at(uri, position) #{position_scopes.map(&:name)}")
+      # Outside every class, module, method and block, complete from the file's top level.
+      position_scopes = RubyLanguageServer::ScopeData::Scope.where(id: root_scope_for(uri)&.id) if position_scopes.empty?
       context_scope = position_scopes.first
       RubyLanguageServer::Completion.completion(context, context_scope, position_scopes)
+    end
+
+    # How many times the background scan retries a file when the database is locked.
+    SCAN_BUSY_RETRIES = 3
+    SCAN_BUSY_RETRY_DELAY = 1 # seconds
+
+    # Stores and parses one file for the background scan. Only a locked database is
+    # retried, briefly; any other error is raised for the caller to log.
+    def index_file(uri, text)
+      attempts = 0
+      begin
+        ActiveRecord::Base.connection_pool.with_connection do
+          update_document_content(uri, text)
+          code_file_for_uri(uri).refresh_scopes_if_needed
+        end
+      rescue ActiveRecord::StatementTimeout => e
+        attempts += 1
+        raise if attempts > SCAN_BUSY_RETRIES
+
+        RubyLanguageServer.logger.warn("Database busy indexing #{uri}, retrying: #{e.message}")
+        sleep scan_busy_retry_delay
+        retry
+      end
+    end
+
+    def scan_busy_retry_delay
+      SCAN_BUSY_RETRY_DELAY
     end
 
     def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       RubyLanguageServer.logger.debug('Threading up!')
-      root_uri = @root_uri
-      root_uri += '/' unless root_uri.end_with? '/'
+      root_uri = scan_root_uri
       # Using fork because this is run in a docker container that has fork.
       # If you want to run this on some platform without fork, fork the code and PR it :-)
       fork_id = fork do
         project_ruby_files.each do |container_path|
-          # Let's not preload spec/test files or vendor - yet..
-          next if container_path.match?(/(spec\.rb|test\.rb|vendor)/)
+          relative_path = container_path.delete_prefix(self.class.root_path)
+          next if self.class.skip_scan?(relative_path)
 
           text = File.read(container_path)
-          relative_path = container_path.delete_prefix(self.class.root_path)
           host_uri = root_uri + relative_path
           RubyLanguageServer.logger.debug("Threading #{host_uri}")
-          begin
-            ActiveRecord::Base.connection_pool.with_connection do |_connection|
-              update_document_content(host_uri, text)
-              code_file_for_uri(host_uri).refresh_scopes_if_needed
-            end
-          rescue StandardError => e
-            RubyLanguageServer.logger.warn("Error updating: #{e}\n#{e.backtrace * "\n"}")
-            sleep 5
-            retry
-          end
+          index_file(host_uri, text)
+        rescue StandardError => e
+          # One bad file mustn't stall the scan: log it and go on to the next.
+          RubyLanguageServer.logger.error("Skipping #{container_path}: #{e.class}: #{e}\n#{e.backtrace * "\n"}")
         end
       end
       RubyLanguageServer.logger.debug("Forked process id to look at other files: #{fork_id}")
@@ -145,18 +177,57 @@ module RubyLanguageServer
       code_file&.context_at_location(position)
     end
 
+    # FileChangeType values in workspace/didChangeWatchedFiles.
+    FILE_CREATED = 1
+    FILE_CHANGED = 2
+    FILE_DELETED = 3
+
+    # Keeps the index in step with files created, changed or deleted outside the editor.
+    def watched_files_changed(changes)
+      changes.each do |change|
+        uri = change['uri']
+        case change['type']
+        when FILE_DELETED then forget_uri(uri)
+        when FILE_CREATED, FILE_CHANGED then reload_from_disk(uri)
+        end
+      rescue StandardError => e
+        RubyLanguageServer.logger.error("Error handling watched file change #{change}: #{e.class}: #{e}")
+      end
+    end
+
+    # Drops a file from the index. If uri is a directory, drops everything under it.
+    def forget_uri(uri)
+      under_directory = "#{ActiveRecord::Base.sanitize_sql_like(uri.delete_suffix('/'))}/%"
+      CodeFile.where(uri:).or(CodeFile.where('uri LIKE ?', under_directory)).destroy_all
+    end
+
+    def reload_from_disk(uri)
+      path = container_path_for(uri)
+      return if path.nil? || !path.end_with?('.rb') || !File.file?(path)
+
+      update_document_content(uri, File.read(path))
+    end
+
+    # Maps an editor URI under the project root to the path this server reads it from.
+    # Returns nil for URIs outside the project.
+    def container_path_for(uri)
+      prefix = self.class.root_uri
+      return nil if self.class.root_path.nil? || !uri.start_with?(prefix)
+
+      File.join(self.class.root_path, URI.decode_uri_component(uri.delete_prefix(prefix)))
+    end
+
     def word_at_location(uri, position)
       context_at_location(uri, position)&.last
     end
 
     def possible_definitions(uri, position)
-      name = word_at_location(uri, position)
+      context = context_at_location(uri, position)
+      name = context&.last
       return [] if name.blank?
 
       # Special case: "new" should find "initialize" (instance method, not class method)
       name = 'initialize' if name == 'new'
-
-      context = context_at_location(uri, position)
 
       # Get current scopes for context
       current_scopes = scopes_at(uri, position)
@@ -187,27 +258,20 @@ module RubyLanguageServer
           end
 
           scope_path_parts = context[leftmost_continuous_index..-2]
+          # A leading :: (::Foo::Bar) splits into an empty first element: top level only.
+          top_level = leftmost_continuous_index.positive? && context[leftmost_continuous_index - 1] == ''
 
-          if scope_path_parts.empty?
-            # This shouldn't happen, but handle it gracefully
-            return project_definitions_for(name, current_scopes)
-          elsif scope_path_parts.length == 1
-            # Single class/module like Bar.something or Foo::Bar
-            parent_scope = find_scope_by_path(scope_path_parts.first)
-          else
-            # Multiple parts like Bar::Baz.something or after finding Bar in foo.Bar::Baz.something
-            scope_path = scope_path_parts.join('::')
-            parent_scope = find_scope_by_path(scope_path)
-          end
+          # Resolve the receiver the way Ruby does: inside the enclosing namespaces first.
+          receiver_scopes = resolve_constant_scopes(scope_path_parts.join('::'), current_scopes, top_level:)
 
           # Determine if it's a class/module lookup or a method call
           # If the name also looks like a class/module name, it's a namespace lookup (Foo::Bar)
           # Otherwise it's a method call (Foo.method or Foo::Bar.method)
-          return project_definitions_for(name, parent_scope ? [parent_scope] : []) if likely_class_name?(name) || constant_name?(name)
+          return receiver_definitions_for(name, receiver_scopes) if likely_class_name?(name) || constant_name?(name)
 
           # Method call - determine if it's a class method or instance method
           class_method_filter = name != 'initialize'
-          return project_definitions_for(name, parent_scope ? [parent_scope] : [], class_method_filter)
+          return receiver_definitions_for(name, receiver_scopes, class_method_filter)
 
         end
 
@@ -225,6 +289,30 @@ module RubyLanguageServer
       project_definitions_for(name, current_scopes) || []
     end
 
+    # Hover for the word at position: the signature of the first definition that
+    # possible_definitions finds, or nil.
+    def hover_at(uri, position)
+      name = context_at_location(uri, position)&.last
+      return nil if name.blank?
+
+      name = 'initialize' if name == 'new'
+      definition = possible_definitions(uri, position).first
+      record = definition && record_at(definition, name)
+      markdown = record && Hover.markdown(record)
+      return nil if markdown.blank?
+
+      { contents: { kind: 'markdown', value: markdown } }
+    end
+
+    # The scope or variable named name that a definition location points at.
+    def record_at(location, name)
+      code_file = CodeFile.find_by(uri: location[:uri])
+      return nil if code_file.nil?
+
+      line = location[:range][:start][:line] + 1 # stored lines are 1-based
+      code_file.scopes.find_by(top_line: line, name:) || code_file.variables.find_by(line:, name:)
+    end
+
     # Return variables found in the current scope.  After all, those are the important ones.
     # Should probably be private...
     def scope_definitions_for(name, scope, uri)
@@ -232,7 +320,7 @@ module RubyLanguageServer
       matches = []
       while check_scope
         check_scope.variables.each do |variable|
-          matches << Location.hash(uri, variable.line, 1) if variable.name == name
+          matches << Location.hash(uri, variable.line, variable.column.to_i) if variable.name == name
         end
         check_scope = check_scope.parent
       end
@@ -263,9 +351,12 @@ module RubyLanguageServer
 
     # Convert a collection of scopes or variables to location hashes
     def scope_or_variable_to_locations(items)
+      items = items.to_a
+      # One query for all the items' files, not one per item.
+      ActiveRecord::Associations::Preloader.new(records: items, associations: :code_file).call
       items.reject { |item| item.code_file.nil? }.map do |item|
         line = item.respond_to?(:top_line) ? item.top_line : item.line
-        Location.hash(item.code_file.uri, line, 1)
+        Location.hash(item.code_file.uri, line, item.column.to_i)
       end
     end
 
@@ -281,10 +372,10 @@ module RubyLanguageServer
         end
 
         # Check variables (constants) in the current scope
-        matching_variable = current.variables.where(name: name).reject { |item| item.code_file.nil? }.first
+        matching_variable = current.variables.where(name: name).includes(:code_file).find(&:code_file)
         if matching_variable
           line = matching_variable.respond_to?(:top_line) ? matching_variable.top_line : matching_variable.line
-          return [Location.hash(matching_variable.code_file.uri, line, 1)]
+          return [Location.hash(matching_variable.code_file.uri, line, matching_variable.column.to_i)]
         end
 
         current = current.parent
@@ -302,10 +393,13 @@ module RubyLanguageServer
           next
         end
 
-        # Check child scopes (classes/modules/methods) with this name
-        child_scopes = current.children.where(name: name)
-        child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
-        return scope_or_variable_to_locations(child_scopes) if child_scopes.any?
+        # Check child scopes (classes/modules/methods) with this name, then, for a class,
+        # its superclasses' before moving out to the enclosing scope, as Ruby does.
+        [current, *(current.class_scope? ? current.ancestor_class_scopes : [])].each do |scope|
+          child_scopes = scope.children.where(name: name)
+          child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
+          return scope_or_variable_to_locations(child_scopes) if child_scopes.any?
+        end
 
         current = current.parent
       end
@@ -321,12 +415,39 @@ module RubyLanguageServer
       scope_or_variable_to_locations(all_matches)
     end
 
-    # Find a scope by its path (e.g., "Foo::Bar")
-    # Returns nil if path is nil or empty (for root scope searches)
-    def find_scope_by_path(path)
-      return nil if path.nil? || path.empty?
+    # The scopes a constant path like "Bar" or "Bar::Baz" refers to from the cursor.
+    # Like Ruby, try each enclosing class or module, innermost first, then the top
+    # level. Inside Outer::Other, "Inner" tries Outer::Other::Inner, Outer::Inner, Inner.
+    # Returns every scope with the first path that exists: a class reopened in several
+    # files has one scope per file. Returns [] if nothing matches.
+    #
+    # This uses the nesting of scope paths, so `class Outer::Other` counts as being
+    # inside Outer, which Ruby's lexical scope doesn't do.
+    def resolve_constant_scopes(path, current_scopes, top_level: false)
+      return [] if path.blank?
 
-      RubyLanguageServer::ScopeData::Scope.find_by(path: path)
+      namespaces = top_level ? [] : current_scopes.select { |scope| type_is_class_or_module?(scope) }.map(&:path)
+      candidates = namespaces.map { |namespace| "#{namespace}::#{path}" } + [path]
+      candidates.each do |candidate|
+        scopes = RubyLanguageServer::ScopeData::Scope.where(path: candidate).to_a
+        return scopes if scopes.any?
+      end
+      []
+    end
+
+    def type_is_class_or_module?(scope)
+      [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE].include?(scope.class_type)
+    end
+
+    # Definitions of name inside the receiver's scopes (and their parents), or anywhere
+    # in the project if there are none.
+    def receiver_definitions_for(name, receiver_scopes, class_method_filter = nil)
+      return search_project_wide(name, class_method_filter) if receiver_scopes.empty?
+
+      results = receiver_scopes.flat_map { |scope| search_variables_in_scope_chain(name, scope) }
+      results = receiver_scopes.flat_map { |scope| search_child_scopes_in_chain(name, scope, class_method_filter) } if results.empty?
+      results = search_project_wide(name, class_method_filter) if results.empty?
+      results.uniq
     end
 
     # Check if a name looks like a constant (all uppercase)
@@ -335,16 +456,6 @@ module RubyLanguageServer
       return false unless /\A[A-Z]/.match?(name)
 
       !/[a-z]/.match?(name)
-    end
-
-    # Check if the context represents a namespace reference (Foo::Bar) rather than a method call (Foo.bar)
-    # Class/module lookups always start with uppercase letters, method calls never do
-    def namespace_reference?(_uri, _position, context)
-      return false if context.length < 2
-
-      # If all parts start with uppercase, it's a namespace reference (Foo::Bar)
-      # If first part is lowercase, it's a method call (foo.bar)
-      context.all? { |part| /\A[A-Z]/.match?(part) }
     end
 
     # Guess if a receiver name is likely a class name based on idiomatic Ruby conventions.
@@ -359,12 +470,10 @@ module RubyLanguageServer
       name =~ /[a-z]/
     end
 
+    # The stored file for uri. For a URI the server hasn't seen, an unsaved, empty
+    # CodeFile, so lookups don't write to the database; CodeFile#update_text saves it.
     def code_file_for_uri(uri)
-      CodeFile.find_by_uri(uri) || CodeFile.build(uri, nil)
-    end
-
-    def filename_relative_to_project(filename)
-      filename.gsub(self.class.root_uri, self.class.root_path)
+      CodeFile.find_by(uri:) || CodeFile.new(uri:)
     end
   end
 end

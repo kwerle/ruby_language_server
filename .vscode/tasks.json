@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			// Builds the vscode_ruby_language_server checkout next to this one (in its build image).
+			"label": "compile_client",
+			"type": "shell",
+			"command": "cd ../vscode_ruby_language_server && make compile",
+			"presentation": {
+				"panel": "dedicated",
+				"reveal": "silent"
+			},
+			"problemMatcher": []
+		},
+		{
+			// Runs until the server exits. "Debug server" attaches once rdbg is listening.
+			"label": "debug_server",
+			"type": "shell",
+			"command": "make debug_server",
+			"isBackground": true,
+			"presentation": {
+				"panel": "dedicated",
+				"reveal": "always"
+			},
+			"problemMatcher": {
+				"owner": "rdbg",
+				"pattern": {
+					"regexp": "^__never_matches__$"
+				},
+				"background": {
+					"activeBegins": true,
+					"beginsPattern": "docker",
+					"endsPattern": "Debugger can attach"
+				}
+			}
+		}
+	]
+}

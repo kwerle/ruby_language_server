@@ -28,6 +28,46 @@ describe RubyLanguageServer::CodeFile do
       RubyLanguageServer::CodeFile.build('uri', "class Foo\nend\n")
     end
 
+    describe 'debounced re-parsing' do
+      # A file parsed once, that waits `interval` seconds before re-parsing a same-length edit.
+      def parsed_file(text, interval:)
+        cf = RubyLanguageServer::CodeFile.build('debounce_uri', text)
+        cf.define_singleton_method(:reparse_interval) { interval }
+        cf.refresh_scopes_if_needed
+        cf
+      end
+
+      def method_names(code_file)
+        code_file.scopes.reload.where(class_type: 'method').pluck(:name)
+      end
+
+      it 'waits to re-parse an edit that keeps the line count' do
+        cf = parsed_file("class Foo\n  def one; end\nend\n", interval: 60)
+        cf.update_text("class Foo\n  def two; end\nend\n")
+        cf.refresh_scopes_if_needed
+
+        assert_equal(%w[one], method_names(cf))
+        assert(cf.refresh_root_scope, 'still marked for a re-parse')
+      end
+
+      it 're-parses at once when the line count changes' do
+        cf = parsed_file("class Foo\n  def one; end\nend\n", interval: 60)
+        cf.update_text("class Foo\n  def one; end\n  def two; end\nend\n")
+        cf.refresh_scopes_if_needed
+
+        assert_equal(%w[one two], method_names(cf).sort)
+      end
+
+      it 're-parses once the interval has passed' do
+        cf = parsed_file("class Foo\n  def one; end\nend\n", interval: 0.05)
+        cf.update_text("class Foo\n  def two; end\nend\n")
+        sleep 0.06
+        cf.refresh_scopes_if_needed
+
+        assert_equal(%w[two], method_names(cf))
+      end
+    end
+
     describe 'tags' do
       let(:tags) { code_file(source).tags }
 
@@ -37,6 +77,17 @@ describe RubyLanguageServer::CodeFile do
         assert_equal(1, code_file.tags.length)
         assert_equal('Foo', code_file.tags.last[:name])
         assert_equal(5, code_file.tags.last[:kind])
+      end
+
+      it 'returns an empty list when there is nothing to show' do
+        assert_equal([], RubyLanguageServer::CodeFile.build('nil_uri', nil).tags)
+        assert_equal([], code_file('').tags)
+        assert_equal([], code_file("# just a comment\n").tags)
+      end
+
+      it 'leaves out symbols with blank names' do
+        assert_equal([], code_file("task '' do\nend\n").tags)
+        assert_equal(['A'], code_file("class A\n  attr_accessor ''\n  attr_writer ' '\n  has_one ''\nend\n").tags.map { |tag| tag[:name] })
       end
 
       it 'should retain existing tags when text becomes unparsable' do
@@ -137,6 +188,22 @@ describe RubyLanguageServer::CodeFile do
           }
           assert_equal(expected_range, tag[:location][:range])
         end
+      end
+    end
+
+    describe 'non-ASCII text' do
+      it 'reports columns in UTF-16 code units' do
+        cf = code_file("class Foo\n  x = '😀é'; BAR = 1\nend\n")
+        tag = cf.tags.detect { |t| t[:name] == 'BAR' }
+        # BAR is at character 12, UTF-16 code unit 13 and byte 16
+        assert_equal(13, tag[:location][:range][:start][:character])
+      end
+
+      it 'reads the cursor position as UTF-16 code units' do
+        # The cursor is on 'a': character 3, UTF-16 code unit 5. Read as a character
+        # index, 5 would land on 'bc'.
+        cf = code_file("😀😀 a bc\n")
+        assert_equal(%w[a], cf.context_at_location(OpenStruct.new(line: 0, character: 5)))
       end
     end
   end

@@ -8,6 +8,32 @@ describe RubyLanguageServer::ScopeParser do
     @code_file_lines = File.new('spec/fixture_files/scope_parser.sample.rb', 'r').read
   end
 
+  describe 'variables assigned more than once' do
+    it 'records only the first assignment in each scope' do
+      RubyLanguageServer::ScopeParser.new(<<~RUBY)
+        class Foo
+          def bar
+            x = 1
+            x = 2
+          end
+
+          def baz
+            x = 3
+          end
+        end
+      RUBY
+
+      assert_equal([['x', 3, 'Foo#bar'], ['x', 8, 'Foo#baz']],
+                   RubyLanguageServer::ScopeData::Variable.order(:line).map { |v| [v.name, v.line, v.scope.path] })
+    end
+
+    it 'does not repeat top-level variables when a parse reuses the root scope' do
+      2.times { RubyLanguageServer::ScopeParser.new("top = 1\nclass Foo\nend\n") }
+
+      assert_equal(1, RubyLanguageServer::ScopeData::Variable.where(name: 'top').count)
+    end
+  end
+
   describe 'Small file' do
     describe 'normal parsing' do
       before do
@@ -26,6 +52,10 @@ describe RubyLanguageServer::ScopeParser do
 
         it 'should add methods' do
           assert_equal(%w[zoo zor], zar.children.map(&:name).sort)
+        end
+
+        it 'marks them as class methods' do
+          assert_equal({ 'zoo' => true, 'zor' => true }, zar.children.to_h { |child| [child.name, child.class_method] })
         end
       end
 
@@ -283,6 +313,31 @@ describe RubyLanguageServer::ScopeParser do
         RubyLanguageServer.logger.instance_variable_get(:@logdev)&.dev&.flush
         refute_match(/Exception in prism parsing/, File.read('test.log'))
       end
+    end
+  end
+
+  describe 'class << self' do
+    it 'marks only the methods directly inside it as class methods' do
+      RubyLanguageServer::ScopeParser.new(<<~RUBY)
+        class Foo
+          class << self
+            def make; end
+
+            class Nested
+              def instance_method; end
+            end
+          end
+
+          class << some_object
+            def not_ours; end
+          end
+
+          def regular; end
+        end
+      RUBY
+      class_methods = RubyLanguageServer::ScopeData::Scope.method_scopes.to_h { |scope| [scope.name, scope.class_method] }
+
+      assert_equal({ 'make' => true, 'instance_method' => false, 'not_ours' => false, 'regular' => false }, class_methods)
     end
   end
 end

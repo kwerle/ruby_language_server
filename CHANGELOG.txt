@@ -1,5 +1,35 @@
 # Changelog
 
+#### 0.9.9 Tue Nov 17 08:09:13 PST 2026
+
+* Hover: show what a name refers to, from the existing index
+* Find definitions and completions inherited from superclasses
+* Resolve a receiver constant through the enclosing namespaces, so Bar.baz inside module Foo finds Foo::Bar. A leading :: looks only at the top level
+* Methods defined inside class << self are class methods
+* Top-level variables now complete. A completion with no candidates returns null
+* Positions are counted in UTF-16 code units, as LSP requires, so ranges are right on lines with non-ASCII text such as é or emoji
+* Definition results point at the column where the name is defined, not column 0
+* Positions now use the right line when finding the scope for completions and definitions. LSP lines are 0-based
+* Document symbols: return [] when there are none, and leave out symbols with blank names, which made VS Code reject the whole list
+* Read LSP headers properly: any order or case, and more than one header. Exit when the client closes the stream
+* Keep the index in step with files created, changed or deleted outside the editor, when the client supports watched files
+* The project scan uses rootUri (or the first workspace folder), not the deprecated rootPath
+* The project scan skips only spec and test files and vendor/. It used to also skip files such as inspect.rb and latest.rb
+* The project scan logs and skips a file it can't index, instead of retrying it forever
+* Looking up a file the server hasn't seen no longer stores an empty record for it
+* Child scopes are matched by path and only within the same file
+* A quote in the word being completed no longer causes an SQL error
+* Module completions are logged at debug level, not error
+* Faster: indexing makes far fewer queries (about 25% quicker), a definition lookup makes about half as many, and a file is re-parsed at most once a second while you type within a line (set RUBY_LANGUAGE_SERVER_REPARSE_INTERVAL; 0 turns this off)
+* Reply to requests the server doesn't handle with a MethodNotFound error, instead of never replying
+* Advertise only the capabilities the server implements: definitions, document symbols, hover and completion. Nothing a client could use was removed
+* The initialize result now includes serverInfo (name and version)
+* Handle the exit notification: exit 0 after shutdown, 1 otherwise. Requests after shutdown get an InvalidRequest error
+* A request whose handler raises gets an InternalError (-32603) reply right away, instead of null after 15 seconds. Only a locked database is retried, briefly
+* The SQLite lock timeout is now 5 seconds. It was 30 ms, because the value was read as milliseconds
+* The Docker image runs as non-root UID 1000
+* The database and debug log moved to /data (set by RUBY_LANGUAGE_SERVER_DATA_DIR), so the container works with --read-only --tmpfs /data:uid=1000,gid=1000
+
 #### 0.9.8 Sun Nov 15 17:10:46 PST 2026
 
 * Fix Content-Length to count bytes, not characters, so replies with non-ASCII text no longer corrupt the LSP stream
@@ -43,7 +73,7 @@
 * Add parameters for methods (alpha)
 * Add RSpec 'let' and 'let!' variable capture to scope parser
 * Improve test coverage with SimpleCov/rcov support
-* Update Ruby to 3.3 (4.0 has some gem build issues)
+* Update Ruby to 3.3 (4.0 has some gem build issues). Ruby 4.0 has been required since 0.9.4
 * Update ActiveRecord gem to 8.1
 * Migrated from Ripper to Prism gem
 
