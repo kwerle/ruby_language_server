@@ -142,7 +142,7 @@ module RubyLanguageServer
         class_and_module_types = [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE]
 
         words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).closest_to(word).limit(20)
-        RubyLanguageServer.logger.error("module_completions: #{words.as_json}")
+        RubyLanguageServer.logger.debug { "module_completions: #{words.as_json}" }
         # words.to_a.sort_by(&:depth).each_with_object({}){|a_word, hash| hash[a_word.name] = {depth: a_word.depth, type: a_word.class_type} }
         good_words = FuzzyMatch.new(words.to_a, read: :name, threshold: 0.01).find_all(word).slice(0..10) || []
         good_words.to_h { |w| [w.name, {depth: w.depth, type: w.class_type}] }
