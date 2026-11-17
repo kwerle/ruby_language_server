@@ -72,6 +72,24 @@ describe RubyLanguageServer::Server do
       refute_nil(project_manager)
       assert_instance_of RubyLanguageServer::ProjectManager, project_manager
     end
+
+    it 'scans under rootUri when rootPath is missing' do
+      server.on_initialize({ 'rootPath' => nil, 'rootUri' => 'file:///test/only%20uri' })
+
+      assert_equal('file:///test/only%20uri/', server.instance_variable_get(:@project_manager).scan_root_uri)
+    end
+
+    it 'falls back to the first workspace folder' do
+      server.on_initialize({ 'workspaceFolders' => [{ 'uri' => 'file:///test/folder', 'name' => 'folder' }] })
+
+      assert_equal('file:///test/folder/', server.instance_variable_get(:@project_manager).scan_root_uri)
+    end
+
+    it 'derives the root path from a file URI' do
+      assert_equal('/test/only uri', server.send(:path_from_file_uri, 'file:///test/only%20uri'))
+      assert_nil(server.send(:path_from_file_uri, 'untitled:foo'))
+      assert_nil(server.send(:path_from_file_uri, nil))
+    end
   end
 
   describe '#on_initialized' do

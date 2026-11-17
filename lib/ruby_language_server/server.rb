@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'uri'
 
 # Deal with the various languageserver calls.
 module RubyLanguageServer
@@ -11,8 +12,10 @@ module RubyLanguageServer
     def on_initialize(params)
       RubyLanguageServer.logger.info("on_initialize: #{params}")
       RubyLanguageServer::CodeFile.all # Just to warm up active_record.
-      root_path = params['rootPath']
-      root_uri = params['rootUri']
+      # rootPath and rootUri are deprecated in favor of workspaceFolders. Only the first
+      # folder is indexed.
+      root_uri = params['rootUri'] || params.dig('workspaceFolders', 0, 'uri')
+      root_path = params['rootPath'] || path_from_file_uri(root_uri)
       @project_manager = ProjectManager.new(root_path, root_uri)
       @project_manager.scan_all_project_files
       @client_capabilities = params['capabilities'] || {}
@@ -130,6 +133,12 @@ module RubyLanguageServer
     end
 
     private
+
+    def path_from_file_uri(uri)
+      return nil unless uri&.start_with?('file://')
+
+      URI.decode_uri_component(URI(uri).path)
+    end
 
     def uri_from_params(params)
       textDocument = params['textDocument']

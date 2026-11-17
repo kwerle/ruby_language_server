@@ -46,7 +46,8 @@ module RubyLanguageServer
       self.class.root_path = path if self.class.root_path.nil?
       self.class.root_uri = uri if uri
 
-      @root_uri = "file://#{path}"
+      # The URI the editor uses for the project root. The scan maps container paths onto it.
+      @root_uri = uri || "file://#{path}"
       # This is {uri: code_file} where content stuff is like
       # @additional_gems_installed = false
       # @additional_gem_mutex = Mutex.new
@@ -55,6 +56,12 @@ module RubyLanguageServer
     # def diagnostics_ready?
     #   @additional_gem_mutex.synchronize { @additional_gems_installed }
     # end
+
+    # The prefix the background scan puts in front of each file's path relative to the
+    # project root: the client's rootUri, or file:// + rootPath, with a trailing slash.
+    def scan_root_uri
+      @root_uri.end_with?('/') ? @root_uri : "#{@root_uri}/"
+    end
 
     def text_for_uri(uri)
       code_file = code_file_for_uri(uri)
@@ -94,8 +101,7 @@ module RubyLanguageServer
     def scan_all_project_files
       project_ruby_files = Dir.glob("#{self.class.root_path}**/*.rb")
       RubyLanguageServer.logger.debug('Threading up!')
-      root_uri = @root_uri
-      root_uri += '/' unless root_uri.end_with? '/'
+      root_uri = scan_root_uri
       # Using fork because this is run in a docker container that has fork.
       # If you want to run this on some platform without fork, fork the code and PR it :-)
       fork_id = fork do
