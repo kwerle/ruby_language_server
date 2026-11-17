@@ -81,6 +81,22 @@ describe RubyLanguageServer::ProjectManager do
 
   let(:project_manager) { RubyLanguageServer::ProjectManager.new('/proj', 'file:///foo/') }
 
+  describe 'background scan without fork' do
+    it 'runs the scan in a thread when the platform cannot fork' do
+      Dir.mktmpdir do |dir|
+        File.write(File.join(dir, 'threaded.rb'), "class Threaded\nend\n")
+        with_project_environment_root("#{dir}/") do
+          pm = RubyLanguageServer::ProjectManager.new(dir, 'file:///host/')
+          pm.define_singleton_method(:can_fork?) { false }
+          scan = pm.scan_all_project_files
+          assert_kind_of(Thread, scan)
+          scan.join(10)
+          assert(RubyLanguageServer::CodeFile.where('uri LIKE ?', '%/threaded.rb').exists?, 'the thread indexed the file')
+        end
+      end
+    end
+  end
+
   describe 'ProjectManager' do
     it 'must init' do
       refute_nil(project_manager)

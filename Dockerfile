@@ -12,21 +12,13 @@ LABEL maintainer="kurt@CircleW.org"
 
 # Needed for byebug and some other gems
 RUN apt-get update && apt-get install -y \
-    curl make g++ sqlite3 libsqlite3-dev libyaml-dev linux-libc-dev build-essential ncurses-bin unzip pkg-config file \
+    make g++ sqlite3 libsqlite3-dev libyaml-dev linux-libc-dev build-essential ncurses-bin pkg-config file \
     && rm -rf /var/lib/apt/lists/*
 # changes as of ruby 4:
 # ncurses for guard
 # linux-headers to build some io code - maybe to do with sockets
 
-WORKDIR /usr/local/src
-RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip
-RUN unzip master.zip
-WORKDIR /usr/local/src/SQLite-Levenshtein-master
-RUN ./configure
-RUN make install
-
 WORKDIR /app
-RUN rm -rf /usr/local/src
 
 # We expect the target project to be mounted here:
 ENV RUBY_LANGUAGE_SERVER_PROJECT_ROOT=/project/
