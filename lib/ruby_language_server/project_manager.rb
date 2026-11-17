@@ -124,8 +124,9 @@ module RubyLanguageServer
           end
         end
       end
-      RubyLanguageServer.logger.debug("Forked process id to look at other files: #{fork_id}")
-      Process.detach(fork_id)
+      RubyLanguageServer.logger.debug("Background scan: #{fork_id.inspect}")
+      Process.detach(fork_id) if fork_id.is_a?(Integer)
+      fork_id
     end
 
     # returns diagnostic info (if possible)
@@ -260,6 +261,23 @@ module RubyLanguageServer
     end
 
     private
+
+    # Runs the block in a child process where the platform can fork (Docker, Linux,
+    # macOS), and returns its pid. Elsewhere, such as Windows, runs it in a thread and
+    # returns the thread. Used by scan_all_project_files, so the scan never blocks requests.
+    def fork(&)
+      return super if can_fork?
+
+      Thread.new do
+        yield
+      rescue StandardError => e
+        RubyLanguageServer.logger.error("Background scan failed: #{e.class}: #{e}")
+      end
+    end
+
+    def can_fork?
+      Process.respond_to?(:fork)
+    end
 
     # Convert a collection of scopes or variables to location hashes
     def scope_or_variable_to_locations(items)

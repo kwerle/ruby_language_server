@@ -44,6 +44,11 @@ docker run --rm -i --read-only --tmpfs /data:uid=1000,gid=1000 \
 Docker mounts a plain `--tmpfs` as root-owned and not writable by other users, so the
 `uid=1000,gid=1000` options are needed.
 
+Outside Docker (installed as a gem), the server needs no native libraries beyond its gems.
+It keeps its database in a temporary directory that is removed when it exits, unless
+`/data` is writable or `RUBY_LANGUAGE_SERVER_DATA_DIR` is set. On platforms without `fork`,
+such as Windows, the background project scan runs in a thread instead.
+
 # Compatibility
 
 The server stays backward compatible with the protocol clients use today. Removing or
