@@ -71,9 +71,11 @@ module RubyLanguageServer
       @project_manager.possible_definitions(uri, position)
     end
 
+    # The server has no diagnostics of its own (RuboCop was removed in 0.4.0), so this
+    # always publishes an empty list. LSP requires an array here, never null.
     def send_diagnostics(uri, text)
-      hash = @project_manager.update_document_content(uri, text)
-      io.send_notification('textDocument/publishDiagnostics', uri:, diagnostics: hash)
+      @project_manager.update_document_content(uri, text)
+      io.send_notification('textDocument/publishDiagnostics', uri:, diagnostics: [])
     end
 
     def on_textDocument_didOpen(params)

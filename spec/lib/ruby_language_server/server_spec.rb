@@ -188,7 +188,7 @@ describe RubyLanguageServer::Server do
 
       assert_equal 'textDocument/publishDiagnostics', captured_method
       assert_equal 'file:///test.rb', captured_args[:uri]
-      assert captured_args.key?(:diagnostics)
+      assert_equal [], captured_args[:diagnostics]
     end
   end
 
@@ -223,7 +223,7 @@ describe RubyLanguageServer::Server do
 
       assert_equal 'textDocument/publishDiagnostics', captured_method
       assert_equal 'file:///test.rb', captured_args[:uri]
-      assert captured_args.key?(:diagnostics)
+      assert_equal [], captured_args[:diagnostics]
     end
   end
 
@@ -381,7 +381,21 @@ describe RubyLanguageServer::Server do
 
       assert_equal 'textDocument/publishDiagnostics', captured_method
       assert_equal uri, captured_args[:uri]
-      assert captured_args.key?(:diagnostics)
+      assert_equal [], captured_args[:diagnostics]
+    end
+
+    it 'sends an empty array when the text has not changed' do
+      uri = 'file:///test.rb'
+      text = 'class Test\nend'
+      sent = []
+      test_io = Object.new
+      test_io.define_singleton_method(:send_notification) { |_method, args| sent << args }
+      server.io = test_io
+
+      server.send_diagnostics(uri, text)
+      server.send_diagnostics(uri, text)
+
+      assert_equal([[], []], sent.map { |args| args[:diagnostics] })
     end
   end
 end
