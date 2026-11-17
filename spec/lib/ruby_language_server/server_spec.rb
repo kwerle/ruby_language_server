@@ -29,7 +29,7 @@ describe RubyLanguageServer::Server do
       assert_includes result.keys, :capabilities
 
       capabilities = result[:capabilities]
-      assert_equal %i[textDocumentSync definitionProvider documentSymbolProvider completionProvider].sort,
+      assert_equal %i[textDocumentSync definitionProvider documentSymbolProvider hoverProvider completionProvider].sort,
                    capabilities.keys.sort
       assert_equal 1, capabilities[:textDocumentSync]
       assert_equal true, capabilities[:definitionProvider]
@@ -56,6 +56,7 @@ describe RubyLanguageServer::Server do
         textDocumentSync: %i[on_textDocument_didOpen on_textDocument_didChange],
         definitionProvider: %i[on_textDocument_definition],
         documentSymbolProvider: %i[on_textDocument_documentSymbol],
+        hoverProvider: %i[on_textDocument_hover],
         completionProvider: %i[on_textDocument_completion]
       }
       server.on_initialize(params)[:capabilities].each_key do |capability|
@@ -93,7 +94,12 @@ describe RubyLanguageServer::Server do
   end
 
   describe '#on_textDocument_hover' do
-    it 'returns empty hash' do
+    before do
+      server.on_initialize({ 'rootPath' => '/test/project', 'rootUri' => 'file:///test/project' })
+    end
+
+    it 'returns nil when there is nothing under the cursor' do
+      server.instance_variable_get(:@project_manager).update_document_content('file:///test.rb', "\n")
       params = {
         'textDocument' => { 'uri' => 'file:///test.rb' },
         'position' => { 'line' => 0, 'character' => 0 }
@@ -101,6 +107,20 @@ describe RubyLanguageServer::Server do
       result = server.on_textDocument_hover(params)
 
       assert_nil result
+    end
+
+    it 'returns markdown for a method' do
+      project_manager = server.instance_variable_get(:@project_manager)
+      project_manager.update_document_content('file:///hover.rb', "class Foo\n  def bar(a)\n  end\nend\nfoo.bar(1)\n")
+      project_manager.tags_for_uri('file:///hover.rb') # parse it
+      params = {
+        'textDocument' => { 'uri' => 'file:///hover.rb' },
+        'position' => { 'line' => 4, 'character' => 5 }
+      }
+      result = server.on_textDocument_hover(params)
+
+      assert_equal 'markdown', result[:contents][:kind]
+      assert_includes result[:contents][:value], 'def bar(a)'
     end
   end
 

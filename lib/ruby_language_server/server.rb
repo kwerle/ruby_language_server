@@ -26,6 +26,7 @@ module RubyLanguageServer
           textDocumentSync: 1,
           definitionProvider: true,
           documentSymbolProvider: true,
+          hoverProvider: true,
           completionProvider: {
             triggerCharacters: ['.', '::']
           }
@@ -48,9 +49,8 @@ module RubyLanguageServer
     end
 
     def on_textDocument_hover(params)
-      RubyLanguageServer.logger.debug('on_textDocument_hover')
-      RubyLanguageServer.logger.debug(params)
-      nil # Not implemented, and not advertised. null is a valid "no hover" result.
+      RubyLanguageServer.logger.debug("on_textDocument_hover #{params}")
+      @project_manager.hover_at(uri_from_params(params), postition_from_params(params))
     end
 
     def on_textDocument_documentSymbol(params)
