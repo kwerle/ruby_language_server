@@ -64,4 +64,50 @@ describe RubyLanguageServer::ScopeData::Scope do
       assert_equal(RubyLanguageServer::ScopeData::Base::TYPE_BLOCK, root_scope.self_and_descendants.for_line(19).by_path_length.first.class_type)
     end
   end
+
+  describe '#descendants' do
+    def scopes_for(text, uri)
+      code_file = RubyLanguageServer::CodeFile.build(uri, text)
+      code_file.refresh_scopes_if_needed
+      code_file.scopes
+    end
+
+    it 'includes nested scopes but not siblings that share a prefix' do
+      scopes = scopes_for(<<~RUBY, 'prefix_uri')
+        class Foo
+          def baz; end
+          class Bar; end
+        end
+        class FooBar
+          def qux; end
+        end
+      RUBY
+      foo = scopes.find_by(path: 'Foo')
+
+      assert_equal(%w[Foo#baz Foo::Bar], foo.descendants.pluck(:path).sort)
+      assert_equal(%w[Foo Foo#baz Foo::Bar], foo.self_and_descendants.pluck(:path).sort)
+    end
+
+    it 'treats _ and % in the path literally' do
+      scopes = scopes_for(<<~RUBY, 'wildcard_uri')
+        module A_B
+          def inside; end
+        end
+        module AXB
+          def outside; end
+        end
+      RUBY
+
+      assert_equal(%w[A_B#inside], scopes.find_by(path: 'A_B').descendants.pluck(:path))
+    end
+
+    it 'stays in its own file' do
+      scopes_for("class Shared\n  def here; end\nend\n", 'here_uri')
+      scopes_for("class Shared\n  def there; end\nend\n", 'there_uri')
+      here_scopes = RubyLanguageServer::CodeFile.find_by(uri: 'here_uri').scopes
+
+      assert_equal(%w[Shared#here], here_scopes.find_by(path: 'Shared').descendants.pluck(:path))
+      assert_equal(%w[Shared Shared#here], here_scopes.root_scope.descendants.pluck(:path).sort)
+    end
+  end
 end
