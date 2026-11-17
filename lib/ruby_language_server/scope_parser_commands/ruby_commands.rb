@@ -41,6 +41,15 @@ module RubyLanguageServer
         ruby_command_add_attr(line, column, names, false, true)
       end
 
+      def on_include_command(_line, _args, rest)
+        # Extract the module name(s) from the include statement
+        module_names = rest.flatten.select { |o| o.instance_of? String }
+        module_names.each do |module_name|
+          @current_scope.add_included_module(module_name)
+          @current_scope.save!
+        end
+      end
+
       private
 
       def ruby_command_names(rest)
