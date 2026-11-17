@@ -12,6 +12,10 @@ if ENV['COVERAGE']
   end
 end
 
+# Re-parse on every request, so specs see each edit right away. The debounce specs set
+# their own interval.
+ENV['RUBY_LANGUAGE_SERVER_REPARSE_INTERVAL'] ||= '0'
+
 require 'debug'
 require 'ostruct'
 require_relative '../lib/ruby_language_server'
