@@ -246,16 +246,6 @@ module RubyLanguageServer
 
     private
 
-    # Runs the block with @in_singleton_class set, restoring it afterwards. A class or
-    # module nested inside class << self starts fresh.
-    def in_singleton_class(value)
-      saved = @in_singleton_class
-      @in_singleton_class = value
-      yield
-    ensure
-      @in_singleton_class = saved
-    end
-
     def extract_parameters_data(params_node)
       return [] unless params_node
 
@@ -444,6 +434,16 @@ module RubyLanguageServer
         end
       end
       add_variable(name, line, column, scope)
+    end
+
+    # Runs the block with @in_singleton_class set, restoring it afterwards. A class or
+    # module nested inside class << self starts fresh.
+    def in_singleton_class(value)
+      saved = @in_singleton_class
+      @in_singleton_class = value
+      yield
+    ensure
+      @in_singleton_class = saved
     end
 
     def type_is_class_or_module(type)
