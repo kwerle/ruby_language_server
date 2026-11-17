@@ -6,8 +6,6 @@ FuzzyMatch.engine = :amatch # This should be in a config somewhere
 
 module RubyLanguageServer
   class ProjectManager
-    attr_reader :uri_code_file_hash
-
     # GoodCop wants to know where to find its config.  So here we are.
     ROOT_PATH_MUTEX = Mutex.new
     @_root_path = nil
@@ -73,10 +71,6 @@ module RubyLanguageServer
       code_file = code_file_for_uri(uri)
       RubyLanguageServer.logger.error('code_file.nil?!!!!!!!!!!!!!!') if code_file.nil?
       code_file&.root_scope
-    end
-
-    def all_scopes
-      RubyLanguageServer::ScopeData::Scope.all
     end
 
     # Return the list of scopes [deepest, parent, ..., Object]
@@ -337,16 +331,6 @@ module RubyLanguageServer
       !/[a-z]/.match?(name)
     end
 
-    # Check if the context represents a namespace reference (Foo::Bar) rather than a method call (Foo.bar)
-    # Class/module lookups always start with uppercase letters, method calls never do
-    def namespace_reference?(_uri, _position, context)
-      return false if context.length < 2
-
-      # If all parts start with uppercase, it's a namespace reference (Foo::Bar)
-      # If first part is lowercase, it's a method call (foo.bar)
-      context.all? { |part| /\A[A-Z]/.match?(part) }
-    end
-
     # Guess if a receiver name is likely a class name based on idiomatic Ruby conventions.
     # This is a heuristic and not 100% accurate (e.g., FOO could be a constant holding an instance).
     # Returns true for names like "Foo" or "FooBar" (starts with uppercase, has lowercase letters).
@@ -361,10 +345,6 @@ module RubyLanguageServer
 
     def code_file_for_uri(uri)
       CodeFile.find_by_uri(uri) || CodeFile.build(uri, nil)
-    end
-
-    def filename_relative_to_project(filename)
-      filename.gsub(self.class.root_uri, self.class.root_path)
     end
   end
 end

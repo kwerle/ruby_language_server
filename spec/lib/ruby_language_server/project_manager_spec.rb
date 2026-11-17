@@ -186,7 +186,7 @@ describe RubyLanguageServer::ProjectManager do
     it 'lists them appropriately' do
       project_manager.update_document_content('uri', rails_file_text)
       project_manager.scopes_at('uri', OpenStruct.new(line: 1)) # heat up the scopes
-      scope = project_manager.all_scopes.find_by(name: :Foo)
+      scope = RubyLanguageServer::ScopeData::Scope.find_by(name: :Foo)
       project_manager.scope_definitions_for('bar', scope, 'uri')
       assert_equal([{uri: 'uri', range: {start: {line: 1, character: 1}, end: {line: 1, character: 1}}}], project_manager.scope_definitions_for('@baz', scope, 'uri'))
     end

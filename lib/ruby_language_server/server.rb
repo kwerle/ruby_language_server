@@ -8,10 +8,6 @@ module RubyLanguageServer
     Position = Struct.new('Position', :line, :character)
     attr_accessor :io
 
-    def initialize(mutex)
-      @mutex = mutex
-    end
-
     def on_initialize(params)
       RubyLanguageServer.logger.info("on_initialize: #{params}")
       RubyLanguageServer::CodeFile.all # Just to warm up active_record.

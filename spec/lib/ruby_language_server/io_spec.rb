@@ -10,7 +10,6 @@ class TestRubyLanguageServerIO < Minitest::Test
     @fake_in = StringIO.new
     @fake_out = StringIO.new
     @server = Object.new
-    @mutex = Object.new
   end
 
   def test_initialize_sets_up_stdio_streams_and_assigns_server_io
@@ -21,9 +20,8 @@ class TestRubyLanguageServerIO < Minitest::Test
     fake_in = @fake_in
     fake_out = @fake_out
     test_io_class = Class.new(RubyLanguageServer::IO) do
-      define_method(:initialize) do |server, mutex|
+      define_method(:initialize) do |server|
         @server = server
-        @mutex = mutex
         server.io = self
         # Call configure_io but skip the loop
         send(:in=, fake_in)
@@ -37,7 +35,7 @@ class TestRubyLanguageServerIO < Minitest::Test
     server.define_singleton_method(:io) { @io }
 
     # No need for a thread since we're not looping
-    test_io_class.new(server, @mutex)
+    test_io_class.new(server)
 
     assert_instance_of test_io_class, server.io
   end
@@ -264,7 +262,7 @@ class TestRubyLanguageServerIO < Minitest::Test
     io = RubyLanguageServer::IO.allocate
     io.send(:in=, StringIO.new(input))
     io.send(:out=, @fake_out)
-    io.instance_variable_set(:@server, RubyLanguageServer::Server.new(Mutex.new))
+    io.instance_variable_set(:@server, RubyLanguageServer::Server.new)
     io.define_singleton_method(:exit!) { |status = 1| raise "ran out of input (exit!(#{status}))" }
     io
   end
