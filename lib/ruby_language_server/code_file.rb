@@ -134,7 +134,7 @@ module RubyLanguageServer
       line = lines[position.line]
       return [] if line.nil? || line.strip.empty?
 
-      LineContext.for(line, position.character)
+      LineContext.for(line, LineContext.character_index(line, position.character))
     end
   end
 end

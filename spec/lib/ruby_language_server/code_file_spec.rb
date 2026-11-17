@@ -139,5 +139,21 @@ describe RubyLanguageServer::CodeFile do
         end
       end
     end
+
+    describe 'non-ASCII text' do
+      it 'reports columns in UTF-16 code units' do
+        cf = code_file("class Foo\n  x = '😀é'; BAR = 1\nend\n")
+        tag = cf.tags.detect { |t| t[:name] == 'BAR' }
+        # BAR is at character 12, UTF-16 code unit 13 and byte 16
+        assert_equal(13, tag[:location][:range][:start][:character])
+      end
+
+      it 'reads the cursor position as UTF-16 code units' do
+        # The cursor is on 'a': character 3, UTF-16 code unit 5. Read as a character
+        # index, 5 would land on 'bc'.
+        cf = code_file("😀😀 a bc\n")
+        assert_equal(%w[a], cf.context_at_location(OpenStruct.new(line: 0, character: 5)))
+      end
+    end
   end
 end

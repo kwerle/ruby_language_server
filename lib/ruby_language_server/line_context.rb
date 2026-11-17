@@ -17,6 +17,19 @@
 
 module RubyLanguageServer
   module LineContext
+    # LSP Position.character counts UTF-16 code units. Returns the matching index into the
+    # Ruby string, which counts characters. They differ for characters outside the BMP,
+    # such as emoji, which take two code units.
+    def self.character_index(line, utf16_offset)
+      units = 0
+      line.each_char.with_index do |char, index|
+        return index if units >= utf16_offset
+
+        units += char.ord > 0xFFFF ? 2 : 1
+      end
+      line.length
+    end
+
     # This will not work if the search starts on the ending ? of "method?".  Bummer.
     def self.for(line, position)
       # Grab just the last part of the line - from the index onward
