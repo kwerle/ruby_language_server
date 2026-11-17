@@ -320,7 +320,7 @@ module RubyLanguageServer
       matches = []
       while check_scope
         check_scope.variables.each do |variable|
-          matches << Location.hash(uri, variable.line, 1) if variable.name == name
+          matches << Location.hash(uri, variable.line, variable.column.to_i) if variable.name == name
         end
         check_scope = check_scope.parent
       end
@@ -356,7 +356,7 @@ module RubyLanguageServer
       ActiveRecord::Associations::Preloader.new(records: items, associations: :code_file).call
       items.reject { |item| item.code_file.nil? }.map do |item|
         line = item.respond_to?(:top_line) ? item.top_line : item.line
-        Location.hash(item.code_file.uri, line, 1)
+        Location.hash(item.code_file.uri, line, item.column.to_i)
       end
     end
 
@@ -375,7 +375,7 @@ module RubyLanguageServer
         matching_variable = current.variables.where(name: name).includes(:code_file).find(&:code_file)
         if matching_variable
           line = matching_variable.respond_to?(:top_line) ? matching_variable.top_line : matching_variable.line
-          return [Location.hash(matching_variable.code_file.uri, line, 1)]
+          return [Location.hash(matching_variable.code_file.uri, line, matching_variable.column.to_i)]
         end
 
         current = current.parent
