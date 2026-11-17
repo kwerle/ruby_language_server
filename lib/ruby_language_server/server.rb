@@ -15,6 +15,7 @@ module RubyLanguageServer
       root_uri = params['rootUri']
       @project_manager = ProjectManager.new(root_path, root_uri)
       @project_manager.scan_all_project_files
+      @client_capabilities = params['capabilities'] || {}
       {
         # Advertise only capabilities that have an on_* handler. Requests for anything
         # else get a MethodNotFound error (see IO#process_request).
@@ -36,12 +37,26 @@ module RubyLanguageServer
 
     def on_initialized(_hash)
       RubyLanguageServer.logger.info("RubyLanguageServer::VERSION #{RubyLanguageServer::VERSION}")
+      register_file_watcher
+    end
+
+    # Ask the client to tell us when Ruby files are created, changed or deleted, so the
+    # index doesn't keep files that are gone. Only clients that support dynamic
+    # registration for workspace/didChangeWatchedFiles are asked.
+    def register_file_watcher
+      return unless @client_capabilities&.dig('workspace', 'didChangeWatchedFiles', 'dynamicRegistration')
+
+      io.send_request('client/registerCapability', registrations: [{
+                        id: 'ruby_language_server-watched-files',
+                        method: 'workspace/didChangeWatchedFiles',
+                        registerOptions: { watchers: [{ globPattern: '**/*.rb' }] }
+                      }])
     end
 
     def on_workspace_didChangeWatchedFiles(params)
-      RubyLanguageServer.logger.debug('on_workspace_didChangeWatchedFiles')
-      RubyLanguageServer.logger.debug(params)
-      {}
+      RubyLanguageServer.logger.debug("on_workspace_didChangeWatchedFiles #{params}")
+      @project_manager.watched_files_changed(params['changes'] || [])
+      nil # A notification: there is no reply.
     end
 
     def on_textDocument_hover(params)

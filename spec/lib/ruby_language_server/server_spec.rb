@@ -75,19 +75,47 @@ describe RubyLanguageServer::Server do
   end
 
   describe '#on_initialized' do
-    it 'logs version information' do
+    # An IO double that records send_request calls.
+    def recording_io
+      requests = []
+      io = Object.new
+      io.define_singleton_method(:send_request) { |method, params| requests << [method, params] }
+      io.define_singleton_method(:requests) { requests }
+      io
+    end
+
+    it 'registers a watcher for Ruby files when the client supports it' do
+      capabilities = { 'workspace' => { 'didChangeWatchedFiles' => { 'dynamicRegistration' => true } } }
+      server.on_initialize({ 'rootPath' => '/test/project', 'capabilities' => capabilities })
+      server.io = recording_io
       server.on_initialized({})
-      # Just verify it doesn't raise an error
-      assert true
+
+      method, params = server.io.requests.first
+      assert_equal 'client/registerCapability', method
+      registration = params[:registrations].first
+      assert_equal 'workspace/didChangeWatchedFiles', registration[:method]
+      assert_equal [{ globPattern: '**/*.rb' }], registration[:registerOptions][:watchers]
+    end
+
+    it 'does not register when the client does not support dynamic registration' do
+      server.on_initialize({ 'rootPath' => '/test/project', 'capabilities' => {} })
+      server.io = recording_io
+      server.on_initialized({})
+
+      assert_empty server.io.requests
     end
   end
 
   describe '#on_workspace_didChangeWatchedFiles' do
-    it 'returns nil' do
-      params = { 'changes' => [] }
-      result = server.on_workspace_didChangeWatchedFiles(params)
+    it 'passes the changes to the project manager and returns nil' do
+      server.on_initialize({ 'rootPath' => '/test/project' })
+      received = nil
+      project_manager = server.instance_variable_get(:@project_manager)
+      project_manager.define_singleton_method(:watched_files_changed) { |changes| received = changes }
+      changes = [{ 'uri' => 'file:///test/project/a.rb', 'type' => 3 }]
 
-      assert_equal({}, result)
+      assert_nil server.on_workspace_didChangeWatchedFiles({ 'changes' => changes })
+      assert_equal changes, received
     end
   end
 
