@@ -355,6 +355,26 @@ describe RubyLanguageServer::ProjectManager do
       end
     end
 
+    describe 'class << self method lookup' do
+      it 'finds a method defined in class << self through the class' do
+        project_manager.update_document_content('singleton_uri', <<~CODE_FILE)
+          class Factory
+            class << self
+              def make
+              end
+            end
+          end
+
+          Factory.make
+        CODE_FILE
+        project_manager.tags_for_uri('singleton_uri') # Force load of tags
+
+        results = project_manager.possible_definitions('singleton_uri', OpenStruct.new(line: 7, character: 9))
+
+        assert_equal([2], results.map { |r| r[:range][:start][:line] })
+      end
+    end
+
     describe 'namespaced class method lookup' do
       let(:file_with_namespaced_class_method) do
         <<~CODE_FILE
