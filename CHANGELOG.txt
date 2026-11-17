@@ -54,7 +54,7 @@
 * Add parameters for methods (alpha)
 * Add RSpec 'let' and 'let!' variable capture to scope parser
 * Improve test coverage with SimpleCov/rcov support
-* Update Ruby to 3.3 (4.0 has some gem build issues)
+* Update Ruby to 3.3 (4.0 has some gem build issues). Ruby 4.0 has been required since 0.9.4
 * Update ActiveRecord gem to 8.1
 * Migrated from Ripper to Prism gem
 
