@@ -222,13 +222,12 @@ module RubyLanguageServer
     # Visit call nodes (method calls)
     def visit_call_node(node)
       name = node.name.to_s
-      line = node.location.start_line
 
       # Handle special commands like attr_accessor, private, etc.
       # Only handle if there's no receiver (i.e., it's a method call in current scope)
       if node.receiver.nil?
         block_node = node.block if node.block.is_a?(Prism::BlockNode)
-        handle_command(name, line, node, block_node)
+        handle_command(name, node, block_node)
 
         # If the command pushed a scope for a block, pop it after visiting children
         should_pop = @command_pushed_scope
@@ -362,31 +361,38 @@ module RubyLanguageServer
       end
     end
 
-    def handle_command(name, line, node, block_node = nil)
+    # Calls on_<name>_command(node) from ScopeParserCommands, if there is one, with
+    # @current_block_node set to the call's block. Handlers read the call with
+    # command_line, command_column and command_arguments.
+    def handle_command(name, node, block_node = nil)
       method_name = "on_#{name}_command"
       if respond_to?(method_name)
-        # Extract arguments from Prism node and format for command handler
-        args = extract_command_args(node)
-        rest = extract_command_rest(node)
         @current_block_node = block_node
-        send(method_name, line, args, rest)
+        send(method_name, node)
         @current_block_node = nil
       else
         RubyLanguageServer.logger.debug("We don't have a #{method_name}")
       end
     end
 
-    # Extract arguments in format expected by command handlers
-    # Returns: [:@ident, "method_name", [line, column]]
-    def extract_command_args(node)
-      [:@ident, node.name.to_s, [node.location.start_line, column_of(node.location)]]
+    def command_line(node)
+      node.location.start_line
     end
 
-    # Extract the rest/body arguments from a call node
-    # For attr methods, this needs to extract symbol arguments
-    # For rake tasks, this needs to extract keyword hash keys
-    # For rspec commands, this needs to extract constant paths
-    def extract_command_rest(node)
+    def command_column(node)
+      column_of(node.location)
+    end
+
+    # The last line of the command's block, or its own line if it has none.
+    def command_end_line(node)
+      @current_block_node ? @current_block_node.location.end_line : command_line(node)
+    end
+
+    # The command's arguments that name things, as strings, in order:
+    # symbols (attr_reader :foo), strings (describe 'thing'), constants
+    # (describe Some::Class) and symbol keys of a keyword hash with a trailing colon
+    # (task something: [] becomes "something:").
+    def command_arguments(node)
       return [] unless node.arguments
 
       args = []

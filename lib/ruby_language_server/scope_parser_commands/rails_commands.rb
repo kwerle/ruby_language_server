@@ -3,13 +3,13 @@
 module RubyLanguageServer
   module ScopeParserCommands
     module RailsCommands
-      def rails_add_reference(line, args, rest)
-        # args: [:@ident, "has_one", [2, 2]]
-        # rest: [[:args_add_block, [[:symbol_literal, [:symbol, [:@ident, "bar", [2, 11]]]]], false]]
+      # has_one :bar adds the methods bar and bar=.
+      def rails_add_reference(node)
+        name = command_arguments(node).first
+        return if name.nil?
 
-        # Looks like the first string is gonna be the name
-        (_, _, (_, column)) = args
-        name = rest.flatten.detect { |o| o.instance_of? String }
+        line = command_line(node)
+        column = command_column(node)
         [name, "#{name}="].each do |method_name|
           push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, method_name, line, column, line)
           pop_scope
