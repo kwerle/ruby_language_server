@@ -78,7 +78,7 @@ describe RubyLanguageServer::Completion do
       context = %w[bar ba]
       context_scope = nar_naz_scope
       position_scopes = @scope_parser.root_scope.self_and_descendants.for_line(context_scope.top_line + 1)
-      completions = scope_completions_in_target_context(context, context_scope, position_scopes)
+      completions = scope_completions_in_target_context(context, position_scopes)
       # Sort for consistent comparison since order may vary
       assert_equal(["@biz", "@bottom", "Bar", "Nar", "bar", "baz", "bogus", "naz"], completions.map(&:first).sort)
     end

@@ -162,6 +162,17 @@ describe RubyLanguageServer::ProjectManager do
       expected = {isIncomplete: true, items: [{label: '@baz', kind: 7}, {label: 'Bar', kind: 9}, {label: 'bar', kind: 2}, {label: 'bar=', kind: 2}]}
       assert_equal(expected, results)
     end
+
+    it 'returns nil when there is nothing to complete' do
+      assert_nil(project_manager.completion_at('search_uri', OpenStruct.new(line: 9, character: 0)))
+    end
+
+    it 'completes top-level variables outside any scope' do
+      project_manager.update_document_content('top_level_uri', "class Foo\nend\nzebra = 1\nzeb\n")
+      results = project_manager.completion_at('top_level_uri', OpenStruct.new(line: 3, character: 2))
+
+      assert_includes(results[:items].map { |item| item[:label] }, 'zebra')
+    end
   end
 
   describe '.project_definitions_for' do

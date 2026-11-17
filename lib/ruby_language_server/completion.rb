@@ -24,13 +24,14 @@ module RubyLanguageServer
     }.freeze
 
     class << self
-      def completion(context, context_scope, position_scopes)
+      # _context_scope is unused, and kept so callers don't change.
+      def completion(context, _context_scope, position_scopes)
         RubyLanguageServer.logger.debug("completion(#{context}, #{position_scopes.map(&:name)})")
         completions =
           if context.length < 2
             scope_completions(context.first, position_scopes)
           else
-            scope_completions_in_target_context(context, context_scope, position_scopes)
+            scope_completions_in_target_context(context, position_scopes)
           end
         # RubyLanguageServer.logger.debug("completions: #{completions.as_json}")
         {
@@ -128,11 +129,10 @@ module RubyLanguageServer
         scopes.select { |scope| scope.name == name }
       end
 
-      def scope_completions_in_target_context(context, context_scope, scopes)
+      def scope_completions_in_target_context(context, scopes)
         context_word = context[-2]
         context_word = context_word.split('_').map(&:capitalize).join unless context_word.match?(/^[A-Z]/)
         context_scopes = RubyLanguageServer::ScopeData::Scope.where(name: context_word)
-        context_scopes ||= context_scope
         RubyLanguageServer.logger.debug("context_scopes: #{context_scopes.to_json}")
         # scope_completions(context.last, Array(context_scopes) + scopes.includes(:variables))
         (scope_completions(context.last, Array(context_scopes)).to_a + scope_completions(context.last, scopes.includes(:variables)).to_a).uniq.to_h

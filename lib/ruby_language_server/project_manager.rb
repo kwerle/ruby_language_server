@@ -68,9 +68,7 @@ module RubyLanguageServer
     end
 
     def root_scope_for(uri)
-      code_file = code_file_for_uri(uri)
-      RubyLanguageServer.logger.error('code_file.nil?!!!!!!!!!!!!!!') if code_file.nil?
-      code_file&.root_scope
+      code_file_for_uri(uri).scopes.root_scope
     end
 
     # Return the list of scopes [deepest, parent, ..., Object]
@@ -82,10 +80,12 @@ module RubyLanguageServer
 
     def completion_at(uri, position)
       context = context_at_location(uri, position)
-      return {} if context.blank?
+      return nil if context.blank? # null: no completions
 
-      RubyLanguageServer.logger.debug("scopes_at(uri, position) #{scopes_at(uri, position).map(&:name)}")
-      position_scopes = scopes_at(uri, position) || RubyLanguageServer::ScopeData::Scope.where(id: root_scope_for(uri).id)
+      position_scopes = scopes_at(uri, position)
+      RubyLanguageServer.logger.debug("scopes_at(uri, position) #{position_scopes.map(&:name)}")
+      # Outside every class, module, method and block, complete from the file's top level.
+      position_scopes = RubyLanguageServer::ScopeData::Scope.where(id: root_scope_for(uri)&.id) if position_scopes.empty?
       context_scope = position_scopes.first
       RubyLanguageServer::Completion.completion(context, context_scope, position_scopes)
     end
