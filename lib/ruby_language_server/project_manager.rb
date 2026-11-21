@@ -160,15 +160,13 @@ module RubyLanguageServer
       Process.detach(fork_id)
     end
 
-    # returns diagnostic info (if possible)
+    # Stores the new text. Scopes are re-parsed lazily, the next time they're needed.
     def update_document_content(uri, text)
       RubyLanguageServer.logger.debug("update_document_content: #{uri}")
-      # RubyLanguageServer.logger.error("@root_path: #{@root_path}")
       code_file = code_file_for_uri(uri)
-      return code_file.diagnostics if code_file.text == text
+      return if code_file.text == text
 
       code_file.update_text(text)
-      # diagnostics_ready? ? updated_diagnostics_for_codefile(code_file) : []
     end
 
     # Returns the context of what is being typed in the given line

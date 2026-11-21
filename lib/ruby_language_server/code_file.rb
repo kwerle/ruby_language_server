@@ -15,8 +15,6 @@ module RubyLanguageServer
     end
     has_many :variables, class_name: 'RubyLanguageServer::ScopeData::Variable', dependent: :destroy
 
-    attr_accessor :diagnostics
-
     def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
 
