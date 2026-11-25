@@ -10,6 +10,7 @@ PATH
       json
       ostruct
       prism (>= 1.8.0)
+      rbs (>= 4.0)
       sqlite3
 
 GEM

@@ -17,6 +17,8 @@ Help welcome.
 * Definitions
 * Completions
 * Document symbols
+* Hover
+* Ruby core classes (String, Array, Hash, ...) in completion and hover, from the RBS core signatures
 * Please see the [FAQ_ROADMAP.md](./FAQ_ROADMAP.md)
 
 # Editor Integrations

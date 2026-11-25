@@ -155,9 +155,21 @@ module RubyLanguageServer
           # One bad file mustn't stall the scan: log it and go on to the next.
           RubyLanguageServer.logger.error("Skipping #{container_path}: #{e.class}: #{e}\n#{e.backtrace * "\n"}")
         end
+        index_core
       end
       RubyLanguageServer.logger.debug("Forked process id to look at other files: #{fork_id}")
       Process.detach(fork_id)
+    end
+
+    # Ruby's core classes, after the project's files, which matter more. A failure is
+    # logged: the project index still works without them. Set
+    # RUBY_LANGUAGE_SERVER_CORE_INDEX=false to skip them (the specs do).
+    def index_core
+      return if ENV['RUBY_LANGUAGE_SERVER_CORE_INDEX'] == 'false'
+
+      ActiveRecord::Base.connection_pool.with_connection { CoreIndex.load! }
+    rescue StandardError => e
+      RubyLanguageServer.logger.error("Couldn't index Ruby core classes: #{e.class}: #{e}\n#{e.backtrace * "\n"}")
     end
 
     # returns diagnostic info (if possible)
@@ -221,7 +233,14 @@ module RubyLanguageServer
       context_at_location(uri, position)&.last
     end
 
+    # Locations of what the word at position refers to. Records with nowhere the editor can
+    # open, like Ruby core (CoreIndex), have no code file and are left out.
     def possible_definitions(uri, position)
+      records_to_locations(definition_records(uri, position))
+    end
+
+    # The scopes and variables the word at position refers to, the project's own first.
+    def definition_records(uri, position)
       context = context_at_location(uri, position)
       name = context&.last
       return [] if name.blank?
@@ -267,69 +286,61 @@ module RubyLanguageServer
           # Determine if it's a class/module lookup or a method call
           # If the name also looks like a class/module name, it's a namespace lookup (Foo::Bar)
           # Otherwise it's a method call (Foo.method or Foo::Bar.method)
-          return receiver_definitions_for(name, receiver_scopes) if likely_class_name?(name) || constant_name?(name)
+          return receiver_definition_records(name, receiver_scopes) if likely_class_name?(name) || constant_name?(name)
 
           # Method call - determine if it's a class method or instance method
           class_method_filter = name != 'initialize'
-          return receiver_definitions_for(name, receiver_scopes, class_method_filter)
+          return receiver_definition_records(name, receiver_scopes, class_method_filter)
 
         end
 
         # No class/module found in chain, treat as instance method call on unknown type
         # Search project-wide for all instance methods with this name
-        return project_definitions_for(name, [], false)
+        return project_definition_records(name, [], false)
       end
 
       # No receiver - search in scope chain first, then project-wide
-      scope = current_scopes.first
-      results = scope_definitions_for(name, scope, uri)
+      results = scope_variables_named(name, current_scopes.first)
       return results unless results.empty?
 
-      # Always return an array
-      project_definitions_for(name, current_scopes) || []
+      project_definition_records(name, current_scopes)
     end
 
     # Hover for the word at position: the signature of the first definition that
-    # possible_definitions finds, or nil.
+    # definition_records finds, or nil.
     def hover_at(uri, position)
-      name = context_at_location(uri, position)&.last
-      return nil if name.blank?
-
-      name = 'initialize' if name == 'new'
-      definition = possible_definitions(uri, position).first
-      record = definition && record_at(definition, name)
+      record = definition_records(uri, position).first
       markdown = record && Hover.markdown(record)
       return nil if markdown.blank?
 
       { contents: { kind: 'markdown', value: markdown } }
     end
 
-    # The scope or variable named name that a definition location points at.
-    def record_at(location, name)
-      code_file = CodeFile.find_by(uri: location[:uri])
-      return nil if code_file.nil?
-
-      line = location[:range][:start][:line] + 1 # stored lines are 1-based
-      code_file.scopes.find_by(top_line: line, name:) || code_file.variables.find_by(line:, name:)
-    end
-
     # Return variables found in the current scope.  After all, those are the important ones.
     # Should probably be private...
     def scope_definitions_for(name, scope, uri)
-      check_scope = scope
-      matches = []
-      while check_scope
-        check_scope.variables.each do |variable|
-          matches << Location.hash(uri, variable.line, variable.column.to_i) if variable.name == name
-        end
-        check_scope = check_scope.parent
-      end
-      RubyLanguageServer.logger.debug("==============>> scope_definitions_for(#{name}, #{scope.to_json}, #{uri}: #{matches.inspect} )")
-      matches
+      scope_variables_named(name, scope).map { |variable| Location.hash(uri, variable.line, variable.column.to_i) }
     end
 
     # class_method_filter is for new -> initialize
     def project_definitions_for(name, parent_scopes = [], class_method_filter = nil)
+      records_to_locations(project_definition_records(name, parent_scopes, class_method_filter))
+    end
+
+    private
+
+    # The variables named name in scope and the scopes around it, innermost first.
+    def scope_variables_named(name, scope)
+      matches = []
+      check_scope = scope
+      while check_scope
+        matches.concat(check_scope.variables.select { |variable| variable.name == name })
+        check_scope = check_scope.parent
+      end
+      matches
+    end
+
+    def project_definition_records(name, parent_scopes = [], class_method_filter = nil)
       # If no parent scope, search project-wide
       return search_project_wide(name, class_method_filter) if parent_scopes.empty?
 
@@ -347,16 +358,20 @@ module RubyLanguageServer
       search_project_wide(name, class_method_filter)
     end
 
-    private
+    # Scopes and variables with a file first, so the project's own definitions win over
+    # Ruby core (CoreIndex), which has none.
+    def with_files_first(records)
+      records = records.to_a
+      # One query for all the records' files, not one per record.
+      ActiveRecord::Associations::Preloader.new(records:, associations: :code_file).call
+      records.partition(&:code_file).flatten
+    end
 
-    # Convert a collection of scopes or variables to location hashes
-    def scope_or_variable_to_locations(items)
-      items = items.to_a
-      # One query for all the items' files, not one per item.
-      ActiveRecord::Associations::Preloader.new(records: items, associations: :code_file).call
-      items.reject { |item| item.code_file.nil? }.map do |item|
-        line = item.respond_to?(:top_line) ? item.top_line : item.line
-        Location.hash(item.code_file.uri, line, item.column.to_i)
+    # Location hashes for the records that have a file the editor can open.
+    def records_to_locations(records)
+      with_files_first(records).select(&:code_file).map do |record|
+        line = record.respond_to?(:top_line) ? record.top_line : record.line
+        Location.hash(record.code_file.uri, line, record.column.to_i)
       end
     end
 
@@ -373,10 +388,7 @@ module RubyLanguageServer
 
         # Check variables (constants) in the current scope
         matching_variable = current.variables.where(name: name).includes(:code_file).find(&:code_file)
-        if matching_variable
-          line = matching_variable.respond_to?(:top_line) ? matching_variable.top_line : matching_variable.line
-          return [Location.hash(matching_variable.code_file.uri, line, matching_variable.column.to_i)]
-        end
+        return [matching_variable] if matching_variable
 
         current = current.parent
       end
@@ -398,7 +410,7 @@ module RubyLanguageServer
         [current, *(current.class_scope? ? current.ancestor_class_scopes : [])].each do |scope|
           child_scopes = scope.children.where(name: name)
           child_scopes = child_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
-          return scope_or_variable_to_locations(child_scopes) if child_scopes.any?
+          return with_files_first(child_scopes) if child_scopes.any?
         end
 
         current = current.parent
@@ -411,8 +423,7 @@ module RubyLanguageServer
       all_scopes = RubyLanguageServer::ScopeData::Scope.where(name: name)
       all_scopes = all_scopes.where(class_method: class_method_filter) unless class_method_filter.nil?
       all_variables = RubyLanguageServer::ScopeData::Variable.where(name: name)
-      all_matches = all_scopes.to_a + all_variables.to_a
-      scope_or_variable_to_locations(all_matches)
+      with_files_first(all_scopes.to_a + all_variables.to_a)
     end
 
     # The scopes a constant path like "Bar" or "Bar::Baz" refers to from the cursor.
@@ -441,7 +452,7 @@ module RubyLanguageServer
 
     # Definitions of name inside the receiver's scopes (and their parents), or anywhere
     # in the project if there are none.
-    def receiver_definitions_for(name, receiver_scopes, class_method_filter = nil)
+    def receiver_definition_records(name, receiver_scopes, class_method_filter = nil)
       return search_project_wide(name, class_method_filter) if receiver_scopes.empty?
 
       results = receiver_scopes.flat_map { |scope| search_variables_in_scope_chain(name, scope) }

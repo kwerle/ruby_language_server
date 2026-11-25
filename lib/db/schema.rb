@@ -20,6 +20,8 @@ module Schema
           t.string  :class_type, null: false
           t.text    :parameters      # JSON string of method parameters
           t.boolean :class_method, default: false # true for class methods (def self.method)
+          t.text    :signature       # RBS overloads, one per line (core scopes only)
+          t.text    :documentation   # rdoc text (core scopes only)
         end
 
         add_index :scopes, :name
