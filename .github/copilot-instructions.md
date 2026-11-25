@@ -42,5 +42,6 @@ This project uses **Minitest**, not RSpec. Test files are located in the `spec/`
 
 You can also use make targets which automatically use `run_in_shell`:
 - `make test` - Run all tests
+- `make audit` - Check Gemfile.lock for gems with known vulnerabilities (bundler-audit)
 - `make console` - Open interactive console
 - `make shell` - Open shell in container

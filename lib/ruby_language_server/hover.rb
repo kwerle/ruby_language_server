@@ -15,11 +15,13 @@ module RubyLanguageServer
       private
 
       def scope_markdown(scope)
-        case scope.class_type
-        when ScopeData::Base::TYPE_METHOD then method_markdown(scope)
-        when ScopeData::Base::TYPE_CLASS then code_block(['class', scope.path, superclass(scope)].compact.join(' '))
-        when ScopeData::Base::TYPE_MODULE then code_block("module #{scope.path}")
-        end
+        markdown = case scope.class_type
+                   when ScopeData::Base::TYPE_METHOD then method_markdown(scope)
+                   when ScopeData::Base::TYPE_CLASS then code_block(['class', scope.path, superclass(scope)].compact.join(' '))
+                   when ScopeData::Base::TYPE_MODULE then code_block("module #{scope.path}")
+                   end
+        # Only Ruby core scopes (CoreIndex) have documentation.
+        [markdown, scope.documentation.presence].compact.join("\n\n").presence
       end
 
       def superclass(scope)
@@ -28,10 +30,17 @@ module RubyLanguageServer
 
       def method_markdown(scope)
         receiver = scope.class_method ? 'self.' : ''
+        return [code_block(rbs_signature(scope, receiver)), container_line(scope.parent)].compact.join("\n\n") if scope.signature.present?
+
         parameters = scope.parsed_parameters.map { |parameter| parameter_text(parameter) }
         signature = "def #{receiver}#{scope.name}"
         signature += "(#{parameters.join(', ')})" if parameters.any?
         [code_block(signature), container_line(scope.parent)].compact.join("\n\n")
+      end
+
+      # A Ruby core method's RBS overloads, one `def name: overload` line each.
+      def rbs_signature(scope, receiver)
+        scope.signature.lines(chomp: true).map { |overload| "def #{receiver}#{scope.name}: #{overload}" }.join("\n")
       end
 
       # Parameters are stored as { 'name' => ..., 'type' => ... } (see PrismProcessor).
