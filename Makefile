@@ -1,4 +1,4 @@
- .PHONY: image guard continuous_development console test coverage rubocop shell run_in_shell server debug_server gem gem_release
+.PHONY: image guard continuous_development console test coverage rubocop audit shell run_in_shell server debug_server gem gem_release
 PROJECT_NAME=ruby_language_server
 # The image runs as UID 1000. Dev and test containers run as root, because they write
 # coverage/ and logs into the mounted checkout, which CI runners own under another UID.
@@ -37,6 +37,10 @@ coverage: image
 
 rubocop: image
 	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "bundle exec rubocop"
+
+# Checks Gemfile.lock for gems with known vulnerabilities, using a freshly fetched ruby-advisory-db.
+audit: image
+	docker run --rm $(LOCAL_LINK) $(PROJECT_NAME) sh -c "bundle exec bundle-audit check --update"
 
 shell: image
 	./bin/run_in_shell sh

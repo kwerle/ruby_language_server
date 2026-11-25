@@ -24,6 +24,8 @@ jobs:
       run: make coverage
     - name: Run rubocop
       run: make rubocop
+    - name: Audit gems for known vulnerabilities
+      run: make audit
     - name: Extract and update coverage badge
       run: |
         # Extract coverage percentage from SimpleCov's .last_run.json
