@@ -15,6 +15,9 @@ end
 # Re-parse on every request, so specs see each edit right away. The debounce specs set
 # their own interval.
 ENV['RUBY_LANGUAGE_SERVER_REPARSE_INTERVAL'] ||= '0'
+# The project scan forks and would store all of Ruby core in the shared test database while
+# other specs run. Specs that want core call CoreIndex.load!(only: ...) themselves.
+ENV['RUBY_LANGUAGE_SERVER_CORE_INDEX'] ||= 'false'
 
 require 'debug'
 require 'ostruct'
@@ -26,9 +29,11 @@ Minitest::Reporters.use!
 module DatabaseClearing
   def setup
     super
-    RubyLanguageServer::ScopeData::Scope.destroy_all
-    RubyLanguageServer::ScopeData::Variable.destroy_all
-    RubyLanguageServer::CodeFile.destroy_all
+    # delete_all, not destroy_all: every table is emptied, so there's nothing for callbacks
+    # to do, and destroying thousands of Ruby core scopes (CoreIndex) one by one is slow.
+    RubyLanguageServer::ScopeData::Scope.delete_all
+    RubyLanguageServer::ScopeData::Variable.delete_all
+    RubyLanguageServer::CodeFile.delete_all
   end
 end
 

@@ -9,4 +9,7 @@
 
 * Pay special attention to the project's Gemfile.  Install all the gems (we can).  Integrate with gem server?
   * Full scan of installed gems?
+* ActiveSupport's core extensions (blank?, present?, 3.days) alongside the Ruby core classes. They're plain Ruby, so the existing parser can read them.
+* Go-to-definition for Ruby core methods, through a virtual document for the .rbs file.
+* Know what type a local variable holds, so `name.up` completes String methods.
 * Integrate class based scope logic.  If I'm in Foo < Bar then I should see Bar's methods at just slightly lower priority than Foo's.

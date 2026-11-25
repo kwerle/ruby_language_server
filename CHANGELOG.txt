@@ -1,5 +1,9 @@
 # Changelog
 
+#### Unreleased
+
+* Completion and hover know Ruby's core classes and modules (String, Array, Hash, Kernel, ...), with signatures and documentation from the RBS core signatures. The project's own definitions come first. Go-to-definition doesn't offer core methods yet, because their files are inside the container. Set RUBY_LANGUAGE_SERVER_CORE_INDEX=false to skip them
+
 #### 0.9.9 Tue Nov 17 08:09:13 PST 2026
 
 * Hover: show what a name refers to, from the existing index
