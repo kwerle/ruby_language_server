@@ -46,6 +46,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rbs', '>=4.0' # Ruby core class signatures and docs
   spec.add_dependency 'sqlite3'
 
+  spec.add_development_dependency 'bundler-audit' # make audit: checks Gemfile.lock against ruby-advisory-db
   spec.add_development_dependency 'debug'
   spec.add_development_dependency 'guard' # as of ruby 4: Sorry, you can't use Pry without Readline or a compatible library.
   spec.add_development_dependency 'guard-minitest'

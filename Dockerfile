@@ -12,11 +12,12 @@ LABEL maintainer="kurt@CircleW.org"
 
 # Needed for byebug and some other gems
 RUN apt-get update && apt-get install -y \
-    curl make g++ sqlite3 libsqlite3-dev libyaml-dev linux-libc-dev build-essential ncurses-bin unzip pkg-config file \
+    curl make g++ sqlite3 libsqlite3-dev libyaml-dev linux-libc-dev build-essential ncurses-bin unzip pkg-config file git \
     && rm -rf /var/lib/apt/lists/*
 # changes as of ruby 4:
 # ncurses for guard
 # linux-headers to build some io code - maybe to do with sockets
+# git for bundle-audit to fetch ruby-advisory-db (make audit)
 
 WORKDIR /usr/local/src
 RUN curl -O -L https://github.com/mateusza/SQLite-Levenshtein/archive/master.zip
