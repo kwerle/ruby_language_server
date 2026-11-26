@@ -1,5 +1,10 @@
 # Changelog
 
+#### Unreleased
+
+* Hover for methods in your project shows default values (count = 1, size: :medium) and every kind of parameter, including ones after a splat, anonymous *, ** and &, ..., and destructuring. It also shows the comment directly above a method, class or module
+* Completion no longer inserts optional keyword arguments or anonymous parameters into the snippet, and attr_writer methods take a value parameter
+
 #### 0.9.10 Tue Nov 24 23:52:32 PST 2026
 
 * Completion and hover know Ruby's core classes and modules (String, Array, Hash, Kernel, ...), with signatures and documentation from the RBS core signatures. The project's own definitions come first. Go-to-definition doesn't offer core methods yet, because their files are inside the container. Set RUBY_LANGUAGE_SERVER_CORE_INDEX=false to skip them

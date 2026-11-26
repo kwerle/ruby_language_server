@@ -16,6 +16,11 @@ module RubyLanguageServer
     include ScopeParserCommands::RailsCommands
     include ScopeParserCommands::RubyCommands
 
+    # Longest default value shown in a signature.
+    DEFAULT_TEXT_LIMIT = 30
+    # Comments above a definition that aren't documentation.
+    MAGIC_COMMENT = /\A#\s*(frozen_string_literal|encoding|coding|warn_indent|shareable_constant_value|typed|rubocop:)/i
+
     attr_reader :current_scope, :lines
 
     def initialize(lines = 1)
@@ -41,6 +46,7 @@ module RubyLanguageServer
       column = column_of(node.location)
 
       scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column, end_line, false)
+      set_documentation(scope, node)
 
       # Handle superclass
       if node.superclass
@@ -59,7 +65,8 @@ module RubyLanguageServer
       end_line = node.location.end_line
       column = column_of(node.location)
 
-      push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line, false)
+      scope = push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line, false)
+      set_documentation(scope, node)
       in_singleton_class(false) { super }
       pop_scope
     end
@@ -75,6 +82,7 @@ module RubyLanguageServer
       scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
       # def self.name, or a plain def inside class << self
       scope.class_method = is_class_method || (node.receiver.nil? && @in_singleton_class)
+      scope.documentation = documentation_for(node)
       scope.save!
 
       # Extract and store parameters
@@ -251,43 +259,76 @@ module RubyLanguageServer
       location.start_code_units_column(Encoding::UTF_16LE)
     end
 
+    def set_documentation(scope, node)
+      documentation = documentation_for(node)
+      scope.update!(documentation:) if documentation
+    end
+
+    # A method's parameters in source order, as { name:, type: } hashes, with default:
+    # (source text) for optional ones. Rest, keyword rest and block names carry their
+    # sigil, and keyword names their trailing colon. Anonymous ones are just the sigil.
     def extract_parameters_data(params_node)
       return [] unless params_node
 
-      params = []
-
-      # Required parameters
-      params_node.requireds.each do |param|
-        case param
-        when Prism::RequiredParameterNode
-          params << { name: param.name.to_s, type: 'required' }
-        when Prism::MultiTargetNode
-          # Handle destructuring - simplified as single param
-          params << { name: 'args', type: 'required' }
-        end
-      end
-
-      # Optional parameters
-      params_node.optionals.each do |param|
-        params << { name: param.name.to_s, type: 'optional' }
-      end
-
-      # Rest parameter
-      params << { name: "*#{params_node.rest.name}", type: 'rest' } if params_node.rest&.name
-
-      # Keyword parameters
-      params_node.keywords.each do |param|
-        name = param.name.to_s
-        params << { name: "#{name}:", type: 'keyword' }
-      end
-
-      # Keyword rest parameter
-      params << { name: "**#{params_node.keyword_rest.name}", type: 'keyword_rest' } if params_node.keyword_rest.is_a?(Prism::KeywordRestParameterNode) && params_node.keyword_rest.name
-
-      # Block parameter
-      params << { name: "&#{params_node.block.name}", type: 'block' } if params_node.block&.name
-
+      params = params_node.requireds.map { |param| required_parameter_data(param) }
+      params += params_node.optionals.map { |param| {name: param.name.to_s, type: 'optional', default: default_text(param.value)} }
+      params << rest_parameter_data(params_node.rest) if params_node.rest
+      params += params_node.posts.map { |param| required_parameter_data(param) }
+      params += params_node.keywords.map { |param| keyword_parameter_data(param) }
+      params << keyword_rest_parameter_data(params_node.keyword_rest) if params_node.keyword_rest
+      params << {name: "&#{params_node.block.name}", type: 'block'} if params_node.block
       params
+    end
+
+    def required_parameter_data(param)
+      # Destructuring, like def f((a, b)), is shown as written.
+      name = param.is_a?(Prism::RequiredParameterNode) ? param.name.to_s : param.slice
+      {name:, type: 'required'}
+    end
+
+    def rest_parameter_data(rest)
+      # An ImplicitRestNode is the trailing comma in a block's |a, |. Not a real parameter.
+      return {name: "*#{rest.name}", type: 'rest'} if rest.is_a?(Prism::RestParameterNode)
+
+      {name: rest.slice, type: 'rest'}
+    end
+
+    def keyword_parameter_data(param)
+      name = "#{param.name}:"
+      return {name:, type: 'keyword'} if param.is_a?(Prism::RequiredKeywordParameterNode)
+
+      {name:, type: 'optional_keyword', default: default_text(param.value)}
+    end
+
+    def keyword_rest_parameter_data(keyword_rest)
+      case keyword_rest
+      when Prism::ForwardingParameterNode then {name: '...', type: 'forwarding'}
+      when Prism::NoKeywordsParameterNode then {name: '**nil', type: 'no_keyword'}
+      else {name: "**#{keyword_rest.name}", type: 'keyword_rest'}
+      end
+    end
+
+    # The source of a default value, on one line and cut short if it is long.
+    def default_text(node)
+      text = node.slice.gsub(/\s*\n\s*/, ' ')
+      text.length > DEFAULT_TEXT_LIMIT ? "#{text[0, DEFAULT_TEXT_LIMIT - 1]}…" : text
+    end
+
+    # The # comment lines directly above node, without their leading "# ", or nil.
+    # Needs ParseResult#attach_comments!. A blank line ends the block, and magic
+    # comments and rubocop directives are left out.
+    def documentation_for(node)
+      comments = node.location.leading_comments.grep(Prism::InlineComment)
+      block = []
+      expected_line = node.location.start_line - 1
+      comments.reverse_each do |comment|
+        break unless comment.location.start_line == expected_line
+
+        block.unshift(comment)
+        expected_line -= 1
+      end
+      text = block.map(&:slice).grep_v(MAGIC_COMMENT).map { |line| line.sub(/\A#\s?/, '') }
+      text.join("\n").strip.presence
     end
 
     def visit_parameters(params_node)
@@ -310,7 +351,17 @@ module RubyLanguageServer
       end
 
       # Rest parameter
-      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, column_of(params_node.rest.location)) if params_node.rest&.name
+      add_variable(params_node.rest.name.to_s, params_node.rest.location.start_line, column_of(params_node.rest.location)) if params_node.rest.is_a?(Prism::RestParameterNode) && params_node.rest.name
+
+      # Parameters after the rest parameter, like b in def f(*a, b)
+      params_node.posts.each do |param|
+        case param
+        when Prism::RequiredParameterNode
+          add_variable(param.name.to_s, param.location.start_line, column_of(param.location))
+        when Prism::MultiTargetNode
+          extract_multi_target_variables(param)
+        end
+      end
 
       # Keyword parameters
       params_node.keywords.each do |param|
@@ -496,6 +547,7 @@ module RubyLanguageServer
       text ||= '' # empty is the same as nil - but it doesn't crash
       begin
         result = Prism.parse(text)
+        result.attach_comments!
         processor = PrismProcessor.new(text.split("\n").length)
         processor.root_scope # Initialize root scope
         result.value.accept(processor)

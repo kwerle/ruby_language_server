@@ -37,7 +37,7 @@ describe RubyLanguageServer::Hover do
   end
 
   it 'shows a method signature and where it is defined' do
-    assert_equal("```ruby\ndef add(item, count = …, *rest, key:, **options, &block)\n```\n\nIn `Shop::Cart`", hover(13, 6))
+    assert_equal("```ruby\ndef add(item, count = 1, *rest, key:, **options, &block)\n```\n\nIn `Shop::Cart`", hover(13, 6))
   end
 
   it 'marks class methods' do
@@ -62,5 +62,32 @@ describe RubyLanguageServer::Hover do
 
   it 'returns nil on a blank line' do
     assert_nil(project_manager.hover_at('hover_uri', OpenStruct.new(line: 11, character: 0)))
+  end
+
+  describe 'with doc comments' do
+    let(:source) do
+      <<~RUBY
+        # frozen_string_literal: true
+
+        # A shopping cart.
+        class Cart
+          # Adds an item.
+          #
+          # Returns the cart.
+          def add(item, *, size: :medium)
+          end
+        end
+        cart = Cart.new
+        cart.add(1)
+      RUBY
+    end
+
+    it 'shows the comment above a method, with optional keywords and their defaults' do
+      assert_equal("```ruby\ndef add(item, *, size: :medium)\n```\n\nIn `Cart`\n\nAdds an item.\n\nReturns the cart.", hover(11, 6))
+    end
+
+    it 'shows the comment above a class, without the magic comment' do
+      assert_equal("```ruby\nclass Cart\n```\n\nA shopping cart.", hover(10, 8))
+    end
   end
 end

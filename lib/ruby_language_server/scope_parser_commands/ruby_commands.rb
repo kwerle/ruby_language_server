@@ -32,10 +32,12 @@ module RubyLanguageServer
             push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, name, line, column, line)
             pop_scope
           end
-          if writer
-            push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, "#{name}=", line, column, line)
-            pop_scope
-          end
+          next unless writer
+
+          writer_scope = push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, "#{name}=", line, column, line)
+          writer_scope.set_parameters([{name: 'value', type: 'required'}])
+          writer_scope.save!
+          pop_scope
         end
       end
     end
