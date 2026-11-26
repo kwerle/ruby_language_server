@@ -64,7 +64,7 @@ module RubyLanguageServer
           case param['type']
           when 'keyword'
             "#{param['name'].delete_suffix(':')}:"
-          when 'optional'
+          when 'optional', 'optional_keyword'
             "[#{param['name']}]"
           else
             # rest, keyword_rest, block, and required params all use the name as-is
@@ -83,7 +83,9 @@ module RubyLanguageServer
           when 'keyword'
             "#{param['name'].delete_suffix(':')}: (keyword)"
           when 'optional'
-            "#{param['name']} = ... (optional)"
+            "#{param['name']} = #{param['default'] || '...'} (optional)"
+          when 'optional_keyword'
+            "#{param['name']} #{param['default'] || '...'} (optional)"
           when 'rest'
             "#{param['name']} (rest)"
           when 'keyword_rest'
@@ -106,6 +108,8 @@ module RubyLanguageServer
         tab_index = 1
 
         parameters.each do |param|
+          next unless snippet_parameter?(param)
+
           param_snippets << case param['type']
                             when 'keyword'
                               # Keyword args with placeholder for value
@@ -121,6 +125,13 @@ module RubyLanguageServer
         end
 
         "#{method_name}(#{param_snippets.join(', ')})"
+      end
+
+      # Optional keywords, ..., **nil and anonymous *, ** and & have nothing to fill in.
+      def snippet_parameter?(param)
+        return false if %w[optional_keyword forwarding no_keyword].include?(param['type'])
+
+        !%w[* ** &].include?(param['name'])
       end
 
       def scopes_with_name(name, scopes)

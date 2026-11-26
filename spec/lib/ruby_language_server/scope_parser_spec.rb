@@ -340,4 +340,76 @@ describe RubyLanguageServer::ScopeParser do
       assert_equal({ 'make' => true, 'instance_method' => false, 'not_ours' => false, 'regular' => false }, class_methods)
     end
   end
+
+  describe 'method parameters' do
+    def parameters_of(source)
+      RubyLanguageServer::ScopeParser.new(source).root_scope.self_and_descendants.find { |scope| scope.name == 'f' }.parsed_parameters
+    end
+
+    it 'keeps every kind in source order, with defaults' do
+      parameters = parameters_of("def f(a, (b, c), d = 1, *r, e, f:, g: {x: 1}, **o, &blk)\nend\n")
+      assert_equal(
+        [
+          {'name' => 'a', 'type' => 'required'},
+          {'name' => '(b, c)', 'type' => 'required'},
+          {'name' => 'd', 'type' => 'optional', 'default' => '1'},
+          {'name' => '*r', 'type' => 'rest'},
+          {'name' => 'e', 'type' => 'required'},
+          {'name' => 'f:', 'type' => 'keyword'},
+          {'name' => 'g:', 'type' => 'optional_keyword', 'default' => '{x: 1}'},
+          {'name' => '**o', 'type' => 'keyword_rest'},
+          {'name' => '&blk', 'type' => 'block'}
+        ],
+        parameters
+      )
+    end
+
+    it 'keeps anonymous parameters' do
+      assert_equal(%w[* ** &], parameters_of("def f(*, **, &)\nend\n").map { |parameter| parameter['name'] })
+    end
+
+    it 'keeps ...' do
+      assert_equal([{'name' => '...', 'type' => 'forwarding'}], parameters_of("def f(...)\nend\n"))
+    end
+
+    it 'keeps **nil' do
+      assert_equal([{'name' => '**nil', 'type' => 'no_keyword'}], parameters_of("def f(**nil)\nend\n"))
+    end
+
+    it 'shortens long defaults to one line' do
+      default = parameters_of("def f(a = [\n  'one', 'two', 'three', 'four', 'five'\n])\nend\n").first['default']
+      assert_equal(30, default.length)
+      assert(default.start_with?("[ 'one', 'two'"))
+      assert(default.end_with?('…'))
+    end
+
+    it 'adds parameters after the rest parameter as variables' do
+      RubyLanguageServer::ScopeParser.new("def f(*a, b)\nend\n")
+      assert_includes(RubyLanguageServer::ScopeData::Variable.pluck(:name), 'b')
+    end
+  end
+
+  describe 'documentation' do
+    def documentation_of(source, name)
+      RubyLanguageServer::ScopeParser.new(source)
+      RubyLanguageServer::ScopeData::Scope.find_by(name:).documentation
+    end
+
+    it 'stores the comment block directly above a method' do
+      assert_equal("Does a thing.\n\nReally.", documentation_of("class Foo\n  # Does a thing.\n  #\n  # Really.\n  def bar\n  end\nend\n", 'bar'))
+    end
+
+    it 'ignores a comment separated by a blank line' do
+      assert_nil(documentation_of("# Unrelated.\n\ndef bar\nend\n", 'bar'))
+    end
+
+    it 'leaves out magic comments and rubocop directives' do
+      assert_nil(documentation_of("# frozen_string_literal: true\n# rubocop:disable Style/Foo\nmodule Foo\nend\n", 'Foo'))
+    end
+
+    it 'stores the comment above a class or module' do
+      assert_equal('The foo.', documentation_of("# The foo.\nmodule Foo\nend\n", 'Foo'))
+      assert_equal('The bar.', documentation_of("# The bar.\nclass Bar\nend\n", 'Bar'))
+    end
+  end
 end

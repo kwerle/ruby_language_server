@@ -128,7 +128,8 @@ describe RubyLanguageServer::Completion do
       assert_equal('name:', params[0]['name'])
       assert_equal('keyword', params[0]['type'])
       assert_equal('age:', params[1]['name'])
-      assert_equal('keyword', params[1]['type'])
+      assert_equal('optional_keyword', params[1]['type'])
+      assert_equal('18', params[1]['default'])
     end
 
     it 'should generate snippet for method with parameters' do
@@ -137,6 +138,19 @@ describe RubyLanguageServer::Completion do
                                                       { 'name' => 'arg2', 'type' => 'required' }
                                                     ])
       assert_equal('simple_method(${1:arg1}, ${2:arg2})', snippet)
+    end
+
+    it 'leaves optional keywords and anonymous parameters out of the snippet' do
+      parameters = [
+        { 'name' => 'a', 'type' => 'required' },
+        { 'name' => 'size:', 'type' => 'optional_keyword', 'default' => ':medium' },
+        { 'name' => '*', 'type' => 'rest' },
+        { 'name' => '&', 'type' => 'block' }
+      ]
+      completion = RubyLanguageServer::Completion
+      assert_equal('f(${1:a})', completion.send(:generate_method_snippet, 'f', parameters))
+      assert_equal('f(a, [size:], *, &)', completion.send(:generate_method_label, 'f', parameters))
+      assert_equal('a (required), size: :medium (optional), * (rest), & (block)', completion.send(:format_parameter_details, parameters))
     end
 
     it 'should generate snippet for method with keyword parameters' do

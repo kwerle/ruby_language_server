@@ -20,7 +20,7 @@ module RubyLanguageServer
                    when ScopeData::Base::TYPE_CLASS then code_block(['class', scope.path, superclass(scope)].compact.join(' '))
                    when ScopeData::Base::TYPE_MODULE then code_block("module #{scope.path}")
                    end
-        # Only Ruby core scopes (CoreIndex) have documentation.
+        # rdoc for Ruby core (CoreIndex), or the comment above a project definition.
         [markdown, scope.documentation.presence].compact.join("\n\n").presence
       end
 
@@ -43,11 +43,15 @@ module RubyLanguageServer
         scope.signature.lines(chomp: true).map { |overload| "def #{receiver}#{scope.name}: #{overload}" }.join("\n")
       end
 
-      # Parameters are stored as { 'name' => ..., 'type' => ... } (see PrismProcessor).
-      # Rest, keyword rest and block names already carry their *, ** or &, and keyword
-      # names their trailing colon.
+      # Parameters are stored as { 'name' => ..., 'type' => ..., 'default' => ... } (see
+      # PrismProcessor). Rest, keyword rest and block names already carry their *, ** or &,
+      # and keyword names their trailing colon. Core parameters have no default.
       def parameter_text(parameter)
-        parameter['type'] == 'optional' ? "#{parameter['name']} = …" : parameter['name']
+        case parameter['type']
+        when 'optional' then "#{parameter['name']} = #{parameter['default'] || '…'}"
+        when 'optional_keyword' then "#{parameter['name']} #{parameter['default'] || '…'}"
+        else parameter['name']
+        end
       end
 
       def variable_markdown(variable)

@@ -61,5 +61,10 @@ describe RubyLanguageServer::ScopeParserCommands::RubyCommands do
       refute_includes method_names, 'secret'
       refute_includes method_names, 'password'
     end
+
+    it 'gives the writer a value parameter' do
+      writer = class_scope.children.find { |scope| scope.name == 'secret=' }
+      assert_equal([{'name' => 'value', 'type' => 'required'}], writer.parsed_parameters)
+    end
   end
 end
