@@ -38,18 +38,27 @@ fresh container, with `/data` on a tmpfs, so no database survives from one run t
   `on_textDocument_hover`). Advertise a capability in `on_initialize` only if it has a handler.
 - `ProjectManager` does the work: finding definitions, hover, completion, file changes. On
   initialize it forks a background process (`scan_all_project_files`) that indexes the
-  project's files, then Ruby core (`CoreIndex`). Specs and vendor are skipped.
+  project's files, then Ruby core (`CoreIndex`), then the project's gems (`GemIndex`).
+  Specs and vendor are skipped.
 - `CodeFile` is one file's text. It re-parses lazily (`refresh_scopes_if_needed`), at most once
   a second while you type within a line.
 - `ScopeParser` / `PrismProcessor` walk the Prism AST into `ScopeData::Scope` rows (root,
   module, class, method and block, with paths like `Foo::Bar#baz`) and `ScopeData::Variable`
   rows. Common DSLs (`attr_*`, rspec, rake, rails associations) are in
-  `scope_parser_commands/`.
+  `scope_parser_commands/`. The processor collects a file's scopes and variables in memory
+  (`PendingScope`) and `store!` writes them with `insert_all`, giving ids itself, so there
+  are no per-row saves. Block scopes with no variables inside are dropped. For a gem's file
+  (`library: true`) only classes, modules, methods and constants are kept.
 - `CoreIndex` loads the RBS core signatures (String, Array, Kernel, ...) as scopes with
   `signature` and `documentation`, and **no code file or lines**. The editor can't open the
   `.rbs` files in the container, so go-to-definition returns only records that have a
   `code_file`. Hover and completion still use core. Records with a file come first, so the
   project's own definitions win.
+- `GemIndex` reads `Gemfile.lock` and indexes each rubygems gem's `lib/**/*.rb`, taking
+  the files from the server's own bundle, the project's `vendor/bundle`, or a `.gem`
+  downloaded into the data dir and unpacked (never installed). Their code files have
+  `gem_name`/`gem_version`, and their paths are in the container, so go-to-definition
+  leaves them out too. Ranking is project, then gems, then core (`ScopeData::Base#source_rank`).
 - `LineContext` splits the line at the cursor into receiver words (`Foo::Bar.baz` →
   `['Foo', 'Bar', 'baz']`). LSP positions are 0-based and count UTF-16 code units, while
   stored lines are 1-based.
@@ -63,6 +72,7 @@ fresh container, with `/data` on a tmpfs, so no database survives from one run t
 - `RUBY_LANGUAGE_SERVER_DATA_DIR`: where the database and logs go (default `/data`)
 - `RUBY_LANGUAGE_SERVER_REPARSE_INTERVAL`: re-parse throttle in seconds (the specs use `0`)
 - `RUBY_LANGUAGE_SERVER_CORE_INDEX=false`: skip loading Ruby core (the specs set this)
+- `RUBY_LANGUAGE_SERVER_GEM_INDEX=false`: skip indexing the project's gems (the specs set this)
 - `LOG_LEVEL`: default `error`. `DEBUG` also writes an ActiveRecord log to the data dir.
 - `LSP_PORT`: listen on TCP instead of stdio (used by `make debug_server`)
 

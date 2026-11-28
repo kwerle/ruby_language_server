@@ -113,14 +113,17 @@ module RubyLanguageServer
     SCAN_BUSY_RETRIES = 3
     SCAN_BUSY_RETRY_DELAY = 1 # seconds
 
-    # Stores and parses one file for the background scan. Only a locked database is
-    # retried, briefly; any other error is raised for the caller to log.
-    def index_file(uri, text)
+    # Stores and parses one file for the background scan. attributes are extra CodeFile
+    # columns, like gem_name for a gem's file. Only a locked database is retried, briefly;
+    # any other error is raised for the caller to log.
+    def index_file(uri, text, **attributes)
       attempts = 0
       begin
         ActiveRecord::Base.connection_pool.with_connection do
           update_document_content(uri, text)
-          code_file_for_uri(uri).refresh_scopes_if_needed
+          code_file = code_file_for_uri(uri)
+          code_file.update_columns(attributes) if attributes.any? && code_file.persisted?
+          code_file.refresh_scopes_if_needed
         end
       rescue ActiveRecord::StatementTimeout => e
         attempts += 1
@@ -130,6 +133,15 @@ module RubyLanguageServer
         sleep scan_busy_retry_delay
         retry
       end
+    end
+
+    # The background scan runs niced, so editor requests get the CPU first.
+    SCAN_NICENESS = 10
+
+    def lower_priority
+      Process.setpriority(Process::PRIO_PROCESS, 0, SCAN_NICENESS)
+    rescue SystemCallError, NotImplementedError => e
+      RubyLanguageServer.logger.warn("Couldn't lower the scan's priority: #{e}")
     end
 
     def scan_busy_retry_delay
@@ -143,6 +155,7 @@ module RubyLanguageServer
       # Using fork because this is run in a docker container that has fork.
       # If you want to run this on some platform without fork, fork the code and PR it :-)
       fork_id = fork do
+        lower_priority
         project_ruby_files.each do |container_path|
           relative_path = container_path.delete_prefix(self.class.root_path)
           next if self.class.skip_scan?(relative_path)
@@ -155,21 +168,12 @@ module RubyLanguageServer
           # One bad file mustn't stall the scan: log it and go on to the next.
           RubyLanguageServer.logger.error("Skipping #{container_path}: #{e.class}: #{e}\n#{e.backtrace * "\n"}")
         end
-        index_core
+        # Then Ruby core, then the gems, whose downloads are the slowest part.
+        CoreIndex.index_project
+        GemIndex.index_project(self.class.root_path, method(:index_file))
       end
       RubyLanguageServer.logger.debug("Forked process id to look at other files: #{fork_id}")
       Process.detach(fork_id)
-    end
-
-    # Ruby's core classes, after the project's files, which matter more. A failure is
-    # logged: the project index still works without them. Set
-    # RUBY_LANGUAGE_SERVER_CORE_INDEX=false to skip them (the specs do).
-    def index_core
-      return if ENV['RUBY_LANGUAGE_SERVER_CORE_INDEX'] == 'false'
-
-      ActiveRecord::Base.connection_pool.with_connection { CoreIndex.load! }
-    rescue StandardError => e
-      RubyLanguageServer.logger.error("Couldn't index Ruby core classes: #{e.class}: #{e}\n#{e.backtrace * "\n"}")
     end
 
     # returns diagnostic info (if possible)
@@ -234,7 +238,8 @@ module RubyLanguageServer
     end
 
     # Locations of what the word at position refers to. Records with nowhere the editor can
-    # open, like Ruby core (CoreIndex), have no code file and are left out.
+    # open are left out: Ruby core (CoreIndex) has no code file, and gems' files (GemIndex)
+    # are inside the container.
     def possible_definitions(uri, position)
       records_to_locations(definition_records(uri, position))
     end
@@ -358,18 +363,18 @@ module RubyLanguageServer
       search_project_wide(name, class_method_filter)
     end
 
-    # Scopes and variables with a file first, so the project's own definitions win over
-    # Ruby core (CoreIndex), which has none.
+    # The project's own scopes and variables first, then the gems' (GemIndex), then Ruby
+    # core's (CoreIndex), which have no file.
     def with_files_first(records)
       records = records.to_a
       # One query for all the records' files, not one per record.
       ActiveRecord::Associations::Preloader.new(records:, associations: :code_file).call
-      records.partition(&:code_file).flatten
+      records.each_with_index.sort_by { |record, index| [record.source_rank, index] }.map(&:first)
     end
 
     # Location hashes for the records that have a file the editor can open.
     def records_to_locations(records)
-      with_files_first(records).select(&:code_file).map do |record|
+      with_files_first(records).select(&:project_record?).map do |record|
         line = record.respond_to?(:top_line) ? record.top_line : record.line
         Location.hash(record.code_file.uri, line, record.column.to_i)
       end
@@ -387,7 +392,7 @@ module RubyLanguageServer
         end
 
         # Check variables (constants) in the current scope
-        matching_variable = current.variables.where(name: name).includes(:code_file).find(&:code_file)
+        matching_variable = with_files_first(current.variables.where(name: name)).find(&:code_file)
         return [matching_variable] if matching_variable
 
         current = current.parent

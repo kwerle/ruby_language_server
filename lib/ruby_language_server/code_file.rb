@@ -17,6 +17,11 @@ module RubyLanguageServer
 
     attr_accessor :diagnostics
 
+    # True for a file from one of the project's gems (GemIndex), which the editor can't open.
+    def gem_file?
+      gem_name.present?
+    end
+
     def self.build(uri, text)
       RubyLanguageServer.logger.debug("CodeFile initialize #{uri}")
 
@@ -98,10 +103,9 @@ module RubyLanguageServer
     end
 
     def update_text(new_text)
-      RubyLanguageServer.logger.debug("update_text for #{uri}")
       return true if new_text == text
 
-      RubyLanguageServer.logger.debug('Changed!')
+      RubyLanguageServer.logger.debug("update_text for #{uri}")
       update(text: new_text, refresh_root_scope: true)
     end
 
@@ -116,19 +120,16 @@ module RubyLanguageServer
       return if reparse_can_wait?
 
       RubyLanguageServer.logger.debug("Asking about root_scope for #{uri}")
-      RubyLanguageServer::ScopeData::Variable.where(code_file_id: self).scoping do
-        RubyLanguageServer::ScopeData::Scope.where(code_file_id: self).scoping do
-          self.class.transaction do
-            scopes.clear
-            variables.clear
-            new_root = ScopeParser.new(text).root_scope
-            RubyLanguageServer.logger.debug("new_root.children #{new_root.children.as_json}") if new_root&.children
-            raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
+      self.class.transaction do
+        # Deleting first also takes SQLite's write lock, which PrismProcessor#store! relies on.
+        # delete_all, not destroy: one statement each, instead of one per row.
+        RubyLanguageServer::ScopeData::Variable.where(code_file_id: id).delete_all
+        RubyLanguageServer::ScopeData::Scope.where(code_file_id: id).delete_all
+        new_root = ScopeParser.new(text, code_file_id: id, library: gem_file?).root_scope
+        raise ActiveRecord::Rollback if new_root.nil? || new_root.children.blank?
 
-            update_columns(refresh_root_scope: false, parsed_at: monotonic_now, parsed_line_count: line_count)
-            new_root
-          end
-        end
+        update_columns(refresh_root_scope: false, parsed_at: monotonic_now, parsed_line_count: line_count)
+        new_root
       end
     end
 

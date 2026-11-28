@@ -18,6 +18,17 @@ module RubyLanguageServer
     RDOC_HEADER = /\A\s*<!--.*?-->\s*/m
 
     class << self
+      # For the background scan, after the project's files, which matter more. A failure is
+      # logged: the project index still works without core. Set
+      # RUBY_LANGUAGE_SERVER_CORE_INDEX=false to skip it (the specs do).
+      def index_project
+        return if ENV['RUBY_LANGUAGE_SERVER_CORE_INDEX'] == 'false'
+
+        ActiveRecord::Base.connection_pool.with_connection { load! }
+      rescue StandardError => e
+        RubyLanguageServer.logger.error("Couldn't index Ruby core classes: #{e.class}: #{e}\n#{e.backtrace * "\n"}")
+      end
+
       # Stores the core scopes, unless they are already stored. only limits it to some
       # classes and modules, like %w[String Integer], so specs don't store all of core.
       def load!(only: nil)
@@ -82,7 +93,7 @@ module RubyLanguageServer
         declarations
       end
 
-      # Qualified with the namespace the way the parser does it (see Scope#set_superclass_name),
+      # Qualified with the namespace the way the parser does it (see PendingScope#assign_superclass_name),
       # so Scope#superclass_scopes falls back to outer namespaces.
       def superclass_name(declarations, namespace)
         super_class = declarations.filter_map { |declaration| declaration.try(:super_class) }.first

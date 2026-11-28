@@ -33,7 +33,7 @@ module RubyLanguageServer
       # Signal that visit_call_node should pop this scope after visiting children.
       def rspec_block_command(prefix, node)
         name = "#{prefix} #{command_arguments(node).join('::')}"
-        push_scope(ScopeData::Scope::TYPE_MODULE, name, command_line(node), 0, command_end_line(node), false)
+        push_scope(ScopeData::Scope::TYPE_MODULE, name, command_line(node), 0, command_end_line(node))
         @command_pushed_scope = true
       end
     end
