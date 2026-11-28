@@ -21,7 +21,7 @@ module RubyLanguageServer
                    when ScopeData::Base::TYPE_MODULE then code_block("module #{scope.path}")
                    end
         # rdoc for Ruby core (CoreIndex), or the comment above a project definition.
-        [markdown, scope.documentation.presence].compact.join("\n\n").presence
+        [markdown, gem_line(scope), scope.documentation.presence].compact.join("\n\n").presence
       end
 
       def superclass(scope)
@@ -55,7 +55,13 @@ module RubyLanguageServer
       end
 
       def variable_markdown(variable)
-        [code_block(variable.name), "Defined in `#{variable.scope&.path.presence || 'top level'}`, line #{variable.line}"].join("\n\n")
+        [code_block(variable.name), "Defined in `#{variable.scope&.path.presence || 'top level'}`, line #{variable.line}", gem_line(variable)].compact.join("\n\n")
+      end
+
+      # Where a record from one of the project's gems (GemIndex) comes from.
+      def gem_line(record)
+        code_file = record.code_file
+        "From gem `#{code_file.gem_name} #{code_file.gem_version}`" if code_file&.gem_file?
       end
 
       def container_line(scope)

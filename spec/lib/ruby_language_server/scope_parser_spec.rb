@@ -412,4 +412,66 @@ describe RubyLanguageServer::ScopeParser do
       assert_equal('The bar.', documentation_of("# The bar.\nclass Bar\nend\n", 'Bar'))
     end
   end
+
+  describe 'numbered and it block parameters' do
+    it 'parses blocks that use _1 or it' do
+      root = RubyLanguageServer::ScopeParser.new("class Foo\n  def bar\n    [1].map { _1 + 1 }\n    [2].each { it }\n  end\nend\n").root_scope
+      assert_equal('Foo#bar', root.self_and_descendants.find_by(name: 'bar')&.path)
+    end
+  end
+
+  describe 'empty blocks' do
+    it 'stores a block only if it, or something inside it, has variables' do
+      RubyLanguageServer::ScopeParser.new("items.each do |item|\nend\nitems.each do\n  puts 1\nend\nitems.each do\n  [1].each { |x| }\nend\n")
+      blocks = RubyLanguageServer::ScopeData::Scope.where(class_type: RubyLanguageServer::ScopeData::Base::TYPE_BLOCK).order(:top_line)
+      assert_equal([[1, 2], [6, 8], [7, 7]], blocks.map { |block| [block.top_line, block.bottom_line] })
+      assert_equal(blocks.second.id, blocks.third.parent_id)
+    end
+  end
+
+  describe 'gem files' do
+    let(:source) do
+      <<~RUBY
+        module Lib
+          LIMIT = 3
+
+          included do
+            def from_block
+            end
+          end
+
+          def run(arg)
+            local = 1
+            @ivar = 2
+            [1].each { |x| y = x }
+          end
+        end
+      RUBY
+    end
+
+    it 'keeps classes, modules, methods and constants, and no blocks or locals' do
+      root = RubyLanguageServer::ScopeParser.new(source, library: true).root_scope
+      scopes = root.self_and_descendants.filter_map(&:path)
+      assert_equal(%w[Lib Lib#from_block Lib#run], scopes.sort)
+      assert_equal(['LIMIT'], RubyLanguageServer::ScopeData::Variable.pluck(:name))
+    end
+
+    it 'keeps everything for a project file' do
+      RubyLanguageServer::ScopeParser.new(source)
+      assert_includes(RubyLanguageServer::ScopeData::Variable.pluck(:name), 'local')
+      assert(RubyLanguageServer::ScopeData::Scope.exists?(class_type: RubyLanguageServer::ScopeData::Base::TYPE_BLOCK))
+    end
+  end
+
+  describe 'a parse that fails' do
+    it 'stores nothing from it and logs one short line' do
+      processor_class = RubyLanguageServer::PrismProcessor
+      processor_class.alias_method(:original_store!, :store!)
+      processor_class.define_method(:store!) { raise 'boom' }
+      RubyLanguageServer::ScopeParser.new("class Foo\n  def bar\n  end\nend\n")
+      assert_equal(['root'], RubyLanguageServer::ScopeData::Scope.pluck(:class_type))
+    ensure
+      processor_class.alias_method(:store!, :original_store!)
+    end
+  end
 end

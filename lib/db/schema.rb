@@ -47,9 +47,12 @@ module Schema
           t.text    :text
           t.float   :parsed_at          # Process::CLOCK_MONOTONIC seconds of the last parse
           t.integer :parsed_line_count  # lines in the text that was last parsed
+          t.string  :gem_name           # set for a file from one of the project's gems (GemIndex)
+          t.string  :gem_version
         end
 
         add_index :code_files, :uri
+        add_index :code_files, :gem_name
       end
     end
 

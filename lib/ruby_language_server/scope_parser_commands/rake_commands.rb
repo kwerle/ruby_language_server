@@ -19,7 +19,7 @@ module RubyLanguageServer
       # Push the named scope - the block node will create a child "block" scope.
       def rake_block_command(node)
         name = command_arguments(node).first
-        push_scope(ScopeData::Scope::TYPE_MODULE, name, command_line(node), 0, command_end_line(node), false)
+        push_scope(ScopeData::Scope::TYPE_MODULE, name, command_line(node), 0, command_end_line(node))
         @command_pushed_scope = true
       end
     end

@@ -35,8 +35,7 @@ module RubyLanguageServer
           next unless writer
 
           writer_scope = push_scope(RubyLanguageServer::ScopeData::Base::TYPE_METHOD, "#{name}=", line, column, line)
-          writer_scope.set_parameters([{name: 'value', type: 'required'}])
-          writer_scope.save!
+          writer_scope.assign_parameters([{name: 'value', type: 'required'}])
           pop_scope
         end
       end

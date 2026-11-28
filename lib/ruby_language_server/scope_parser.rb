@@ -7,6 +7,56 @@ require_relative 'scope_parser_commands/ruby_commands'
 require_relative 'scope_parser_commands/rails_commands'
 
 module RubyLanguageServer
+  # A scope the parser has found but not stored yet: ScopeParser stores a file's scopes
+  # together, with insert_all, once the whole file is parsed (PrismProcessor#store!).
+  class PendingScope
+    # id is given just before storing. parent is another PendingScope, or the file's
+    # stored root Scope.
+    attr_accessor :id, :superclass_name, :parameters, :class_method, :documentation
+    attr_reader :parent, :class_type, :name, :path, :top_line, :bottom_line, :column
+
+    def initialize(parent:, class_type:, name:, top_line:, bottom_line:, column:) # rubocop:disable Metrics/ParameterLists
+      @parent = parent
+      @class_type = class_type
+      @name = name
+      @path = [parent&.full_name, name].compact.join(ScopeData::Base::JoinHash[class_type])
+      @top_line = top_line
+      @bottom_line = bottom_line
+      @column = column
+      @class_method = false
+    end
+
+    def full_name
+      path
+    end
+
+    def root_scope?
+      false
+    end
+
+    def block_scope?
+      class_type == ScopeData::Base::TYPE_BLOCK
+    end
+
+    def assign_parameters(params_array)
+      self.parameters = params_array.to_json if params_array.present?
+    end
+
+    # The superclass as written, qualified with the enclosing namespace unless it starts
+    # with :: (see Scope#superclass_scopes).
+    def assign_superclass_name(partial)
+      self.superclass_name = partial.start_with?('::') ? partial.delete_prefix('::') : [parent&.full_name, partial].compact.join(ScopeData::Base::JoinHash[class_type])
+    end
+
+    # The scopes table row. Every row has the same keys, as insert_all needs.
+    def row(code_file_id)
+      {
+        id:, parent_id: parent.id, code_file_id:, class_type:, name:, path:, top_line:, bottom_line:, column:,
+        superclass_name:, parameters:, class_method:, documentation:
+      }
+    end
+  end
+
   # This class is responsible for processing the AST from Prism.
   # It builds scopes that amount to heirarchical arrays with information about what
   # classes, methods, variables, etc - are in each scope.
@@ -21,21 +71,51 @@ module RubyLanguageServer
     # Comments above a definition that aren't documentation.
     MAGIC_COMMENT = /\A#\s*(frozen_string_literal|encoding|coding|warn_indent|shareable_constant_value|typed|rubocop:)/i
 
+    INSERT_BATCH_SIZE = 1000
+
     attr_reader :current_scope, :lines
 
-    def initialize(lines = 1)
+    # library: the file is from a gem (GemIndex). Only its classes, modules, methods and
+    # constants are kept: its local variables and blocks never matter outside it.
+    def initialize(lines = 1, code_file_id: nil, library: false)
       @lines = lines
+      @code_file_id = code_file_id
+      @library = library
       @root_scope = nil
       @current_scope = nil
       @block_names = {}
+      @pending_scopes = []
+      @pending_variables = []
+      @variable_names = {}.compare_by_identity
     end
 
     def root_scope
       @root_scope ||= begin
-        scope = ScopeData::Scope.where(path: nil, class_type: ScopeData::Scope::TYPE_ROOT).first_or_create!
+        scope = ScopeData::Scope.where(path: nil, class_type: ScopeData::Scope::TYPE_ROOT, code_file_id: @code_file_id).first_or_create!
         @current_scope = scope
         scope
       end
+    end
+
+    # Stores the scopes and variables found, a batch of rows per statement. Block scopes
+    # with no variables and nothing stored inside them are left out.
+    #
+    # Ids are given here, not by the database, so children can point at their parents
+    # without reading ids back. That is safe because the caller's transaction already
+    # holds SQLite's write lock (CodeFile deletes the file's old rows first), so no other
+    # connection can insert between reading the largest id and inserting.
+    def store!
+      scopes = kept_scopes
+      next_id = ScopeData::Scope.maximum(:id).to_i
+      scopes.each { |scope| scope.id = (next_id += 1) }
+      scopes.map { |scope| scope.row(@code_file_id) }.each_slice(INSERT_BATCH_SIZE) { |rows| ScopeData::Scope.insert_all!(rows) }
+
+      kept = scopes.to_set.compare_by_identity
+      variables = @pending_variables.select { |variable| variable[:scope].is_a?(ScopeData::Scope) || kept.include?(variable[:scope]) }
+      variable_rows = variables.map do |variable|
+        {name: variable[:name], line: variable[:line], column: variable[:column], scope_id: variable[:scope].id, code_file_id: @code_file_id}
+      end
+      variable_rows.each_slice(INSERT_BATCH_SIZE) { |rows| ScopeData::Variable.insert_all!(rows) }
     end
 
     # Visit a class node
@@ -45,13 +125,13 @@ module RubyLanguageServer
       end_line = node.location.end_line
       column = column_of(node.location)
 
-      scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column, end_line, false)
+      scope = push_scope(ScopeData::Scope::TYPE_CLASS, name, line, column, end_line)
       set_documentation(scope, node)
 
       # Handle superclass
       if node.superclass
         superclass_name = constant_path_name(node.superclass)
-        scope.set_superclass_name(superclass_name) if superclass_name
+        scope.assign_superclass_name(superclass_name) if superclass_name
       end
 
       in_singleton_class(false) { super }
@@ -65,7 +145,7 @@ module RubyLanguageServer
       end_line = node.location.end_line
       column = column_of(node.location)
 
-      scope = push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line, false)
+      scope = push_scope(ScopeData::Scope::TYPE_MODULE, name, line, column, end_line)
       set_documentation(scope, node)
       in_singleton_class(false) { super }
       pop_scope
@@ -79,18 +159,11 @@ module RubyLanguageServer
       column = column_of(node.location)
       is_class_method = node.receiver.is_a?(Prism::SelfNode)
 
-      scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line, false)
+      scope = push_scope(ScopeData::Scope::TYPE_METHOD, name, line, column, end_line)
       # def self.name, or a plain def inside class << self
       scope.class_method = is_class_method || (node.receiver.nil? && @in_singleton_class)
       scope.documentation = documentation_for(node)
-      scope.save!
-
-      # Extract and store parameters
-      if node.parameters
-        params_data = extract_parameters_data(node.parameters)
-        scope.set_parameters(params_data) if params_data.any?
-        scope.save!
-      end
+      scope.assign_parameters(extract_parameters_data(node.parameters)) if node.parameters
 
       # Process parameters (adds them as variables in scope)
       visit_parameters(node.parameters) if node.parameters
@@ -109,16 +182,18 @@ module RubyLanguageServer
       in_singleton_class(node.expression.is_a?(Prism::SelfNode)) { super }
     end
 
-    # Visit block nodes
+    # Visit block nodes. A gem's blocks get no scope: methods defined in them (included do
+    # ... end) belong to the enclosing class or module.
     def visit_block_node(node)
+      name = @block_names.delete(node.object_id)
+      return super if @library
+
       line = node.location.start_line
       end_line = node.location.end_line
       column = column_of(node.location)
 
       # Use block-specific name if set by command handler, otherwise use 'block'
-      name = @block_names.delete(node.object_id) || 'block'
-
-      push_scope(ScopeData::Scope::TYPE_BLOCK, name, line, column, end_line, false)
+      push_scope(ScopeData::Scope::TYPE_BLOCK, name || 'block', line, column, end_line)
 
       # Process block parameters
       visit_block_parameters(node.parameters) if node.parameters
@@ -260,8 +335,7 @@ module RubyLanguageServer
     end
 
     def set_documentation(scope, node)
-      documentation = documentation_for(node)
-      scope.update!(documentation:) if documentation
+      scope.documentation = documentation_for(node)
     end
 
     # A method's parameters in source order, as { name:, type: } hashes, with default:
@@ -376,8 +450,9 @@ module RubyLanguageServer
       add_variable(params_node.block.name.to_s, params_node.block.location.start_line, column_of(params_node.block.location)) if params_node.block&.name
     end
 
+    # Numbered (_1) and it parameters have no parameter list, and nothing to record.
     def visit_block_parameters(params_node)
-      return unless params_node
+      return unless params_node.is_a?(Prism::BlockParametersNode)
 
       visit_parameters(params_node.parameters) if params_node.parameters
     end
@@ -419,13 +494,13 @@ module RubyLanguageServer
     # command_line, command_column and command_arguments.
     def handle_command(name, node, block_node = nil)
       method_name = "on_#{name}_command"
-      if respond_to?(method_name)
-        @current_block_node = block_node
-        send(method_name, node)
-        @current_block_node = nil
-      else
-        RubyLanguageServer.logger.debug("We don't have a #{method_name}")
-      end
+      # Most calls (puts, require, each, ...) have no handler. Don't log those: there's one
+      # per call in every file.
+      return unless respond_to?(method_name)
+
+      @current_block_node = block_node
+      send(method_name, node)
+      @current_block_node = nil
     end
 
     def command_line(node)
@@ -476,22 +551,21 @@ module RubyLanguageServer
       args
     end
 
-    # Records the first assignment of each name in a scope; later ones are skipped.
-    # The names already recorded are kept in memory, so this is one INSERT per new
-    # variable rather than a SELECT per assignment.
+    # Records the first assignment of each name in a scope; later ones are skipped. A gem's
+    # files only keep constants.
     def add_variable(name, line, column, scope = @current_scope)
       return if scope.nil?
+      return if @library && !name.match?(/\A[A-Z]/)
       return unless variable_names_in(scope).add?(name)
 
-      scope.variables.create!(name:, line:, column:, code_file_id: scope.code_file_id)
+      @pending_variables << {scope:, name:, line:, column:}
     end
 
     # Names of the variables recorded in scope. Scopes this parse created start empty.
     # Only the root can already have rows (ScopeParser reuses an existing root), so its
     # names are read from the database once.
     def variable_names_in(scope)
-      @variable_names ||= {}
-      @variable_names[scope.id] ||= scope.root_scope? ? Set.new(scope.variables.pluck(:name)) : Set.new
+      @variable_names[scope] ||= scope.root_scope? ? Set.new(scope.variables.pluck(:name)) : Set.new
     end
 
     def add_ivar(name, line, column)
@@ -521,15 +595,24 @@ module RubyLanguageServer
       [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE].include?(type)
     end
 
-    def push_scope(type, name, top_line, column, end_line, close_siblings = true) # rubocop:disable Metrics/ParameterLists
-      close_sibling_scopes if close_siblings
-      new_scope = ScopeData::Scope.build(@current_scope, type, name, top_line, column, end_line)
+    def push_scope(type, name, top_line, column, end_line)
+      new_scope = PendingScope.new(parent: @current_scope, class_type: type, name:, top_line:, bottom_line: end_line, column:)
+      @pending_scopes << new_scope
       @current_scope = new_scope
     end
 
-    # Clean up any empty block scopes when starting a new sibling scope.
-    def close_sibling_scopes
-      @current_scope&.descendants&.each(&:close)
+    # The pending scopes to store: all but blocks with no variables and nothing kept
+    # inside them. Children come after their parents, so walking backwards sees each
+    # scope's children first.
+    def kept_scopes
+      with_variables = @pending_variables.to_set { |variable| variable[:scope] }.compare_by_identity
+      needed = Set.new.compare_by_identity
+      kept = @pending_scopes.reverse.select do |scope|
+        keep = !scope.block_scope? || with_variables.include?(scope) || needed.include?(scope)
+        needed << scope.parent if keep
+        keep
+      end
+      kept.reverse
     end
 
     def pop_scope
@@ -543,21 +626,25 @@ module RubyLanguageServer
   class ScopeParser
     attr_reader :root_scope
 
-    def initialize(text)
+    # code_file_id is the CodeFile the scopes belong to (nil in some specs). library is true
+    # for a gem's file (see PrismProcessor#initialize).
+    def initialize(text, code_file_id: nil, library: false)
       text ||= '' # empty is the same as nil - but it doesn't crash
-      begin
+      line_count = text.split("\n").length
+      # A savepoint, so a failed parse leaves nothing behind in the caller's transaction.
+      ScopeData::Scope.transaction(requires_new: true) do
         result = Prism.parse(text)
         result.attach_comments!
-        processor = PrismProcessor.new(text.split("\n").length)
+        processor = PrismProcessor.new(line_count, code_file_id:, library:)
         processor.root_scope # Initialize root scope
         result.value.accept(processor)
-        @root_scope = processor.root_scope
-      rescue StandardError => e
-        RubyLanguageServer.logger.error("Exception in prism parsing: #{e} for text: #{text}")
-        # Create an empty root scope on error
-        processor = PrismProcessor.new(text.split("\n").length)
+        processor.store!
         @root_scope = processor.root_scope
       end
+    rescue StandardError => e
+      RubyLanguageServer.logger.error("Exception in prism parsing: #{e.class}: #{e} (#{line_count} lines)\n#{e.backtrace&.first(5)&.join("\n")}")
+      # Nothing from the failed parse was stored. Leave an empty root.
+      @root_scope = PrismProcessor.new(line_count, code_file_id:, library:).root_scope
     end
   end
 end

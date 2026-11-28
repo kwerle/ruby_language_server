@@ -18,6 +18,8 @@ ENV['RUBY_LANGUAGE_SERVER_REPARSE_INTERVAL'] ||= '0'
 # The project scan forks and would store all of Ruby core in the shared test database while
 # other specs run. Specs that want core call CoreIndex.load!(only: ...) themselves.
 ENV['RUBY_LANGUAGE_SERVER_CORE_INDEX'] ||= 'false'
+# Nor should it download and store the gems in the project's Gemfile.lock.
+ENV['RUBY_LANGUAGE_SERVER_GEM_INDEX'] ||= 'false'
 
 require 'debug'
 require 'ostruct'

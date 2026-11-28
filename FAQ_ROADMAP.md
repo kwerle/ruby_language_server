@@ -7,8 +7,7 @@
 
 # Then?
 
-* Pay special attention to the project's Gemfile.  Install all the gems (we can).  Integrate with gem server?
-  * Full scan of installed gems?
+* Gems from Gemfile.lock are indexed (GemIndex) but downloaded again every start. Cache them, or mount the host's installed gems, which would also let go-to-definition open them.
 * ActiveSupport's core extensions (blank?, present?, 3.days) alongside the Ruby core classes. They're plain Ruby, so the existing parser can read them.
 * Go-to-definition for Ruby core methods, through a virtual document for the .rbs file.
 * Know what type a local variable holds, so `name.up` completes String methods.

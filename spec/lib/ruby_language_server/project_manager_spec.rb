@@ -895,4 +895,32 @@ describe RubyLanguageServer::ProjectManager do
       end
     end
   end
+
+  describe 'gem files' do
+    let(:project_manager) { RubyLanguageServer::ProjectManager.new('/proj', 'file:///proj/') }
+    let(:gem_uri) { 'file:///data/gems/tiny-0.1.0/lib/tiny.rb' }
+
+    before do
+      project_manager.index_file(gem_uri, "class Tiny\n  def hello\n  end\n\n  def shared\n  end\nend\n", gem_name: 'tiny', gem_version: '0.1.0')
+      project_manager.update_document_content('app_uri', "class App\n  def shared\n  end\nend\nthing.hello\nthing.shared\n")
+      project_manager.tags_for_uri('app_uri')
+    end
+
+    it 'leaves gem files out of definitions' do
+      assert_equal([], project_manager.possible_definitions('app_uri', OpenStruct.new(line: 4, character: 7)))
+      assert_equal(['app_uri'], project_manager.possible_definitions('app_uri', OpenStruct.new(line: 5, character: 7)).map { |location| location[:uri] })
+    end
+
+    it "still hovers a gem's methods" do
+      value = project_manager.hover_at('app_uri', OpenStruct.new(line: 4, character: 7))&.dig(:contents, :value)
+      assert_equal("```ruby\ndef hello\n```\n\nIn `Tiny`\n\nFrom gem `tiny 0.1.0`", value)
+    end
+
+    it 'orders project records, then gem records, then core records' do
+      core = RubyLanguageServer::ScopeData::Scope.create!(name: 'shared', path: 'Core#shared', class_type: RubyLanguageServer::ScopeData::Base::TYPE_METHOD)
+      records = RubyLanguageServer::ScopeData::Scope.where(name: 'shared').to_a
+      ordered = project_manager.send(:with_files_first, [core] + records.reverse)
+      assert_equal([false, true, nil], ordered.uniq.map { |record| record.code_file&.gem_file? })
+    end
+  end
 end

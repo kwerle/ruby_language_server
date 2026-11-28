@@ -7,6 +7,19 @@ module RubyLanguageServer
     class Base < ActiveRecord::Base
       self.abstract_class = true
 
+      # Where the record comes from, best first: 0 the project, 1 one of its gems
+      # (GemIndex), 2 Ruby core (CoreIndex), which has no file.
+      def source_rank
+        return 2 if code_file.nil?
+
+        code_file.gem_file? ? 1 : 0
+      end
+
+      # From a project file, which the editor can open.
+      def project_record?
+        source_rank.zero?
+      end
+
       TYPE_MODULE = 'module'
       TYPE_CLASS = 'class'
       TYPE_METHOD = 'method'

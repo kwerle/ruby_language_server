@@ -67,15 +67,6 @@ module RubyLanguageServer
         same_file.where((["path LIKE ? ESCAPE '\\'"] * patterns.length).join(' OR '), *patterns)
       end
 
-      def set_superclass_name(partial)
-        if partial.start_with?('::')
-          self.superclass_name = partial.gsub(/^::/, '')
-        else
-          self.superclass_name = [parent&.full_name, partial].compact.join(JoinHash[class_type])
-        end
-        save!
-      end
-
       # The scopes of this class's superclass, one per file that defines it, or [].
       # superclass_name was qualified with the enclosing namespace when parsed
       # (Foo::Bar for `class Nar < Bar` inside Foo), so if that path doesn't exist, drop
@@ -128,16 +119,6 @@ module RubyLanguageServer
         JSON.parse(parameters)
       rescue JSON::ParserError
         []
-      end
-
-      # Set parameters from an array
-      def set_parameters(params_array)
-        self.parameters = params_array.to_json if params_array.present?
-      end
-
-      # Called from ScopeParser to cleanup empty blocks.
-      def close
-        destroy! if block_scope? && variables.none?
       end
 
       private

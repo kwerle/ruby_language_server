@@ -90,4 +90,27 @@ describe RubyLanguageServer::Hover do
       assert_equal("```ruby\nclass Cart\n```\n\nA shopping cart.", hover(10, 8))
     end
   end
+
+  describe 'from a gem' do
+    before do
+      project_manager.index_file('file:///data/gems/tiny-0.1.0/lib/tiny.rb', "# A tiny class.\nclass Tiny\n  LIMIT = 3\nend\n", gem_name: 'tiny', gem_version: '0.1.0')
+    end
+
+    let(:source) { "Tiny\nTiny::LIMIT\n" }
+
+    it 'says which gem a class comes from, before its documentation' do
+      assert_equal("```ruby\nclass Tiny\n```\n\nFrom gem `tiny 0.1.0`\n\nA tiny class.", hover(0, 1))
+    end
+
+    it 'says which gem a constant comes from' do
+      assert_equal("```ruby\nLIMIT\n```\n\nDefined in `Tiny`, line 3\n\nFrom gem `tiny 0.1.0`", hover(1, 8))
+    end
+
+    it 'says nothing about gems for a project definition' do
+      project_manager.update_document_content('mine_uri', "class Mine\nend\nMine\n")
+      project_manager.tags_for_uri('mine_uri')
+      value = project_manager.hover_at('mine_uri', OpenStruct.new(line: 2, character: 1))&.dig(:contents, :value)
+      assert_equal("```ruby\nclass Mine\n```", value)
+    end
+  end
 end

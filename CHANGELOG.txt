@@ -3,6 +3,10 @@
 #### Unreleased
 
 * Hover for methods in your project shows default values (count = 1, size: :medium) and every kind of parameter, including ones after a splat, anonymous *, ** and &, ..., and destructuring. It also shows the comment directly above a method, class or module
+* Completion and hover know the project's gems. In the background, after the project and Ruby core, the server reads Gemfile.lock and indexes each gem's lib files, using the copy in vendor/bundle if there is one and otherwise downloading the .gem from its source (nothing is installed or run). Hover says which gem a definition comes from. Go-to-definition doesn't offer gem code, because those files are inside the container. Set RUBY_LANGUAGE_SERVER_GEM_INDEX=false to skip it. Git and path gems are skipped
+* Indexing is several times faster: each file's classes, methods and variables are written in a few batched inserts, and a re-parse deletes the old ones in one statement. The background scan runs at a lower priority
+* Files with blocks that use numbered parameters (_1) or it are indexed again. They used to fail to parse
+* Empty blocks no longer get a scope of their own
 * Completion no longer inserts optional keyword arguments or anonymous parameters into the snippet, and attr_writer methods take a value parameter
 
 #### 0.9.10 Tue Nov 24 23:52:32 PST 2026
