@@ -64,6 +64,28 @@ describe RubyLanguageServer::Hover do
     assert_nil(project_manager.hover_at('hover_uri', OpenStruct.new(line: 11, character: 0)))
   end
 
+  describe 'with a method in several classes and an unknown receiver' do
+    let(:source) do
+      <<~RUBY
+        class Dog
+          # Woof.
+          def speak(loud)
+          end
+        end
+
+        class Cat
+          def speak
+          end
+        end
+        pet.speak
+      RUBY
+    end
+
+    it 'lists each one, without documentation' do
+      assert_equal("```ruby\ndef speak(loud)\n```\n\nIn `Dog`\n\n```ruby\ndef speak\n```\n\nIn `Cat`", hover(10, 6))
+    end
+  end
+
   describe 'with doc comments' do
     let(:source) do
       <<~RUBY

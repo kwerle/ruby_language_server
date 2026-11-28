@@ -241,7 +241,13 @@ module RubyLanguageServer
     # open are left out: Ruby core (CoreIndex) has no code file, and gems' files (GemIndex)
     # are inside the container.
     def possible_definitions(uri, position)
-      records_to_locations(definition_records(uri, position))
+      records = definition_records(uri, position)
+      locations = records_to_locations(records)
+      return locations if locations.any? || records.empty?
+
+      # Everything found is in core or a gem, as when a core ancestor like StandardError
+      # defines the name: look for it in the project instead.
+      records_to_locations(search_project_wide(records.first.name, records.first.try(:class_method)))
     end
 
     # The scopes and variables the word at position refers to, the project's own first.
@@ -311,11 +317,10 @@ module RubyLanguageServer
       project_definition_records(name, current_scopes)
     end
 
-    # Hover for the word at position: the signature of the first definition that
-    # definition_records finds, or nil.
+    # Hover for the word at position, from what definition_records finds (see
+    # Hover.markdown_for), or nil.
     def hover_at(uri, position)
-      record = definition_records(uri, position).first
-      markdown = record && Hover.markdown(record)
+      markdown = Hover.markdown_for(definition_records(uri, position))
       return nil if markdown.blank?
 
       { contents: { kind: 'markdown', value: markdown } }
@@ -463,7 +468,9 @@ module RubyLanguageServer
       results = receiver_scopes.flat_map { |scope| search_variables_in_scope_chain(name, scope) }
       results = receiver_scopes.flat_map { |scope| search_child_scopes_in_chain(name, scope, class_method_filter) } if results.empty?
       results = search_project_wide(name, class_method_filter) if results.empty?
-      results.uniq
+      # A class reopened in the project has a scope per file, core's among them: the
+      # project's definitions come first whichever scope found them.
+      with_files_first(results.uniq)
     end
 
     # Check if a name looks like a constant (all uppercase)

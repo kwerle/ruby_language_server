@@ -152,7 +152,10 @@ module RubyLanguageServer
       def module_completions(word)
         class_and_module_types = [RubyLanguageServer::ScopeData::Base::TYPE_CLASS, RubyLanguageServer::ScopeData::Base::TYPE_MODULE]
 
-        words = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types).closest_to(word).limit(20)
+        # The closest from each source, so core and gem names can't crowd out the project's.
+        candidates = RubyLanguageServer::ScopeData::Scope.where(class_type: class_and_module_types)
+        words = %i[from_project from_gems from_core].flat_map { |source| candidates.public_send(source).closest_to(word).limit(20).to_a }
+        words = words.uniq(&:name)
         RubyLanguageServer.logger.debug { "module_completions: #{words.as_json}" }
         # words.to_a.sort_by(&:depth).each_with_object({}){|a_word, hash| hash[a_word.name] = {depth: a_word.depth, type: a_word.class_type} }
         good_words = FuzzyMatch.new(words.to_a, read: :name, threshold: 0.01).find_all(word).slice(0..10) || []

@@ -17,6 +17,29 @@ module RubyLanguageServer
     # The call-seq block rdoc puts at the top of each comment.
     RDOC_HEADER = /\A\s*<!--.*?-->\s*/m
 
+    # A core method or alias to store. kind is :instance, :singleton or :singleton_instance
+    # (self?., a module_function, which is both).
+    class CoreMethod
+      attr_reader :name, :kind, :overloads, :comment
+
+      def initialize(name, kind, overloads, comment)
+        @name = name
+        @kind = kind
+        @overloads = overloads
+        @comment = comment
+      end
+
+      # Whether it's on side, :instance or :singleton.
+      def on?(side)
+        [side, :singleton_instance].include?(kind)
+      end
+
+      # The class_method column for each row: a self?. method gets one of each.
+      def class_method_values
+        { instance: [false], singleton: [true] }.fetch(kind, [false, true])
+      end
+    end
+
     class << self
       # For the background scan, after the project's files, which matter more. A failure is
       # logged: the project index still works without core. Set
@@ -32,11 +55,12 @@ module RubyLanguageServer
       # Stores the core scopes, unless they are already stored. only limits it to some
       # classes and modules, like %w[String Integer], so specs don't store all of core.
       def load!(only: nil)
-        return if loaded?
-
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         classes = only ? class_entries.slice(*only) : class_entries
         ActiveRecord::Base.transaction do
+          # next, not return, so the transaction commits as usual.
+          next if loaded?
+
           class_ids = insert_class_scopes(classes)
           rows = classes.flat_map { |path, entry| method_rows(path, class_ids.fetch(path), entry) }
           rows.each_slice(1000) { |slice| ScopeData::Scope.insert_all!(slice) }
@@ -106,38 +130,43 @@ module RubyLanguageServer
       end
 
       # Every method and alias in the class's declarations. A method declared in more than one
-      # file is stored once.
+      # file is stored once, with the overloads from all of them.
       def method_rows(class_path, class_id, entry)
         members = declarations_of(entry).flat_map(&:members)
-        definitions = members.grep(RBS::AST::Members::MethodDefinition).uniq { |definition| [definition.name, definition.kind] }
-        by_name = definitions.to_h { |definition| [[definition.name, definition.singleton?], definition] }
-        aliases = members.grep(RBS::AST::Members::Alias).filter_map do |alias_member|
-          original = by_name[[alias_member.old_name, alias_member.singleton?]]
-          [alias_member.new_name, original] if original
-        end
-        named = definitions.map { |definition| [definition.name, definition] } + aliases
-        named.uniq { |name, definition| [name, definition.kind] }.flat_map do |name, definition|
-          method_rows_for(class_path, class_id, definition, name)
+        methods = core_methods(members.grep(RBS::AST::Members::MethodDefinition))
+        aliases = members.grep(RBS::AST::Members::Alias).filter_map { |alias_member| aliased_method(alias_member, methods) }
+        (methods + aliases).uniq { |method| [method.name, method.kind] }.flat_map do |method|
+          method_rows_for(class_path, class_id, method)
         end
       end
 
-      # A module_function (self?.) method is both an instance method and a class method.
-      def method_rows_for(class_path, class_id, definition, name)
-        class_methods = case definition.kind
-                        when :instance then [false]
-                        when :singleton then [true]
-                        else [false, true]
-                        end
-        class_methods.map do |class_method|
+      # One CoreMethod per name and kind, merging the overloads declared in different files.
+      def core_methods(definitions)
+        definitions.group_by { |definition| [definition.name, definition.kind] }.map do |(name, kind), group|
+          CoreMethod.new(name, kind, group.flat_map(&:overloads), group.filter_map(&:comment).first)
+        end
+      end
+
+      # The method alias_member names, as a CoreMethod of the alias's own kind, or nil. The
+      # original is found on the same side, instance or singleton, and a self?. method
+      # (module_function) is on both.
+      def aliased_method(alias_member, methods)
+        side = alias_member.singleton? ? :singleton : :instance
+        original = methods.find { |method| method.name == alias_member.old_name && method.on?(side) }
+        CoreMethod.new(alias_member.new_name, side, original.overloads, original.comment) if original
+      end
+
+      def method_rows_for(class_path, class_id, method)
+        method.class_method_values.map do |class_method|
           {
             parent_id: class_id,
-            name: name.to_s,
-            path: "#{class_path}#{ScopeData::Base::JoinHash[ScopeData::Base::TYPE_METHOD]}#{name}",
+            name: method.name.to_s,
+            path: "#{class_path}#{ScopeData::Base::JoinHash[ScopeData::Base::TYPE_METHOD]}#{method.name}",
             class_type: ScopeData::Base::TYPE_METHOD,
             class_method:,
-            parameters: parameters(definition.overloads.first&.method_type)&.to_json,
-            signature: definition.overloads.map { |overload| readable(overload.method_type.to_s) }.join("\n"),
-            documentation: documentation(definition.comment)
+            parameters: parameters(method.overloads.first&.method_type)&.to_json,
+            signature: method.overloads.map { |overload| readable(overload.method_type.to_s) }.join("\n"),
+            documentation: documentation(method.comment)
           }
         end
       end

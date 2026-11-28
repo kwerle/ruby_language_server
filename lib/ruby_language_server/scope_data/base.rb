@@ -15,6 +15,11 @@ module RubyLanguageServer
         code_file.gem_file? ? 1 : 0
       end
 
+      # The same three sources as queries.
+      scope :from_project, -> { joins(:code_file).where(code_files: { gem_name: nil }) }
+      scope :from_gems, -> { joins(:code_file).where.not(code_files: { gem_name: nil }) }
+      scope :from_core, -> { where(code_file_id: nil) }
+
       # From a project file, which the editor can open.
       def project_record?
         source_rank.zero?
@@ -48,10 +53,10 @@ module RubyLanguageServer
       scope :with_distance_from, lambda { |word|
         length = word.length
         distance = sanitize_sql_array([
-                                        '*, LEVENSHTEIN(SUBSTR(name, 1, ?), ?) + LEVENSHTEIN(SUBSTR(UPPER(name), 1, ?), UPPER(?)) AS levenshtein_distance',
+                                        "#{quoted_table_name}.*, LEVENSHTEIN(SUBSTR(#{quoted_table_name}.name, 1, ?), ?) + LEVENSHTEIN(SUBSTR(UPPER(#{quoted_table_name}.name), 1, ?), UPPER(?)) AS levenshtein_distance",
                                         length, word, length, word
                                       ])
-        where('LENGTH(name) >= ?', length).select(distance)
+        where("LENGTH(#{quoted_table_name}.name) >= ?", length).select(distance)
       }
       scope :closest_to, ->(word) { with_distance_from(word).order(:levenshtein_distance) }
 

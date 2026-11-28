@@ -7,6 +7,10 @@
 * Indexing is several times faster: each file's classes, methods and variables are written in a few batched inserts, and a re-parse deletes the old ones in one statement. The background scan runs at a lower priority
 * Files with blocks that use numbered parameters (_1) or it are indexed again. They used to fail to parse
 * Empty blocks no longer get a scope of their own
+* Go-to-definition finds your project's methods again when a core or gem superclass (StandardError, a gem's base class) defines the same name
+* Hover shows your project's version of a method in a class it reopens, like String, before the core one
+* Class and module completion always considers your project's classes, which Ruby core and gem names used to crowd out
+* When the receiver's type is unknown and several classes define the method (x.upcase), hover lists each one's signature instead of picking one
 * Completion no longer inserts optional keyword arguments or anonymous parameters into the snippet, and attr_writer methods take a value parameter
 
 #### 0.9.10 Tue Nov 24 23:52:32 PST 2026

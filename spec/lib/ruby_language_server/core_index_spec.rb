@@ -7,7 +7,7 @@ describe RubyLanguageServer::CoreIndex do
   let(:scope_class) { RubyLanguageServer::ScopeData::Scope }
 
   before do
-    RubyLanguageServer::CoreIndex.load!(only: %w[String Integer Numeric File File::Stat Kernel])
+    RubyLanguageServer::CoreIndex.load!(only: %w[String Symbol Integer Numeric File File::Stat Kernel Exception StandardError])
   end
 
   it 'stores core classes without a location, since the editor cannot open them' do
@@ -43,6 +43,11 @@ describe RubyLanguageServer::CoreIndex do
 
   it 'stores aliases as methods' do
     assert_equal scope_class.find_by(path: 'Integer#succ').signature, scope_class.find_by(path: 'Integer#next').signature
+  end
+
+  it 'stores aliases of module functions both ways' do
+    assert_equal [false, true], scope_class.where(path: 'Kernel#fail').order(:class_method).pluck(:class_method)
+    assert_equal scope_class.find_by(path: 'Kernel#raise').signature, scope_class.find_by(path: 'Kernel#fail').signature
   end
 
   it 'marks singleton methods and stores module functions both ways' do
@@ -90,12 +95,12 @@ describe RubyLanguageServer::CoreIndex do
     end
 
     it 'hovers a core method with its signatures and documentation' do
-      index('file:///proj/a.rb', "name = 'x'\nname.upcase\n")
+      index('file:///proj/a.rb', "name = 'x'\nname.each_line\n")
       markdown = hover('file:///proj/a.rb', 1, 7)
 
-      assert markdown.start_with?("```ruby\ndef upcase: () -> String\n"), markdown
+      assert markdown.start_with?("```ruby\ndef each_line: "), markdown
       assert_includes markdown, 'In `String`'
-      assert_includes markdown, 'Returns a new string containing the upcased characters'
+      assert_includes markdown, 'With a block given, forms the substrings'
     end
 
     it 'prefers the project definition over core' do
@@ -104,6 +109,38 @@ describe RubyLanguageServer::CoreIndex do
 
       assert_equal(['file:///proj/b.rb'], definitions.pluck(:uri))
       assert_equal "```ruby\ndef upcase\n```\n\nIn `Shouter`", hover('file:///proj/b.rb', 4, 7)
+    end
+
+    it 'finds a project method when a core ancestor defines the name too' do
+      index('file:///proj/e.rb', "class MyError < StandardError\n  def report\n    message\n  end\nend\nclass Other\n  def message\n  end\nend\n")
+      definitions = project_manager.possible_definitions('file:///proj/e.rb', OpenStruct.new(line: 2, character: 6))
+
+      assert_equal([{ uri: 'file:///proj/e.rb', line: 6 }], definitions.map { |definition| { uri: definition[:uri], line: definition[:range][:start][:line] } })
+    end
+
+    it "hovers the project's override of a reopened core class" do
+      index('file:///proj/f.rb', "class String\n  def self.try_convert(object)\n  end\nend\nString.try_convert\n")
+
+      assert_equal "```ruby\ndef self.try_convert(object)\n```\n\nIn `String`", hover('file:///proj/f.rb', 4, 10)
+    end
+
+    it 'lists every core class a method could be from when the receiver is unknown' do
+      index('file:///proj/g.rb', "name.upcase\n")
+      markdown = hover('file:///proj/g.rb', 0, 7)
+
+      assert_includes markdown, 'In `String`'
+      assert_includes markdown, 'In `Symbol`'
+      refute_includes markdown, 'Returns a new string'
+    end
+
+    it 'completes project classes when many core names tie with them' do
+      # Same prefix as the project's class, so the database ranks them equal, and older ids.
+      rows = ('a'..'y').map { |letter| { name: "Str#{'q' * 30}#{letter}", path: "Str#{'q' * 30}#{letter}", class_type: 'class' } }
+      scope_class.insert_all!(rows)
+      index('file:///proj/h.rb', "class Strongbox\nend\nStr\n")
+      labels = project_manager.completion_at('file:///proj/h.rb', OpenStruct.new(line: 2, character: 3))[:items].pluck(:label)
+
+      assert_includes labels, 'Strongbox'
     end
 
     it 'has no definition location for a core method' do

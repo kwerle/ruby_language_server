@@ -677,6 +677,16 @@ describe RubyLanguageServer::ProjectManager do
         assert_equal([['base_uri', 4]], locations(results))
       end
 
+      it "finds a project method when a gem's superclass defines the name too" do
+        project_manager.index_file('file:///data/gems/jobs-1.0.0/lib/jobs.rb', "class GemJob\n  def perform_later\n  end\nend\n", gem_name: 'jobs', gem_version: '1.0.0')
+        project_manager.update_document_content('job_uri', "class MyJob < GemJob\n  def run\n    perform_later\n  end\nend\n")
+        project_manager.update_document_content('other_job_uri', "class Queue\n  def perform_later\n  end\nend\n")
+        %w[job_uri other_job_uri].each { |uri| project_manager.tags_for_uri(uri) }
+        results = project_manager.possible_definitions('job_uri', OpenStruct.new(line: 2, character: 6))
+
+        assert_equal([['other_job_uri', 1]], locations(results))
+      end
+
       it 'completes inherited methods' do
         # Position at the end of "inher" in Child#run
         completions = project_manager.completion_at('child_uri', OpenStruct.new(line: 4, character: 9))
